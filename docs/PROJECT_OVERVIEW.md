@@ -22,39 +22,44 @@ Why this user: Gummi's model trains on BIG IDEAs, a cohort with high-normal to p
 1. A delightful puppet: idle breathing, blinks, taps, moods tied to glucose, a proud spin when a prediction lands close.
 2. A live, seamless app: new readings, cards, and grades appear without refresh, through a push channel from the backend.
 3. Coaching first: the Home screen leads with the latest coach card, then the puppet, then a compact chart.
-4. Predict, then grade: "Can I eat this?" and every meal produce a prediction. Two hours later Gummi grades the prediction: "I predicted 168 for the pizza. It was 172. A last-value guess said 120."
+4. Predict, then grade: "Can I eat this?" and every meal produce a prediction. Two hours later Gummi grades the prediction: "I predicted 168 for the pizza. It was 172. CGM-only said 139, last value said 121."
 5. The event-driven agent: cards appear because events happened, not because someone typed. The MLflow trace shows the agent's tool calls.
-6. A walk loop: forecast crosses the high line, Gummi suggests a walk, live steps count up, the walk card shows minutes and intensity, the forecast responds (labeled "literature" or "your data").
-7. Streaming at scale: 16 BIG IDEAs participants stream through a Databricks streaming pipeline at once, shown on a fleet view with grades landing and a running accuracy number next to the baseline.
+6. A walk loop: forecast crosses the high line, Gummi suggests a walk, live steps count up, the walk card shows minutes and intensity, the forecast responds (labeled "literature" or "your data"). Honest about replay: a real walk can't change replayed glucose, so phone walks show as an overlay, and grades on those windows say "Walk effect not graded (replayed data)".
+7. Streaming at scale: 15 or 16 BIG IDEAs participants (D-20) stream through a Databricks streaming pipeline at once, shown on the projector fleet view with grades landing and a running out-of-sample accuracy number next to CGM-only and last value. Each participant is predicted by a fold model that never saw them.
 8. A real Dexcom connection through the official sandbox.
 9. Honest science: participant-grouped evaluation, the reproduced published baseline, the meal ablation result, baselines next to every number.
 
 ## 4. UI map (iPhone)
 
-- Home: the latest coach card on top (swipeable stack), the puppet in the middle, a compact chart at the bottom (confirmed Dexcom solid, Gummi's estimate dotted with band, forecast dashed with band, 2 hours ahead), the safety line "Not for treatment decisions. Check your Dexcom app for current readings." A chat bubble button beside the puppet opens chat.
+Tabs: Home, Today, Settings. The fleet grid is not on the phone.
+
+- Home: an "acting as Participant N" header (tap opens the Follow picker), the latest coach card on top (swipeable stack), the puppet in the middle, a compact chart at the bottom (confirmed Dexcom solid, Gummi's estimate dotted with band, forecast dashed with band, 2 hours ahead), the safety line "Not for treatment decisions. Check your Dexcom app for current readings." A chat bubble button beside the puppet opens chat.
 - Today: a vertical feed of story cards for the day: briefing, meals, predictions, grades, walks, recap.
-- Chat: a sheet over Home. Streaming replies, cards inline, editable meal portions. Keyboard dictation works through the system keyboard.
-- Fleet: a 4 by 4 grid of mini charts for the streaming participants, grade toasts, running error versus baseline, events per second, pipeline lag. Tap a tile to follow that participant on the phone.
-- Settings: connection status (backend, Dexcom), follow participant, demo controls, puppet 2D or 3D, safety info.
+- Chat: a sheet over Home. Streaming replies, cards inline (including meal_due cards with one-tap Log it), editable meal portions. Keyboard dictation works through the system keyboard.
+- Follow picker: a sheet listing replay participants with a mood dot and Gummi versus CGM-only error. Picking one calls /follow.
+- Settings: connection status (backend, Dexcom status-only), follow participant (opens the Follow picker), demo controls (start, stop, pause, resume, speed), puppet 2D or 3D, safety info.
+- Notifications: in-app banners while the app is in the foreground. In the background, local notifications scheduled ahead from StreamStatus.replay_anchor and speed (no server push on a free Personal Team).
+- Projector fleet view (web, /fleet/view, not on the phone): 15 or 16 tiles (D-20) of mini charts, grade toasts, running Gummi versus CGM-only and last-value error, events per second, pipeline lag.
 
 ## 5. Architecture
 
 ```
 SOURCES (no physical Dexcom needed)
-  A. Replay producer: 16 BIG IDEAs participants (CGM + meals), released at a chosen speed,
-     CGM delayed one hour like the real Dexcom API
-  B. Dexcom sandbox: real OAuth, real API, simulated users
+  A. Replay producer: 15 or 16 BIG IDEAs participants (CGM + meals), released at a chosen speed,
+     CGM delayed one hour like the real Dexcom API. The acted-as participant's meals are withheld and come due as meal_due cards
+  B. Dexcom sandbox: real OAuth, real API, simulated users, status-only by default
   C. iPhones: real steps and walks, live
           |
           v
 DATABRICKS APP (FastAPI, single worker)                      backend/
   Ingest (one code path for A, B, C)
   HOT STATE in memory: per-user readings, meals, predictions, grades, mood, cards
-  gummi_model in process (CPU, milliseconds): estimate, forecast, simulate, grade
+  gummi_model in process (CPU, milliseconds), loaded from the Unity Catalog volume: full model
+    plus 5 fold models, each replay participant predicted by the fold that never saw them
   Event bus -> event-driven agent (LLM on a Databricks serving endpoint, MLflow tracing)
   Chat agent (same tools)
   GET /live (server-sent events) pushes state, cards, mood, grades to iPhones
-  Fleet web view for the projector
+  Fleet web view for the projector (accuracy from stream_gold_accuracy via the SQL warehouse, cached)
   Landing writer: every event, prediction, grade, card -> JSON lines batch every 5 s
           |
           v
@@ -64,14 +69,14 @@ UNITY CATALOG VOLUME <CATALOG>.gummi_data.landing / events/
 LAKEFLOW DECLARATIVE PIPELINE "gummi_stream" (continuous mode if allowed, D-21)   data/
   Auto Loader -> stream_bronze_events
   -> stream_silver_cgm, stream_silver_meals, stream_silver_predictions, stream_silver_grades, stream_silver_cards
-  -> stream_gold_fleet, stream_gold_accuracy (Gummi versus baseline by participant and window type)
+  -> stream_gold_fleet, stream_gold_accuracy (Gummi versus CGM-only and last value by participant and window type)
           |
           v
 DELTA TABLES (durable history, rehydration on App restart, Genie space if available)
 MLFLOW: gummi_model registered, evaluation runs, agent traces
 ```
 
-Why this shape: the phone never waits on Spark. The App answers in milliseconds from memory and pushes updates instantly. The pipeline makes every event durable, queryable, and visible in Databricks within seconds, which is the streaming story judges look for.
+Why this shape: the phone never waits on Spark. The App answers in milliseconds from memory and pushes updates instantly. The pipeline makes every event durable, queryable, and visible in Databricks within seconds, which is the streaming story judges look for. Databricks stays in the loop, not just a log sink: /fleet accuracy numbers come from stream_gold_accuracy through the SQL warehouse (cached 15 to 30 seconds, hot state supplies only sparklines and moods), the evening_recap agent reads the gold tables through get_gold_summary, and gummi_model loads from the Unity Catalog volume and is registered in MLflow.
 
 ## 6. Streaming and Free Edition limits
 
@@ -103,15 +108,15 @@ Exit: no PENDING item blocks Phase 1.
 Exit: the phone updates live from the deployed App with mock data.
 
 ### Phase 2: core
-- Data: gummi_model v1 (estimate, 2-hour forecast, simulate, grade, personal offset), meal ablation result, breakfast-response fallback, replay tables.
-- Backend: replay producer, hot state, real grading with baselines, prediction tracking, chat agent with tools and tracing, Dexcom sync, landing writer.
-- iOS: real data on Home and Today, chat cards, grade animations, fleet screen, walk flow with live steps.
+- Data: gummi_model v1 (estimate, 2-hour forecast, simulate, grade, personal offset), 5 fold models plus the participant-to-fold map, cgm_only_forecast, meal ablation result, breakfast-response fallback, replay tables.
+- Backend: replay producer with acting-as (meal_due cards, auto-log, simulation rule), pause, resume, and speed, hot state, real grading with CGM-only and last-value baselines, prediction tracking, chat agent with tools and tracing, Dexcom status, landing writer.
+- iOS: real data on Home and Today, chat cards including meal_due, grade animations, Follow picker, walk flow with live steps.
 Exit: each piece works on real or replayed data.
 
 ### Phase 3: agent and integration
-- Backend: event bus and event-driven agent (morning, meal window, grade, high forecast, evening recap), fleet web view, rehydration on restart.
-- Data: gold accuracy tables, Genie space if available (D-23), walk effect source settled (D-11).
-- iOS: local notifications from cards and alerts, follow participant, polish, 3D puppet attempt if Phase 3 core passes.
+- Backend: event bus and event-driven agent (morning, meal due, meal window, grade, high forecast, evening recap with get_gold_summary), fleet web view reading stream_gold_accuracy, rehydration on restart.
+- Data: gold accuracy tables (three-way, out-of-sample, walk windows excluded), Genie space if available (D-23), walk effect source settled (D-11).
+- iOS: in-app banners in the foreground, local notifications scheduled ahead from replay_anchor, polish, 3D puppet attempt if Phase 3 core passes.
 Exit: the end-to-end script in section 9 passes on the phone.
 
 ### Phase 4: proof and polish
@@ -171,13 +176,13 @@ Contract changes go to the section owner (API: Backend, model and data tables: D
 
 1. Start the gummi_stream pipeline and the replay producer. The fleet view fills, grades land.
 2. On the phone, follow the D-15 participant. Home shows the morning briefing card and the puppet waking up.
-3. In chat, log "two waffles and coffee". A meal card appears with editable portions and a prediction.
+3. The participant's real breakfast comes due as a meal_due card. Tap Log it. A meal card appears with editable portions and a prediction.
 4. Ask "can I eat a cookie now?" Two curves, a verdict, alternatives.
-5. The forecast crosses the high line. A walk card and a local notification appear. Start the walk, steps count live, the walk summary appears.
-6. Two hours of replay later, the meal story card and the prediction grade appear on their own, with the baseline next to Gummi.
+5. The forecast crosses the high line. A walk card and an in-app banner appear. Start the walk, steps count live, the walk summary appears.
+6. Two hours of replay later, the meal story card and the prediction grade appear on their own, with CGM-only and last value next to Gummi. If the window overlapped the walk, the grade says "Walk effect not graded (replayed data)".
 7. Evening recap card appears.
 8. In Databricks, stream tables grow, the MLflow trace for the meal story shows the agent's tool calls.
-9. Connect the Dexcom sandbox from the laptop browser, and the phone shows Dexcom connected.
+9. Connect the Dexcom sandbox from the laptop browser, and the phone shows Dexcom connected (status-only: data range and last sync).
 
 ## 10. Video and live segment
 
@@ -185,12 +190,14 @@ Video: morning briefing, chat meal logging, "can I eat this", walk nudge and wal
 
 Live segment: the real phone on stage, ask Gummi one question, show a grade landing on the fleet view, show the pipeline graph running. Say plainly: "No one here wears a Dexcom. Gummi uses Dexcom's sandbox for the real connection and streams 16 real participants from the BIG IDEAs study through Databricks."
 
+Demo tip: slow the replay to about 10x (POST /stream/speed) during chat moments so "now" doesn't drift while someone types. Pause and resume are there for stage interruptions.
+
 ## 11. Judge questions, one-line answers (fill numbers from real results)
 
 1. Why not just open the Dexcom app? Dexcom shows the number. Gummi coaches: predictions, walk nudges, "can I eat this", and checks its own predictions.
 2. Dexcom delays data on purpose. Are you working around that? No. Gummi never shows its estimate as your current glucose and never supports treatment decisions. The estimate powers coaching only.
 3. Who is the user? Adults with prediabetes or type 2 not on insulin, matching the cohort Gummi trains on.
-4. How accurate is Gummi versus repeating the last value? Every grade shows both. Overall: Gummi X mg/dL, last-value Y mg/dL, after meals: Gummi X2, last-value Y2.
+4. How accurate is Gummi? Every grade shows Gummi, CGM-only, and last value, out-of-sample. Overall: Gummi X mg/dL, CGM-only Z, last-value Y. After meals: Gummi X2, CGM-only Z2, last-value Y2.
 5. Trained on 16 women. Does it generalize? Not proven beyond this cohort. Evaluation is participant-grouped, and the personal offset adapts per user. We say so on the slide.
 6. Does logging meals help? Our ablation: <result with fold spread>.
 7. Where does the walk effect come from? <literature citation> until a person's own data passes a permutation test. The label shows which.
@@ -200,9 +207,14 @@ Live segment: the real phone on stage, ask Gummi one question, show a grade land
 11. What if the LLM gets the food wrong? Every meal card has editable portions, and the prediction updates.
 12. Privacy? The demo uses a public de-identified dataset and Dexcom's sandbox. Dexcom tokens stay server-side. Disconnect deletes stored tokens.
 13. What is live and what is replayed? The app, backend, pipeline, agent, steps, and Dexcom sandbox connection are live. Glucose data is replayed from BIG IDEAs.
+14. Was the model trained on the people you replay? No. Each participant is predicted by a fold model that never saw them.
+15. The glucose is replayed. How could your walk change it? It can't. The forecast shows the modeled effect, and grades on those windows are marked "not graded."
+16. If the App holds state in memory, what does the pipeline do? It makes every event durable and computes the gold accuracy tables that the fleet view and the evening recap agent read.
+17. You beat the last-value guess. Do you beat the published CGM-only model? Every grade shows both: <fill from real results>.
+18. Is the agent's live reasoning real at 60x? Yes. Every event-driven run has a timestamped MLflow trace.
 
 ## 12. Scope
 
-Kept: puppet (2D first, 3D upgrade), live push, coach cards, chat, predict-then-grade, event-driven agent, walk loop, fleet, streaming pipeline, Dexcom sandbox, participant-grouped evaluation, meal ablation.
+Kept: puppet (2D first, 3D upgrade), live push, coach cards, chat, predict-then-grade, event-driven agent, walk loop, fleet (projector web view only), streaming pipeline, Dexcom sandbox, participant-grouped evaluation, meal ablation.
 Cut: fingersticks, USDA lookup (LLM plus 30 seed foods plus editable portions), Lakebase (Delta plus in-memory hot state), Kalman filter (simple personal offset), nightly job, heart rate in the model, Speech framework (system keyboard dictation), in-app proof screen (slides instead).
 Stretch, only after Phase 4 exit: 3D puppet if not done, Genie tool in chat, Apple Watch steps, a personal walk-effect test shown in the app.

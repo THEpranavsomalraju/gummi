@@ -1,9 +1,25 @@
 # Gummi Contract
 
-Contract version: 1.0 (draft, frozen at the end of Phase 0)
+Contract version: 1.1 (draft, frozen at the end of Phase 0)
 Section owners: API and agent (Backend Lead), model interface, pipeline, and data tables (Data Lead), puppet moods and UI copy (iOS Lead).
 Changes: CONTRACT CHANGE REQUEST to the owner (docs/PROJECT_OVERVIEW.md section 8).
 Placeholders resolved in docs/DECISIONS.md: <WORKSPACE_URL>, <APP_URL>, <CATALOG>, <LLM_ENDPOINT>.
+
+## v1.1 changes
+
+v1.1, agreed by all three leads.
+
+1. Out-of-sample replay: 5 participant-grouped fold models plus a participant-to-fold map. Each replay participant is predicted only by the fold model that never saw them. The full model serves teammate users and the Dexcom sandbox. Fleet and gold accuracy are labeled "out-of-sample" (D-26).
+2. Acting-as: following p_xxx means acting as p_xxx. Replay withholds p_xxx's meals and pushes a meal_due card with a one-tap log. Unlogged after 10 replay minutes, the backend logs it as replay_auto. Non-matching chat meals become simulations (D-27).
+3. Walk honesty: phone walks overlay the followed participant. Graded windows overlapping a phone walk on replayed data get walk_effect_graded false and are excluded from accuracy tables (D-28).
+4. Notifications: in-app banners in the foreground, local notifications scheduled ahead from StreamStatus.replay_anchor in the background (D-29).
+5. Databricks in the loop: /fleet accuracy comes from stream_gold_accuracy via the SQL warehouse. New tool get_gold_summary, required by evening_recap. gummi_model loads from the Unity Catalog volume and is registered in MLflow.
+6. Stronger baseline: every prediction and grade carries Gummi, CGM-only, and last value. Proud only when Gummi beats CGM-only.
+7. Replay controls: POST /stream/pause, /stream/resume, /stream/speed.
+8. Dexcom sandbox is status-only by default, optional time-shifted mode (D-30).
+9. Fleet grid lives only on the projector web view. The phone gets a Follow picker (D-31).
+
+Defaults set while writing v1.1, ASSUMED until the owner confirms: last_value_* field names (D-32), CGM-only definition (D-33), fleet cache and model loading (D-34), Meal.source values and due_id (D-35), background meal_due notifications (D-36, PENDING), excluded participants not replayed (D-37).
 
 ## 1. Conventions
 
@@ -12,6 +28,7 @@ Placeholders resolved in docs/DECISIONS.md: <WORKSPACE_URL>, <APP_URL>, <CATALOG
 - IDs: users "u_<name>" for teammates, "p_<participant_id>" for replay participants.
 - Errors: HTTP status plus `{"error": {"code": "...", "message": "..."}}`.
 - Every response carries `X-Gummi-Mode: mock | live`.
+- Comparisons: every accuracy number carries three values: gummi, cgm_only (the published CGM-only linear method, one model per horizon, fold-matched, D-33), and last_value (persistence). Numbers for replay participants are labeled "out-of-sample".
 
 ## 2. Auth
 
@@ -39,17 +56,18 @@ trend: "rising_fast", "rising", "flat", "falling", "falling_fast". confidence: "
 { "prediction_id": "pr_1", "kind": "meal", "made_at": "...", "about": "Pizza, 2 slices",
   "meal_id": "m_9", "window_start": "...", "window_end": "...",
   "predicted_peak_mg_dl": 168.0, "predicted_curve": ["BandPoint"],
-  "baseline_peak_mg_dl": 121.0, "status": "pending" }
+  "cgm_only_peak_mg_dl": 139.0, "last_value_peak_mg_dl": 121.0, "status": "pending" }
 ```
-kind: "meal", "nowcast". status: "pending", "graded". baseline_peak_mg_dl is the last-value guess (the last confirmed reading at made_at).
+kind: "meal", "nowcast". status: "pending", "graded". cgm_only_peak_mg_dl comes from model.cgm_only_forecast at made_at. last_value_peak_mg_dl is the last-value guess (the last confirmed reading at made_at).
 
 ### Grade
 ```json
 { "grade_id": "g_1", "prediction_id": "pr_1", "kind": "meal", "graded_at": "...",
-  "points": 24, "gummi_mae_mg_dl": 7.1, "baseline_mae_mg_dl": 18.4,
-  "gummi_peak_error_mg_dl": 4.0, "within_band_pct": 88.0,
-  "message": "I predicted 168 for the pizza. It was 172. A last-value guess said 121." }
+  "points": 24, "gummi_mae_mg_dl": 7.1, "cgm_only_mae_mg_dl": 11.2, "last_value_mae_mg_dl": 18.4,
+  "gummi_peak_error_mg_dl": 4.0, "within_band_pct": 88.0, "walk_effect_graded": true,
+  "message": "I predicted 168 for the pizza. It was 172. CGM-only said 139, last value said 121." }
 ```
+walk_effect_graded is false when the window overlaps a phone walk on replayed data. The card then says "Walk effect not graded (replayed data)", and accuracy tables exclude the window.
 
 ### StoryCard (pushed to Today and Home)
 ```json
@@ -59,20 +77,22 @@ kind: "meal", "nowcast". status: "pending", "graded". baseline_peak_mg_dl is the
   "actions": [{ "label": "Ask Gummi why", "kind": "open_chat", "prompt": "Why did I peak at 172?" }],
   "trace_id": "tr_abc", "generated_by": "agent" }
 ```
-type: "morning_briefing", "meal_logged", "prediction", "meal_story", "grade", "walk_suggested", "walk_summary", "evening_recap", "dexcom_status".
+type: "morning_briefing", "meal_due", "meal_logged", "prediction", "meal_story", "grade", "walk_suggested", "walk_summary", "evening_recap", "dexcom_status".
 generated_by: "agent" (LLM with tools) or "template" (fleet participants and fallbacks).
+actions[].kind: "open_chat", "log_due_meal" (carries "due_id", calls POST /meals/due/{due_id}/log).
+meal_due example: `{ "type": "meal_due", "title": "Lunch time for Participant 3", "body": "Turkey sandwich and an apple", "actions": [{ "label": "Log it", "kind": "log_due_meal", "due_id": "d_12" }] }`
 
 ### Alert
 `{ "alert_id": "...", "type": "walk_suggested", "message": "...", "created_at": "...", "expires_at": "...", "action": {"label": "Start walk", "kind": "start_walk", "minutes": 10} }`
 type: "walk_suggested", "high_forecast", "low_forecast", "dexcom_gap". action.kind: "start_walk", "open_chat", "dismiss".
 
 ### DexcomStatus
-`{ "connected": true, "environment": "sandbox", "data_through": "...", "delay_minutes": 60, "last_sync": "...", "last_error": null, "source": "dexcom_api" }`
-source: "dexcom_api", "replay", "none".
+`{ "connected": true, "environment": "sandbox", "data_through": "...", "delay_minutes": 60, "last_sync": "...", "last_error": null, "source": "dexcom_api", "ingest_mode": "status_only" }`
+source: "dexcom_api", "replay", "none". ingest_mode: "status_only" (default: connection, data range, and last sync only, never feeds coaching or hot state) or "time_shifted" (optional, labeled "Sandbox (time-shifted)").
 
 ### State (GET /state and the "state" live event)
 ```json
-{ "user_id": "...", "following": "p_003", "dexcom": "DexcomStatus",
+{ "user_id": "...", "following": "p_003", "acting_as": "p_003", "dexcom": "DexcomStatus",
   "gummi_view": "GummiView",
   "confirmed": ["GlucosePoint, past 6 hours"],
   "estimate": ["BandPoint, data_through to now"],
@@ -80,10 +100,11 @@ source: "dexcom_api", "replay", "none".
   "mood": "rising", "alert": null, "top_card": "StoryCard or null",
   "pending_predictions": ["Prediction"],
   "today": { "time_in_range_pct": 82.0, "peak_mg_dl": 151.0, "meals": 2, "steps": 4210, "walks": 1,
-             "gummi_mae_mg_dl": 7.4, "baseline_mae_mg_dl": 13.9 },
+             "gummi_mae_mg_dl": 7.4, "cgm_only_mae_mg_dl": 10.8, "last_value_mae_mg_dl": 13.9 },
   "profile": { "high_line_mg_dl": 140.0, "low_line_mg_dl": 70.0 },
   "model_version": "gummi_model_v1", "server_time": "..." }
 ```
+acting_as: the replay participant the user acts as (user_id), or null. Steps and walks in today belong to the teammate user and display as an overlay on the followed participant.
 
 ### Meal
 ```json
@@ -94,6 +115,7 @@ source: "dexcom_api", "replay", "none".
   "totals": { "carbs_g": 70.0, "sugar_g": 8.0, "fiber_g": 4.0, "protein_g": 24.0, "fat_g": 20.0, "calories": 570 },
   "prediction_id": "pr_1" }
 ```
+source: "chat", "manual", "replay" (meals of participants nobody follows), "replay_due" (the user tapped Log it on a meal_due card), "replay_auto" (auto-logged 10 replay minutes after it came due) (D-35).
 
 ### Simulation
 ```json
@@ -120,8 +142,10 @@ source: "replay", "dexcom_sandbox", "iphone", "app". kind with payload: "cgm" {g
 Path: /Volumes/<CATALOG>/gummi_data/landing/events/<YYYYMMDDTHHMMSS>_<source>_<seq>.jsonl, one file per 5-second batch.
 
 ### FleetEntry, StreamStatus
-FleetEntry: `{ "user_id": "p_003", "display_name": "Participant 3", "mood": "calm", "data_through": "...", "sparkline": ["GlucosePoint"], "grades": 14, "gummi_mae_mg_dl": 8.2, "baseline_mae_mg_dl": 12.6, "last_grade": "Grade or null" }`
-StreamStatus: `{ "running": true, "speed": 60, "delay_minutes": 60, "participants": 16, "replay_clock": "day3T08:15", "events_released": 18450, "events_per_second": 3.2, "pipeline_lag_seconds": 22 }`
+FleetEntry: `{ "user_id": "p_003", "display_name": "Participant 3", "mood": "calm", "data_through": "...", "sparkline": ["GlucosePoint"], "grades": 14, "gummi_mae_mg_dl": 8.2, "cgm_only_mae_mg_dl": 10.1, "last_value_mae_mg_dl": 12.6, "last_grade": "Grade or null" }`
+Accuracy fields come from stream_gold_accuracy (out-of-sample). Sparkline and mood come from hot state.
+StreamStatus: `{ "running": true, "paused": false, "speed": 60, "delay_minutes": 60, "participants": 16, "replay_clock": "day3T08:15", "replay_anchor": { "replay_time": "...", "wall_time": "..." }, "events_released": 18450, "events_per_second": 3.2, "pipeline_lag_seconds": 22 }`
+replay_anchor pairs a replay time with a wall-clock time. With speed, the phone converts any replay time to wall-clock time to schedule local notifications. It changes on pause, resume, and speed changes.
 
 ## 4. Endpoints (owner: Backend)
 
@@ -137,6 +161,7 @@ StreamStatus: `{ "running": true, "speed": 60, "delay_minutes": 60, "participant
 | PATCH | /meals/{meal_id} | `{"items": [...]}` | Meal (prediction recomputed) |
 | DELETE | /meals/{meal_id} | | `{"deleted": true}` |
 | GET | /meals?date= | | `{"meals": [Meal]}` |
+| POST | /meals/due/{due_id}/log | | Meal (source "replay_due") |
 | POST | /simulate | `{"items": [...], "eat_at": null}` | Simulation |
 | POST | /vitals | `{"samples": [{"type": "steps", "value": 112, "start": "...", "end": "..."}]}` | `{"accepted": n}` |
 | POST | /events | `{"type": "walk_started", "at": "..."}` | `{"ok": true}` |
@@ -146,8 +171,11 @@ StreamStatus: `{ "running": true, "speed": 60, "delay_minutes": 60, "participant
 | POST | /follow | `{"user_id": "p_003"}` | State |
 | POST | /stream/start | `{"speed": 60, "delay_minutes": 60, "start_at": "day3T06:00"}` | StreamStatus |
 | POST | /stream/stop | | StreamStatus |
+| POST | /stream/pause | | StreamStatus |
+| POST | /stream/resume | | StreamStatus |
+| POST | /stream/speed | `{"speed": 10}` | StreamStatus |
 | GET | /stream/status | | StreamStatus |
-| GET | /fleet | | `{"entries": [FleetEntry], "fleet_gummi_mae_mg_dl", "fleet_baseline_mae_mg_dl", "stream": StreamStatus}` |
+| GET | /fleet | | `{"entries": [FleetEntry], "fleet_gummi_mae_mg_dl", "fleet_cgm_only_mae_mg_dl", "fleet_last_value_mae_mg_dl", "stream": StreamStatus}`. Accuracy from stream_gold_accuracy via the SQL warehouse, refreshed in the background every 15 to 30 seconds, never on the request path (D-34). |
 | GET | /fleet/view | | HTML for the projector (browser with Databricks sign-in) |
 | GET | /dexcom/status | | DexcomStatus |
 | GET | /dexcom/connect | | HTML page starting OAuth (laptop browser) |
@@ -167,7 +195,7 @@ event: alert   data: Alert
 event: mood    data: {"mood": "proud"}
 event: ping    data: {"t": "..."}           (every 15 seconds)
 ```
-The iPhone reconnects with backoff. Fallback: poll GET /state every 15 seconds while the channel is down.
+The iPhone reconnects with backoff. Fallback: poll GET /state every 15 seconds while the channel is down. iOS suspends backgrounded apps, so the phone closes /live in the background and reconnects plus refetches /state on foreground.
 
 ## 6. Chat (POST /chat, server-sent events)
 
@@ -193,7 +221,8 @@ Tools (shared by chat and the event-driven agent):
 | suggest_walk() | minutes, start time, expected effect with source |
 | explain_spike(around_time) | meal, activity, and model contributions around a peak |
 | grade_prediction(prediction_id) | Grade, when the window has closed |
-| today_summary() | totals plus Gummi versus baseline accuracy |
+| today_summary() | totals plus Gummi versus CGM-only and last-value accuracy |
+| get_gold_summary(user_id, days) | accuracy and meal stats from the gold tables (stream_gold_accuracy) |
 | post_card(type, title, body, attachments, actions) | publish a StoryCard (event-driven agent only) |
 | ask_data(question) | Genie space query, only if D-23 enables Genie |
 
@@ -202,31 +231,38 @@ Triggers for the event-driven agent (followed users only, LLM budget per D-22):
 | Trigger | Action |
 |---|---|
 | First reading after 06:00 replay or local time | morning_briefing card |
+| Meal due (a withheld food-log meal of the acted-as participant reaches its time) | meal_due card with the real meal text and a Log it action. Not logged within 10 replay minutes: log it with source "replay_auto" |
 | Meal logged | meal_logged card with the prediction |
 | Meal window closes (2 hours after eating, confirmed data covers the window) | grade_prediction, explain_spike, meal_story card |
 | Forecast peak within 60 minutes crosses the high line, cooldown 45 minutes | walk_suggested alert and card |
 | Walk completed | walk_summary card |
-| 20:00 | evening_recap: predicted versus actual, one lesson, one small experiment for tomorrow |
+| 20:00 | evening_recap: predicted versus actual from get_gold_summary (required), one lesson, one small experiment for tomorrow |
 
 Agent copy rules: every number from a tool. Gummi's estimate is "likely" or "estimate". Dexcom values are "Dexcom reading". No medication or insulin advice. Past or present eating gets logged, food questions get simulated. Walk effects state their source.
+Simulation rule: while acting as a replay participant, a free-text chat meal that does not match the due meal becomes a simulation, not a logged meal, and the reply says so ("I simulated that, since Participant 3's real meals come from the study log").
 
 ## 8. Model interfaces (owner: Data)
 
 ```python
 from gummi_model import GlucoseModel, UserContext
-model = GlucoseModel.load(artifact_dir)
+model = GlucoseModel.load(artifact_dir)   # loads the full model, all 5 fold models, and the participant-to-fold map
+
+model.fold_of(user_id) -> int | None                     # fold for a replay participant, None for teammates and the sandbox
+m = model.for_user(user_id)                              # fold model that never saw user_id, or the full model
 
 ctx = UserContext(user_id, profile, cgm_df, meals_df, walks_df, personal)  # cgm_df: confirmed only
 
-model.estimate_gap(ctx, now) -> list[BandPoint]          # data_through to now
-model.forecast(ctx, now, minutes=120, extra_meals=None, extra_walks=None) -> list[BandPoint]
-model.gummi_view(ctx, now) -> GummiView
-model.simulate(ctx, now, items_macros, eat_at) -> dict    # curves, peak, method
-model.grade(prediction, confirmed_df) -> dict             # Gummi and baseline errors
-model.update_personal(ctx, grades) -> dict                # personal offset and carb factor
-model.walk_effect(ctx, minutes, intensity) -> dict        # drop and effect_source
+m.estimate_gap(ctx, now) -> list[BandPoint]              # data_through to now
+m.forecast(ctx, now, minutes=120, extra_meals=None, extra_walks=None) -> list[BandPoint]
+m.cgm_only_forecast(ctx, now, minutes=120) -> list[BandPoint]   # CGM-only linear baseline, fold-matched
+m.gummi_view(ctx, now) -> GummiView
+m.simulate(ctx, now, items_macros, eat_at) -> dict        # curves, peak, method
+m.grade(prediction, confirmed_df) -> dict                 # Gummi, CGM-only, and last-value errors
+m.update_personal(ctx, grades) -> dict                    # personal offset and carb factor
+m.walk_effect(ctx, minutes, intensity) -> dict            # drop and effect_source
 model.version -> str
 ```
+artifact_dir: /Volumes/<CATALOG>/gummi_ml/artifacts/gummi_model_v1/ in the Unity Catalog volume. The model is also registered in MLflow. The package code ships in the App bundle (D-34).
 Latency: estimate plus forecast under 50 ms per user, simulate under 100 ms. Pure Python plus numpy and pandas plus saved coefficients.
 
 ```python
@@ -243,7 +279,7 @@ Cadence bands from published walking research (cited), optionally validated on I
 | high | forecast peak at or above high line | orange, puffed, fanning arms |
 | dipping | falling fast after a peak | lavender, droopy, yawns |
 | low | estimate or forecast at or below low line | pale blue, shivers |
-| proud | grade with Gummi beating the baseline | gold sparkle, spin |
+| proud | grade with Gummi beating CGM-only | gold sparkle, spin |
 | happy | walk done or 3 hours in range | green, hops |
 | sleepy | 23:00 to 06:00 with no new data | dim, half-closed eyes |
 | thinking | UI only, during agent or chat tools | eyes up, hmm |
@@ -253,5 +289,6 @@ Priority: low, high, proud (20 seconds), dipping, rising, happy, sleepy, calm.
 ## 10. Tables (owner: Data, written by the pipeline)
 
 `<CATALOG>.gummi_data`: volumes raw_bigideas, landing (and raw_imu50 only if D-19). Batch tables: bronze_cgm, bronze_food_log, bronze_demographics, bronze_hr (ablation only), silver_cgm_5min, silver_meals, replay_cgm, replay_meals. Stream tables: stream_bronze_events, stream_silver_cgm, stream_silver_meals, stream_silver_predictions, stream_silver_grades, stream_silver_cards, stream_gold_fleet, stream_gold_accuracy.
-`<CATALOG>.gummi_ml`: volume artifacts. Tables eval_results, ablation_results, breakfast_response.
+stream_gold_accuracy: Gummi, CGM-only, and last-value errors by participant and window type, labeled out-of-sample, excluding windows with walk_effect_graded false. Read by /fleet and get_gold_summary.
+`<CATALOG>.gummi_ml`: volume artifacts (gummi_model_v1/ holds the full model, 5 fold models, and the participant-to-fold map). Tables eval_results, ablation_results, breakfast_response.
 Exact columns get written here in Phase 1 with a version bump.

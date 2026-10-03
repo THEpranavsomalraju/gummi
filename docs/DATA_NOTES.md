@@ -35,6 +35,10 @@ Seyedebrahimi, Ojeda, Zarrintaj (2026), "A Leakage-Controlled Evaluation of Mult
 
 Implications: glucose from CGM history plus meals. Gummi's research question: do logged meals improve on CGM history? Baselines always shown: mean, last value (persistence), CGM-only linear regression. Never quote the original paper's 84 or 87 percent figures, which came from within-subject or record-wise splits.
 
+Replay leakage (v1.1): the replay streams the same participants the model trains on, so live accuracy from one full model would be in-sample. Fix: save 5 participant-grouped fold models plus a participant-to-fold map. During replay, each participant is predicted only by the fold model that never saw them. The full model serves teammate users and the Dexcom sandbox. Fleet and gold accuracy numbers are labeled "out-of-sample". Participants excluded under D-20 are not replayed (D-37).
+
+CGM-only baseline in live grades (D-33): the published method (linear regression on the last 24 readings) is defined at 30 minutes ahead. For live grades, fit one CGM-only linear model per horizon on the same folds, so every grade compares Gummi, CGM-only, and last value on equal footing.
+
 Expectation management: in this flat cohort, long horizons drift toward the mean. Quiet periods flatter any method. Grade meal windows separately from quiet windows.
 
 ## 3. Dexcom API
@@ -61,3 +65,7 @@ Expectation management: in this flat cohort, long horizons drift toward the mean
 ## 6. Walk effect
 
 The prior work found accelerometry adds nothing to 30-minute forecasts. Gummi uses a literature-based post-meal walking effect, cited, labeled "literature" in the UI, until a person's own data passes a permutation test (meals with a walk after versus without). With about 10 days per person, expect "not enough data yet" for most people and show that message honestly.
+
+Citation lead: Buffey et al. 2022, Sports Medicine, a meta-analysis on interrupting prolonged sitting with light walking and post-meal glucose. VERIFY the exact title, effect size, and population before citing.
+
+Replay honesty: a real walk can't change replayed glucose. Phone walks display as an overlay, the forecast may show the modeled walk effect, and graded windows overlapping a phone walk on replayed data get walk_effect_graded false and are left out of accuracy tables.

@@ -10,8 +10,8 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 | T-2 | Did organizers require using both datasets (BIG IDEAs and IMU50)? Decides whether IMU50 stays. | PENDING |
 | T-3 | Output of `databricks serving-endpoints list --profile gummi` | PENDING (Backend agent collects) |
 | T-4 | Real header row and first 3 lines of one Dexcom file and one food log | PENDING (Data agent collects) |
-| T-5 | Who holds which role, plus comfort with Swift, Spark, FastAPI | Backend Lead: the teammate who shared these files. Others PENDING |
-| T-6 | Agree with the reframe: non-insulin users, coaching first, nowcast as the engine? | PENDING (files assume yes) |
+| T-5 | Who holds which role, plus comfort with Swift, Spark, FastAPI | iOS Lead: Mahil (`mahilmanoharan`). Backend Lead: Pranav (`THEpranavsomalraju`). Data Lead: Nikhil (`NikhilAmbavaram`). Comfort levels: each lead adds at onboarding. |
+| T-6 | Agree with the reframe: non-insulin users, coaching first, nowcast as the engine? | Yes, agreed by all three leads |
 
 ## Onboarding status
 
@@ -25,7 +25,7 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 
 | ID | Decision | Status | Answer | By | When |
 |---|---|---|---|---|---|
-| D-01 | Names per role | PENDING | | | |
+| D-01 | Names per role | DECIDED | iOS Lead: Mahil (`mahilmanoharan`). Backend Lead: Pranav (`THEpranavsomalraju`). Data Lead: Nikhil (`NikhilAmbavaram`). | all three leads | 2026-10-03 |
 | D-02 | Workspace URL and owner | PENDING | | | |
 | D-03 | Live store | DECIDED | In-memory hot state in the App plus Delta tables through the landing volume and pipeline. No Lakebase. | team review | |
 | D-04 | LLM serving endpoint (tool calling required) | PENDING | | | |
@@ -40,7 +40,7 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 | D-13 | Bundle ID and Personal Team ID | PENDING | | | |
 | D-14 | Final name | DECIDED | Gummi (project and puppet) | all three leads | 2026-10-03 |
 | D-15 | Followed participant and replay day for the demo | PENDING (Data proposes 3) | | | |
-| D-16 | Repo URL | PENDING | | | |
+| D-16 | Repo URL | DECIDED | https://github.com/mahilmanoharan/gummi (public). Branches main, ios/work, backend/work, data/work. | iOS Lead | 2026-10-03 |
 | D-17 | Dexcom OAuth path | ASSUMED | Connect from the App's web page in a laptop browser, callback at <APP_URL>/api/v1/dexcom/callback. Verify in the auth spike. | docs | |
 | D-18 | Dexcom sandbox user, data range, live or repeating | PENDING (expect repeating, fixed range) | | | |
 | D-19 | IMU50 scope | PENDING (depends on T-2). If required: small validation of cadence bands only. | | | |
@@ -50,6 +50,18 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 | D-23 | Genie available in Free Edition for ask_data | PENDING (stretch) | | | |
 | D-24 | Forecast horizon | DECIDED | 2 hours | team review | |
 | D-25 | Puppet | DECIDED | 2D SwiftUI puppet first, 3D RealityKit upgrade behind the same interface | team review | |
+| D-26 | Fold models for replay | DECIDED | 5 participant-grouped fold models plus a participant-to-fold map. Replay participants are predicted only by the fold that never saw them. Full model for teammates and the sandbox. Replay accuracy labeled out-of-sample. | all three leads | 2026-10-03 |
+| D-27 | Acting-as | DECIDED | Following p_xxx means acting as p_xxx. Their meals are withheld and come due as meal_due cards, auto-logged as replay_auto after 10 replay minutes. Non-matching chat meals become simulations. | all three leads | 2026-10-03 |
+| D-28 | Walk honesty | DECIDED | Phone walks overlay the followed participant. Windows overlapping a phone walk on replayed data get walk_effect_graded false and are excluded from accuracy. | all three leads | 2026-10-03 |
+| D-29 | Notifications | DECIDED | In-app banners in the foreground. Local notifications scheduled ahead from StreamStatus.replay_anchor in the background. | all three leads | 2026-10-03 |
+| D-30 | Dexcom sandbox mode | DECIDED | Status-only by default. Optional "Sandbox (time-shifted)" mode. | all three leads | 2026-10-03 |
+| D-31 | Fleet location | DECIDED | Projector web view only. The phone gets a Follow picker sheet. 15 or 16 tiles per D-20. | all three leads | 2026-10-03 |
+| D-32 | Comparison field names | ASSUMED | last_value_* replaces baseline_* in Prediction, Grade, State.today, FleetEntry, and /fleet. Owners (Data, Backend) confirm. | iOS Lead (default) | 2026-10-03 |
+| D-33 | CGM-only baseline definition | ASSUMED | One linear model per horizon on CGM history only (the published method extended to every horizon), fold-matched. Owner (Data) confirms. | iOS Lead (default) | 2026-10-03 |
+| D-34 | Fleet accuracy cache and model loading | ASSUMED | A background task refreshes stream_gold_accuracy every 15 to 30 seconds, and /fleet serves the cache. gummi_model code ships in the App bundle, coefficients load from /Volumes/<CATALOG>/gummi_ml/artifacts/gummi_model_v1/. Owner (Backend) confirms. | iOS Lead (default) | 2026-10-03 |
+| D-35 | Meal.source values and due_id | ASSUMED | "chat", "manual", "replay", "replay_due", "replay_auto". The log_due_meal action carries due_id. Owner (Backend) confirms. | iOS Lead (default) | 2026-10-03 |
+| D-36 | Background meal_due notifications | PENDING | The phone schedules only clock-based notifications (06:00 briefing, 20:00 recap) until Backend decides whether State gets an upcoming meal_due list (a CONTRACT CHANGE REQUEST). | | |
+| D-37 | Excluded participants in replay | ASSUMED | Participants excluded under D-20 are not replayed. Owner (Data) confirms. | iOS Lead (default) | 2026-10-03 |
 
 ## Status board
 
