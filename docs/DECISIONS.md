@@ -17,7 +17,7 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 
 | Role | Onboarding interview | Done at |
 |---|---|---|
-| iOS Lead | INCOMPLETE | |
+| iOS Lead | COMPLETE | 2026-10-03 |
 | Backend Lead | INCOMPLETE | |
 | Data Lead | INCOMPLETE | |
 
@@ -49,24 +49,25 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 | D-22 | Replay speed, delay, start day, LLM budget for event-driven cards | ASSUMED | 60x, 60 minutes, D-15 day, LLM only for followed users | docs | |
 | D-23 | Genie available in Free Edition for ask_data | PENDING (stretch) | | | |
 | D-24 | Forecast horizon | DECIDED | 2 hours | team review | |
-| D-25 | Puppet | DECIDED | 3D RealityKit puppet from the start, behind the PuppetRenderer protocol so a simpler fallback stays possible. Replaces "2D first, 3D upgrade". No 2D timebox: push on 3D. Any fallback toggle is debug-only and hidden in filming mode. | iOS Lead | 2026-10-03 |
+| D-25 | Puppet | DECIDED | 3D RealityKit puppet from the start, behind the PuppetRenderer protocol so a simpler fallback stays possible. Replaces "2D first, 3D upgrade". No 2D timebox: push on 3D. Any fallback toggle is debug-only and hidden in filming mode. Look (Mahil): an original koala, smooth eucalyptus-green gummy-jelly material with soft rounded features (big round ears, oval nose, small dot eyes, seated pose), never fuzzy. Mood colors in CONTRACT section 9 stay. Recoloring the body per mood is tabled. Build a base first, then iterate on the phone. | iOS Lead | 2026-10-03 |
 | D-26 | Fold models for replay | DECIDED | 5 participant-grouped fold models plus a participant-to-fold map. Replay participants are predicted only by the fold that never saw them. Full model for teammates and the sandbox. Replay accuracy labeled out-of-sample. | all three leads | 2026-10-03 |
 | D-27 | Acting-as | DECIDED | Following p_xxx means acting as p_xxx. Their meals are withheld and come due as meal_due cards, auto-logged as replay_auto after 10 replay minutes. Non-matching chat meals become simulations. | all three leads | 2026-10-03 |
 | D-28 | Walk honesty | DECIDED | Phone walks overlay the followed participant. Windows overlapping a phone walk on replayed data get walk_effect_graded false and are excluded from accuracy. | all three leads | 2026-10-03 |
 | D-29 | Notifications | DECIDED | In-app banners in the foreground. Local notifications scheduled ahead from StreamStatus.replay_anchor in the background. | all three leads | 2026-10-03 |
 | D-30 | Dexcom sandbox mode | DECIDED | Status-only by default. Optional "Sandbox (time-shifted)" mode. | all three leads | 2026-10-03 |
 | D-31 | Fleet location | DECIDED | Projector web view only. The phone gets a Follow picker sheet. 15 or 16 tiles per D-20. | all three leads | 2026-10-03 |
-| D-32 | Comparison field names | ASSUMED | last_value_* replaces baseline_* in Prediction, Grade, State.today, FleetEntry, and /fleet. Owners (Data, Backend) confirm. | iOS Lead (default) | 2026-10-03 |
-| D-33 | CGM-only baseline definition | ASSUMED | One linear model per horizon on CGM history only (the published method extended to every horizon), fold-matched. Owner (Data) confirms. | iOS Lead (default) | 2026-10-03 |
-| D-34 | Fleet accuracy cache and model loading | ASSUMED | A background task refreshes stream_gold_accuracy every 15 to 30 seconds, and /fleet serves the cache. gummi_model code ships in the App bundle, coefficients load from /Volumes/<CATALOG>/gummi_ml/artifacts/gummi_model_v1/. Owner (Backend) confirms. | iOS Lead (default) | 2026-10-03 |
-| D-35 | Meal.source values and due_id | ASSUMED | "chat", "manual", "replay", "replay_due", "replay_auto". The log_due_meal action carries due_id. Owner (Backend) confirms. | iOS Lead (default) | 2026-10-03 |
-| D-36 | Background meal_due notifications | PENDING | The phone schedules only clock-based notifications (06:00 briefing, 20:00 recap) until Backend decides whether State gets an upcoming meal_due list (a CONTRACT CHANGE REQUEST). | | |
-| D-37 | Excluded participants in replay | ASSUMED | Participants excluded under D-20 are not replayed. Owner (Data) confirms. | iOS Lead (default) | 2026-10-03 |
+| D-32 | Comparison field names | DECIDED | last_value_* replaces baseline_* in Prediction, Grade, State.today, FleetEntry, and /fleet. Confirmed by Backend and Data. Backend maps any baseline_* to last_value_* at the API boundary. | iOS Lead, confirmed by owners | 2026-10-03 |
+| D-33 | CGM-only baseline definition | DECIDED | One linear model per horizon on CGM history only (the published method extended to every horizon), fold-matched. Confirmed by Data (last 24 readings, reproduced 13.90 RMSE at 30 min). cgm_only_mae_mg_dl can be null. | iOS Lead, confirmed by Data | 2026-10-03 |
+| D-34 | Fleet accuracy cache and model loading | DECIDED | A background task refreshes stream_gold_accuracy every 15 to 30 seconds, and /fleet serves the cache. gummi_model code ships in the App bundle, coefficients load from /Volumes/<CATALOG>/gummi_ml/artifacts/gummi_model_v1/. Confirmed by Backend (refresh every 20 s). | iOS Lead, confirmed by Backend | 2026-10-03 |
+| D-35 | Meal.source values and due_id | DECIDED | "chat", "manual", "replay", "replay_due", "replay_auto". The log_due_meal action carries due_id, format "d_<n>". Confirmed by Backend. | iOS Lead, confirmed by Backend | 2026-10-03 |
+| D-36 | Background meal_due notifications | DECIDED | CONTRACT 1.2 (backend/work, merges at phase end): State.upcoming_due lists the next 6 replay hours of due meals with due_at already in wall-clock time. The phone schedules local notifications from it plus the 06:00 briefing and 20:00 recap. | Backend Lead, human-approved | 2026-10-03 |
+| D-37 | Excluded participants in replay | DECIDED | Participants excluded under D-20 are not replayed. Confirmed by Data: p_015 excluded, 15 replayed. | iOS Lead, confirmed by Data | 2026-10-03 |
+| D-38 | App palette | PENDING | Eucalyptus green for accents and highlights (Mahil). Main color still to pick. Until then the app uses a neutral placeholder token that is easy to swap. | iOS Lead | 2026-10-03 |
 
 ## Status board
 
 | Role | Phase | Last update | Blocked on |
 |---|---|---|---|
-| iOS Lead | 0 | 2026-10-03: onboarding items 1 to 3 and 5 verified, D-10 recorded, D-25 changed to 3D | D-06 on Backend (not blocking, MockAPI) |
+| iOS Lead | 0 | 2026-10-03: onboarding items 1 to 3 and 5 verified, D-10 recorded, D-25 changed to 3D, onboarding COMPLETE, D-32 to D-37 confirmed | Phone credentials from Backend (not blocking, MockAPI) |
 | Backend Lead | 0 | | |
 | Data Lead | 0 | | |
