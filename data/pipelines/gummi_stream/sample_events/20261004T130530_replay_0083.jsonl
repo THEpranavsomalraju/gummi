@@ -1,0 +1,3 @@
+{"event_id": "ev_000146", "source": "replay", "user_id": "p_004", "kind": "cgm", "t": "2026-10-04T13:26:11+00:00", "released_at": "2026-10-04T14:26:11+00:00", "payload": {"glucose_mg_dl": 119.0}}
+{"event_id": "ev_000229", "source": "replay", "user_id": "p_009", "kind": "cgm", "t": "2026-10-04T13:26:46+00:00", "released_at": "2026-10-04T14:26:46+00:00", "payload": {"glucose_mg_dl": 235.0}}
+{"event_id": "ev_000067", "source": "replay", "user_id": "p_012", "kind": "cgm", "t": "2026-10-04T13:27:05+00:00", "released_at": "2026-10-04T14:27:05+00:00", "payload": {"glucose_mg_dl": 115.0}}
