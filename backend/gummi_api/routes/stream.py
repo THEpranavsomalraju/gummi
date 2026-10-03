@@ -1,11 +1,12 @@
 """Replay controls, fleet, fleet view, Dexcom status (CONTRACT section 4)."""
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.responses import HTMLResponse
 
 from .. import config
 from ..auth import user_id
+from ..errors import ApiError
 from ..live.broadcaster import broadcaster
 from ..mock import data as mock
 from ..state.hot_store import dexcom_status, store
@@ -31,9 +32,9 @@ def _push_states() -> None:
 async def stream_start(body: dict | None = None):
     body = body or {}
     try:
-        clock.start(body.get("speed", 60), body.get("delay_minutes", config.DELAY_MINUTES), body.get("start_at"))
+        clock.start(body.get("speed", 60), body.get("delay_minutes", config.DELAY_MINUTES), body.get("start_at") or "day6T05:00")
     except ValueError as e:
-        raise HTTPException(422, str(e))
+        raise ApiError(422, "invalid", str(e))
     _push_states()
     return _status()
 
@@ -63,7 +64,7 @@ async def stream_resume():
 async def stream_speed(body: dict):
     speed = body.get("speed")
     if not isinstance(speed, (int, float)) or not 0 < speed <= 600:
-        raise HTTPException(422, "speed must be a number between 0 and 600")
+        raise ApiError(422, "invalid", "speed must be a number between 0 and 600")
     clock.set_speed(speed)
     _push_states()
     return _status()

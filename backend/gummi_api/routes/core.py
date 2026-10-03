@@ -1,22 +1,28 @@
 """Phone routes: health, state, live, feed, predictions, grades, profile, follow, engine (CONTRACT section 4)."""
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 
 from .. import config
 from ..auth import user_id
+from ..errors import ApiError
 from ..live.broadcaster import broadcaster, sse
 from ..mock import data as mock
 from ..state.hot_store import store
 from ..stream.landing_writer import landing
 from ..stream.producer import clock
-from ..util import utcnow
+from ..util import iso, utcnow
 
 router = APIRouter()
 counters = {"events": 0, "predictions": 0, "grades": 0, "agent_runs": 0, "chat_turns": 0, "last_trace_id": None}
 
 
 def current_state(uid: str) -> dict:
-    return store.state(uid, clock.status())
+    status = clock.status()
+    s = store.state(uid, status)
+    now = clock.now()
+    s["replay_now"] = iso(clock.replay_to_wall(now)) if s["acting_as"] and clock.running and now is not None else None
+    s["stream"] = status
+    return s
 
 
 @router.get("/health")
@@ -82,7 +88,7 @@ async def put_profile(body: dict, uid: str = Depends(user_id)):
 async def follow(body: dict, uid: str = Depends(user_id)):
     target = body.get("user_id")
     if target is not None and target not in config.PARTICIPANTS:
-        raise HTTPException(404, f"unknown participant {target}")
+        raise ApiError(404, "not_found", f"unknown participant {target}")
     store.get(uid).following = target
     s = current_state(uid)
     broadcaster.publish(uid, "state", s)

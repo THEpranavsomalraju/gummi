@@ -59,6 +59,8 @@ class Grade(Strict):
     gummi_peak_error_mg_dl: float
     within_band_pct: float
     walk_effect_graded: bool
+    gummi_beats_cgm_only: Optional[bool]
+    gummi_beats_last_value: bool
     message: str
 
 
@@ -140,7 +142,7 @@ class State(Strict):
     following: Optional[str]
     acting_as: Optional[str]
     dexcom: DexcomStatus
-    gummi_view: GummiView
+    gummi_view: Optional[GummiView]
     confirmed: list[GlucosePoint]
     estimate: list[BandPoint]
     forecast: list[BandPoint]
@@ -151,6 +153,8 @@ class State(Strict):
     today: Today
     profile: ProfileLines
     upcoming_due: list[UpcomingDue]
+    replay_now: Optional[str]
+    stream: "StreamStatus"
     model_version: str
     server_time: str
 
@@ -184,6 +188,7 @@ class Meal(Strict):
     source: Literal["chat", "manual", "replay", "replay_due", "replay_auto"]
     items: list[MealItem]
     totals: MealTotals
+    is_standard_breakfast: bool
     prediction_id: Optional[str]
 
 
@@ -280,3 +285,6 @@ class Health(Strict):
     status: str
     mode: Literal["mock", "live"]
     version: str
+
+
+State.model_rebuild()

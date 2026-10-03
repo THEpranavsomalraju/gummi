@@ -5,11 +5,13 @@ import logging
 import random
 from datetime import timedelta
 
-from fastapi import APIRouter, FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import config
+from .errors import ApiError
 from .live.broadcaster import broadcaster
 from .mock import data as mock
 from .routes import chat, core, meals, stream
@@ -77,9 +79,15 @@ def _error(status: int, code: str, message: str) -> JSONResponse:
                         headers={"X-Gummi-Mode": config.MODE})
 
 
-@app.exception_handler(HTTPException)
-async def http_error(request: Request, exc: HTTPException):
-    codes = {400: "bad_request", 401: "unauthorized", 404: "not_found", 409: "conflict", 422: "invalid", 429: "rate_limited"}
+@app.exception_handler(ApiError)
+async def api_error(request: Request, exc: ApiError):
+    return _error(exc.status, exc.code, exc.message)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_error(request: Request, exc: StarletteHTTPException):
+    codes = {400: "bad_request", 401: "unauthorized", 404: "not_found", 405: "method_not_allowed", 409: "conflict",
+             422: "invalid", 429: "rate_limited"}
     return _error(exc.status_code, codes.get(exc.status_code, "error"), str(exc.detail))
 
 

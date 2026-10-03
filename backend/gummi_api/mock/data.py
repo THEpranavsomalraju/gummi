@@ -127,7 +127,8 @@ def grade(prediction_id: str, about: str, graded_at: datetime, rng: random.Rando
     return {"grade_id": new_id("g"), "prediction_id": prediction_id, "kind": "meal", "graded_at": iso(graded_at),
             "points": int(max(0, 30 - gummi)), "gummi_mae_mg_dl": gummi, "cgm_only_mae_mg_dl": cgm_only,
             "last_value_mae_mg_dl": last_value, "gummi_peak_error_mg_dl": r1(abs(actual - predicted)),
-            "within_band_pct": r1(rng.uniform(78, 96)), "walk_effect_graded": not walk_overlap, "message": message}
+            "within_band_pct": r1(rng.uniform(78, 96)), "walk_effect_graded": not walk_overlap,
+            "gummi_beats_cgm_only": gummi < cgm_only, "gummi_beats_last_value": gummi < last_value, "message": message}
 
 
 def card(type_: str, created_at: datetime, title: str, body: str, mood: str, actions=None, attachments=None,

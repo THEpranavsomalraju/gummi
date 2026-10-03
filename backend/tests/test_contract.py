@@ -131,3 +131,26 @@ def test_chat(client, message, card_type):
 def test_errors(client):
     r = client.get("/api/v1/state", headers={"X-User-Id": "DROP TABLE"})
     assert r.status_code == 400 and r.json()["error"]["code"] == "bad_request"
+
+
+def test_contract_1_3(client):
+    h = {"X-User-Id": "u_v13"}
+    s = M.State.model_validate(ok(client.post("/api/v1/follow", json={"user_id": "p_012"}, headers=h)))
+    assert s.stream is not None and s.replay_now is None, "stream stopped -> replay_now null"
+    ok(client.post("/api/v1/stream/start", json={}))
+    s = M.State.model_validate(ok(client.get("/api/v1/state", headers=h)))
+    assert s.replay_now and s.stream.running and s.stream.replay_clock.startswith("day6T05:0"), "D-40 default start"
+    m = M.Meal.model_validate(ok(client.post("/api/v1/meals/due/d_1/log", headers=h)))
+    assert m.source == "replay_due" and m.is_standard_breakfast is False
+    again = client.post("/api/v1/meals/due/d_1/log", headers=h)
+    assert again.status_code == 409 and again.json()["error"]["code"] == "due_already_logged"
+    resolved = [c for c in ok(client.get("/api/v1/feed", headers=h))["cards"] if c["type"] == "meal_due" and not c["actions"]]
+    assert resolved and resolved[0]["body"].endswith("Logged.")
+    ok(client.post("/api/v1/stream/stop"))
+    assert M.State.model_validate(ok(client.post("/api/v1/follow", json={"user_id": None}, headers=h))).acting_as is None
+    ok(client.post("/api/v1/events", headers=h, json={"type": "walk_completed", "at": "2026-10-03T12:20:00Z",
+                                                      "started_at": "2026-10-03T12:08:00Z", "steps": 1300, "cadence_spm": 108}))
+    w = M.WalkSummary.model_validate(ok(client.get("/api/v1/walks/latest", headers=h)))
+    assert (w.minutes, w.steps, w.cadence_spm) == (12, 1300, 108)
+    r = client.put("/api/v1/health")
+    assert r.status_code == 405 and r.json()["error"]["code"] == "method_not_allowed"

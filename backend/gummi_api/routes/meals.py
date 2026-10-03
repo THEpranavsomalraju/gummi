@@ -1,10 +1,11 @@
 """Meals, meal_due logging, simulate, vitals, walk events (CONTRACT section 4). Mock engine until gummi_model lands."""
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from .. import config
 from ..auth import user_id
+from ..errors import ApiError
 from ..live.broadcaster import broadcaster
 from ..mock import data as mock
 from ..nutrition.estimate import item, totals
@@ -19,11 +20,11 @@ DUE_MEALS = {"d_1": "Two waffles with syrup and a black coffee", "d_2": "Turkey 
 
 def _items(raw: list[dict]) -> list[dict]:
     if not raw:
-        raise HTTPException(422, "items must not be empty")
+        raise ApiError(422, "invalid", "items must not be empty")
     out = []
     for r in raw:
         if not r.get("name"):
-            raise HTTPException(422, "every item needs a name")
+            raise ApiError(422, "invalid", "every item needs a name")
         out.append(item(r["name"], r.get("quantity", 1), r.get("unit"),
                         **{k: r[k] for k in ("carbs_g", "sugar_g", "fiber_g", "protein_g", "fat_g", "calories",
                                              "nutrition_source") if k in r}))
@@ -46,16 +47,16 @@ def _about(items: list[dict]) -> str:
     return ", ".join(f"{i['name']}" + (f" x{i['quantity']:g}" if i["quantity"] != 1 else "") for i in items)
 
 
-def create_meal(uid: str, items: list[dict], eaten_at, source: str) -> dict:
+def create_meal(uid: str, items: list[dict], eaten_at, source: str, standard_breakfast: bool = False) -> dict:
     meal_id = new_id("m")
     pred = _predict(uid, _about(items), eaten_at, items, meal_id)
     meal = {"meal_id": meal_id, "eaten_at": iso(eaten_at), "source": source, "items": items,
-            "totals": totals(items), "prediction_id": pred["prediction_id"]}
+            "totals": totals(items), "is_standard_breakfast": standard_breakfast, "prediction_id": pred["prediction_id"]}
     u = store.get(uid)
     u.meals.append(meal)
     c = mock.card("meal_logged", utcnow(), f"{_about(items).capitalize()} logged",
                   f"I expect a peak near {pred['predicted_peak_mg_dl']:.0f}. That's an estimate, and I'll grade it "
-                  f"in two hours.", "rising", attachments={"meal": meal})
+                  f"in two hours.", "rising", attachments={"meal": meal, "prediction": pred})
     u.cards.append(c)
     broadcaster.publish(uid, "card", c)
     broadcaster.publish(uid, "state", current_state(uid))
@@ -66,7 +67,7 @@ def _find(uid: str, meal_id: str) -> dict:
     for m in store.get(uid).meals:
         if m["meal_id"] == meal_id:
             return m
-    raise HTTPException(404, f"meal {meal_id} not found")
+    raise ApiError(404, "not_found", f"meal {meal_id} not found")
 
 
 @router.post("/meals")
@@ -74,7 +75,7 @@ async def post_meal(body: dict, uid: str = Depends(user_id)):
     eaten_at = parse(body["eaten_at"]) if body.get("eaten_at") else utcnow()
     source = body.get("source", "manual")
     if source not in ("chat", "manual"):
-        raise HTTPException(422, "source must be chat or manual")
+        raise ApiError(422, "invalid", "source must be chat or manual")
     return create_meal(uid, _items(body.get("items", [])), eaten_at, source)
 
 
@@ -109,11 +110,25 @@ async def get_meals(uid: str = Depends(user_id), date: str | None = None):
 async def log_due(due_id: str, uid: str = Depends(user_id)):
     text = DUE_MEALS.get(due_id)
     if text is None:
-        raise HTTPException(404, f"due meal {due_id} not found")
+        raise ApiError(404, "not_found", f"due meal {due_id} not found")
+    u = store.get(uid)
+    if due_id in u.dismissed_due:
+        raise ApiError(409, "due_already_logged", f"{due_id} was logged already")
+    u.dismissed_due.add(due_id)
+    resolve_due_card(uid, due_id)
     names = [n.strip() for n in text.replace(" with ", " and ").split(" and ")]
-    meal = create_meal(uid, _items([{"name": n} for n in names]), utcnow(), "replay_due")
-    store.get(uid).dismissed_due.add(due_id)
-    return meal
+    return create_meal(uid, _items([{"name": n} for n in names]), utcnow(), "replay_due")
+
+
+def resolve_due_card(uid: str, due_id: str) -> None:
+    """CONTRACT 1.3 upsert: re-send the meal_due card under its card_id with no actions and "Logged." appended."""
+    subject = store.get(uid).following or uid
+    for c in mock.day_cards(subject, utcnow()) + store.get(uid).cards:
+        if c["type"] == "meal_due" and any(a.get("due_id") == due_id for a in c["actions"]):
+            resolved = {**c, "actions": [], "body": c["body"].rstrip(".") + ". Logged."}
+            store.get(uid).cards.append(resolved)
+            broadcaster.publish(uid, "card", resolved)
+            return
 
 
 @router.post("/simulate")
@@ -155,10 +170,10 @@ async def events(body: dict, uid: str = Depends(user_id)):
     if kind == "walk_started":
         u.walk_started_at = at
     elif kind == "walk_completed":
-        started = u.walk_started_at or at - timedelta(minutes=10)
+        started = parse(body["started_at"]) if body.get("started_at") else u.walk_started_at or at - timedelta(minutes=10)
         minutes = max(1, round((at - started).total_seconds() / 60))
         steps = int(body.get("steps") or minutes * 105)
-        cadence = round(steps / minutes)
+        cadence = int(body.get("cadence_spm") or round(steps / minutes))
         walk = {"started_at": iso(started), "ended_at": iso(at), "minutes": minutes, "steps": steps,
                 "cadence_spm": cadence, "intensity": "moderate" if cadence >= 100 else "light",
                 "forecast_peak_drop_mg_dl": 14.0 if minutes >= 10 else round(1.4 * minutes, 1),
@@ -166,13 +181,13 @@ async def events(body: dict, uid: str = Depends(user_id)):
         u.walks.append(walk)
         u.walk_started_at, u.alert = None, None
         c = mock.card("walk_summary", utcnow(), "Nice walk", f"{minutes} minutes, {steps:,} steps, "
-                      f"{walk['intensity']} pace. Effect source: literature.", "happy")
+                      f"{walk['intensity']} pace. Effect source: literature.", "happy", attachments={"walk": walk})
         u.cards.append(c)
         broadcaster.publish(uid, "card", c)
         broadcaster.publish(uid, "mood", {"mood": "happy"})
         broadcaster.publish(uid, "state", current_state(uid))
     else:
-        raise HTTPException(422, "type must be walk_started or walk_completed")
+        raise ApiError(422, "invalid", "type must be walk_started or walk_completed")
     return {"ok": True}
 
 
