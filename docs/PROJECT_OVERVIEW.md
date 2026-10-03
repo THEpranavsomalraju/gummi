@@ -37,7 +37,7 @@ Tabs: Home, Today, Settings. The fleet grid is not on the phone.
 - Today: a vertical feed of story cards for the day: briefing, meals, predictions, grades, walks, recap.
 - Chat: a sheet over Home. Streaming replies, cards inline (including meal_due cards with one-tap Log it), editable meal portions. Keyboard dictation works through the system keyboard.
 - Follow picker: a sheet listing replay participants with a mood dot and Gummi versus CGM-only error. Picking one calls /follow.
-- Settings: connection status (backend, Dexcom status-only), follow participant (opens the Follow picker), demo controls (start, stop, pause, resume, speed), puppet 2D or 3D, safety info.
+- Settings: connection status (backend, Dexcom status-only), follow participant (opens the Follow picker), demo controls (start, stop, pause, resume, speed), debug-only puppet fallback toggle (only if a fallback renderer ships, hidden in filming mode), safety info.
 - Notifications: in-app banners while the app is in the foreground. In the background, local notifications scheduled ahead from StreamStatus.replay_anchor and speed (no server push on a free Personal Team).
 - Projector fleet view (web, /fleet/view, not on the phone): 15 or 16 tiles (D-20) of mini charts, grade toasts, running Gummi versus CGM-only and last-value error, events per second, pipeline lag.
 
@@ -104,7 +104,7 @@ Exit: no PENDING item blocks Phase 1.
 ### Phase 1: skeletons and data
 - Backend: every route in mock mode, including /live pushing mock updates, mock stream to landing.
 - Data: BIG IDEAs loaded, published baseline reproduced near 13.9 mg/dL RMSE at 30 minutes, gummi_stream pipeline running on mock events, exploration findings shared.
-- iOS: app shell, 2D puppet with moods, Home, Today, chat UI on mock, live channel connected.
+- iOS: app shell, 3D RealityKit puppet with moods, Home, Today, chat UI on mock, live channel connected.
 Exit: the phone updates live from the deployed App with mock data.
 
 ### Phase 2: core
@@ -116,7 +116,7 @@ Exit: each piece works on real or replayed data.
 ### Phase 3: agent and integration
 - Backend: event bus and event-driven agent (morning, meal due, meal window, grade, high forecast, evening recap with get_gold_summary), fleet web view reading stream_gold_accuracy, rehydration on restart.
 - Data: gold accuracy tables (three-way, out-of-sample, walk windows excluded), Genie space if available (D-23), walk effect source settled (D-11).
-- iOS: in-app banners in the foreground, local notifications scheduled ahead from replay_anchor, polish, 3D puppet attempt if Phase 3 core passes.
+- iOS: in-app banners in the foreground, local notifications scheduled ahead from replay_anchor, polish, 3D puppet tuning (60 frames per second on the phone).
 Exit: the end-to-end script in section 9 passes on the phone.
 
 ### Phase 4: proof and polish
@@ -215,6 +215,6 @@ Demo tip: slow the replay to about 10x (POST /stream/speed) during chat moments 
 
 ## 12. Scope
 
-Kept: puppet (2D first, 3D upgrade), live push, coach cards, chat, predict-then-grade, event-driven agent, walk loop, fleet (projector web view only), streaming pipeline, Dexcom sandbox, participant-grouped evaluation, meal ablation.
+Kept: puppet (3D RealityKit from the start, behind PuppetRenderer so a simpler fallback stays possible), live push, coach cards, chat, predict-then-grade, event-driven agent, walk loop, fleet (projector web view only), streaming pipeline, Dexcom sandbox, participant-grouped evaluation, meal ablation.
 Cut: fingersticks, USDA lookup (LLM plus 30 seed foods plus editable portions), Lakebase (Delta plus in-memory hot state), Kalman filter (simple personal offset), nightly job, heart rate in the model, Speech framework (system keyboard dictation), in-app proof screen (slides instead).
-Stretch, only after Phase 4 exit: 3D puppet if not done, Genie tool in chat, Apple Watch steps, a personal walk-effect test shown in the app.
+Stretch, only after Phase 4 exit: Genie tool in chat, Apple Watch steps, a personal walk-effect test shown in the app.

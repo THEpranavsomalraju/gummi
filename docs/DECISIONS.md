@@ -34,10 +34,10 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 | D-07 | Unity Catalog catalog | PENDING | | | |
 | D-08 | Nutrition source | DECIDED | LLM estimate plus 30 seed foods, editable portions. No USDA. | team review | |
 | D-09 | Modeling libraries on serverless | PENDING | | | |
-| D-10 | iPhone iOS version, Xcode version, minimum target | PENDING | | | |
+| D-10 | iPhone iOS version, Xcode version, minimum target | DECIDED | iPhone 17 Pro (iPhone18,1), iOS 26.6.2 (23G90), Developer Mode on. Mac: macOS 26.6.2, Xcode 26.4 (17E192), XcodeGen 2.46.0. Minimum target iOS 18.0 (RealityView). Verified with sw_vers, xcodebuild, devicectl. If Xcode 26.4 can't deploy to iOS 26.6.2, Mahil updates Xcode. | iOS Lead | 2026-10-03 |
 | D-11 | Walk effect source | PENDING | Default "literature" with citation until a personal permutation test passes | | |
 | D-12 | High and low lines | ASSUMED | 140 and 70 mg/dL | docs | |
-| D-13 | Bundle ID and Personal Team ID | PENDING | | | |
+| D-13 | Bundle ID and Personal Team ID | DECIDED | Bundle ID com.mahilmanoharan.gummi. Free Personal Team "Mahil Manoharan (Personal Team)", Team ID 656VZ34X6H (verified in Xcode defaults: isFreeProvisioningTeam = 1). Free only: 7-day installs, no server push. | iOS Lead | 2026-10-03 |
 | D-14 | Final name | DECIDED | Gummi (project and puppet) | all three leads | 2026-10-03 |
 | D-15 | Followed participant and replay day for the demo | PENDING (Data proposes 3) | | | |
 | D-16 | Repo URL | DECIDED | https://github.com/mahilmanoharan/gummi (public). Branches main, ios/work, backend/work, data/work. | iOS Lead | 2026-10-03 |
@@ -49,7 +49,7 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 | D-22 | Replay speed, delay, start day, LLM budget for event-driven cards | ASSUMED | 60x, 60 minutes, D-15 day, LLM only for followed users | docs | |
 | D-23 | Genie available in Free Edition for ask_data | PENDING (stretch) | | | |
 | D-24 | Forecast horizon | DECIDED | 2 hours | team review | |
-| D-25 | Puppet | DECIDED | 2D SwiftUI puppet first, 3D RealityKit upgrade behind the same interface | team review | |
+| D-25 | Puppet | DECIDED | 3D RealityKit puppet from the start, behind the PuppetRenderer protocol so a simpler fallback stays possible. Replaces "2D first, 3D upgrade". No 2D timebox: push on 3D. Any fallback toggle is debug-only and hidden in filming mode. | iOS Lead | 2026-10-03 |
 | D-26 | Fold models for replay | DECIDED | 5 participant-grouped fold models plus a participant-to-fold map. Replay participants are predicted only by the fold that never saw them. Full model for teammates and the sandbox. Replay accuracy labeled out-of-sample. | all three leads | 2026-10-03 |
 | D-27 | Acting-as | DECIDED | Following p_xxx means acting as p_xxx. Their meals are withheld and come due as meal_due cards, auto-logged as replay_auto after 10 replay minutes. Non-matching chat meals become simulations. | all three leads | 2026-10-03 |
 | D-28 | Walk honesty | DECIDED | Phone walks overlay the followed participant. Windows overlapping a phone walk on replayed data get walk_effect_graded false and are excluded from accuracy. | all three leads | 2026-10-03 |
@@ -67,6 +67,6 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 
 | Role | Phase | Last update | Blocked on |
 |---|---|---|---|
-| iOS Lead | 0 | | |
+| iOS Lead | 0 | 2026-10-03: onboarding items 1 to 3 and 5 verified, D-10 recorded, D-25 changed to 3D | D-06 on Backend (not blocking, MockAPI) |
 | Backend Lead | 0 | | |
 | Data Lead | 0 | | |
