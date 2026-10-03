@@ -1,42 +1,101 @@
 """Gummi API: the single Databricks App behind the iPhone app (CONTRACT.md sections 4 to 7)."""
 import asyncio
-import json
-import os
-from datetime import datetime, timezone
+import contextlib
+import logging
+import random
+from datetime import timedelta
 
-from fastapi import APIRouter, FastAPI, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
-VERSION = "0.0.1"
-MODE = os.environ.get("GUMMI_MODE", "mock")
+from . import config
+from .live.broadcaster import broadcaster
+from .mock import data as mock
+from .routes import chat, core, meals, stream
+from .state.hot_store import store
+from .stream.landing_writer import landing
+from .stream.producer import clock
+from .util import utcnow
 
-app = FastAPI(title="Gummi API", version=VERSION)
-api = APIRouter(prefix="/api/v1")
+logging.basicConfig(level=logging.INFO)
+
+
+async def mock_ticker() -> None:
+    """Mock mode: fresh State every 5 s, a new card every MOCK_CARD_SECONDS, a grade and proud mood every third card."""
+    i, last_card = 0, 0.0
+    loop = asyncio.get_running_loop()
+    while True:
+        await asyncio.sleep(config.MOCK_STATE_SECONDS)
+        users = broadcaster.users()
+        for uid in users:
+            broadcaster.publish(uid, "state", core.current_state(uid))
+        if users and loop.time() - last_card >= config.MOCK_CARD_SECONDS:
+            last_card, now = loop.time(), utcnow()
+            for uid in users:
+                u = store.get(uid)
+                card = mock.rotating_card(i, now)
+                u.cards.append(card)
+                broadcaster.publish(uid, "card", card)
+                if card["type"] == "walk_suggested":
+                    u.alert = mock.walk_alert(now)
+                    broadcaster.publish(uid, "alert", u.alert)
+                if card["type"] == "grade":
+                    g = mock.grade("pr_mock", "snack", now, random.Random(i))
+                    u.grades.append(g)
+                    u.proud_until = now + timedelta(seconds=20)
+                    broadcaster.publish(uid, "grade", g)
+                    broadcaster.publish(uid, "mood", {"mood": "proud"})
+                    core.counters["grades"] += 1
+            i += 1
+
+
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI):
+    tasks = [asyncio.create_task(landing.run()), asyncio.create_task(clock.run())]
+    if config.MODE == "mock":
+        tasks.append(asyncio.create_task(mock_ticker()))
+    yield
+    for t in tasks:
+        t.cancel()
+    with contextlib.suppress(Exception):
+        await landing.flush()
+
+
+app = FastAPI(title="Gummi API", version=config.VERSION, lifespan=lifespan)
 
 
 @app.middleware("http")
 async def mode_header(request: Request, call_next):
     response = await call_next(request)
-    response.headers["X-Gummi-Mode"] = MODE
+    response.headers["X-Gummi-Mode"] = config.MODE
     return response
 
 
-@api.get("/health")
-async def health():
-    return {"status": "ok", "mode": MODE, "version": VERSION}
+def _error(status: int, code: str, message: str) -> JSONResponse:
+    return JSONResponse({"error": {"code": code, "message": message}}, status_code=status,
+                        headers={"X-Gummi-Mode": config.MODE})
 
 
-@api.get("/live")
-async def live(ping_seconds: float = Query(15.0, ge=0.5, le=60.0)):
-    """Server-sent events (CONTRACT section 5). Phase 0: pings only, to prove the Apps proxy does not buffer."""
-    async def stream():
-        yield ": connected\n\n"
-        while True:
-            yield f"event: ping\ndata: {json.dumps({'t': datetime.now(timezone.utc).isoformat()})}\n\n"
-            await asyncio.sleep(ping_seconds)
-
-    return StreamingResponse(stream(), media_type="text/event-stream",
-                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+@app.exception_handler(HTTPException)
+async def http_error(request: Request, exc: HTTPException):
+    codes = {400: "bad_request", 401: "unauthorized", 404: "not_found", 409: "conflict", 422: "invalid", 429: "rate_limited"}
+    return _error(exc.status_code, codes.get(exc.status_code, "error"), str(exc.detail))
 
 
+@app.exception_handler(RequestValidationError)
+async def validation_error(request: Request, exc: RequestValidationError):
+    first = exc.errors()[0] if exc.errors() else {}
+    return _error(422, "invalid", f"{'.'.join(str(x) for x in first.get('loc', []))}: {first.get('msg', 'invalid request')}")
+
+
+@app.exception_handler(Exception)
+async def server_error(request: Request, exc: Exception):
+    logging.exception("unhandled error on %s", request.url.path)
+    return _error(500, "internal", "Something went wrong on Gummi's side. Try again.")
+
+
+api = APIRouter(prefix="/api/v1")
+for r in (core.router, meals.router, chat.router, stream.router):
+    api.include_router(r)
 app.include_router(api)

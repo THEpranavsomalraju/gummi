@@ -30,7 +30,7 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 | D-03 | Live store | DECIDED | In-memory hot state in the App plus Delta tables through the landing volume and pipeline. No Lakebase. | team review | |
 | D-04 | LLM serving endpoint (tool calling required) | DECIDED (Pranav: "whatever is optimal") | databricks-gpt-oss-120b, fallback databricks-qwen3-next-80b-a3b-instruct. All 7 chat endpoints returned a correct log_meal tool call (backend/scripts/llm_tool_test.py); gpt-oss-120b 1.4 s with clean arguments, streaming first token 0.6 to 1.5 s. No Claude endpoint in the workspace. | Backend agent | 2026-10-03 |
 | D-05 | Model hosting | DECIDED | gummi_model runs inside the App process on CPU | team review | |
-| D-06 | iPhone token type and delivery | PENDING (auth spike, partly verified) | Verified 2026-10-03 (backend/scripts/auth_spike.py): the Apps proxy accepts "Authorization: Bearer <OAuth token>" from a non-browser client (200; 401 without a token), and SSE is not buffered (2 s pings arrive at +0.16, 2.17, 4.22, 6.16 s). User OAuth token from the CLI lives about 1 hour, so it is unfit for the phone. Next: service principal gummi-iphone with CAN USE, M2M token from /oidc/v1/token. | Backend agent | 2026-10-03 |
+| D-06 | iPhone token type and delivery | DECIDED (verified end to end) | Service principal gummi-iphone (application id 2cc103a1-493a-4c74-a43f-955f5625b41d, CAN USE on App gummi). The phone POSTs client_credentials with scope=all-apis to https://dbc-0f92eb43-532a.cloud.databricks.com/oidc/v1/token (Basic auth with client id and secret), gets a 3600 s bearer token, refreshes 5 minutes before expiry and on any 401. Secret valid until 2028-10-02, kept in backend/secrets/iphone_sp.env and the iOS Secrets.xcconfig.local only. Note: the secret must be generated with the all-apis scope; a sql-scoped secret gets 401 from the App. Verified: /health 200, /live pings unbuffered, every Phase 1 route 25 to 70 ms through the proxy (backend/scripts/smoke.py). | Pranav (Backend Lead) | 2026-10-03 |
 | D-07 | Unity Catalog catalog | DECIDED | workspace (the only writable catalog). Schemas workspace.gummi_data and workspace.gummi_ml | Data Lead | 2026-10-03 |
 | D-08 | Nutrition source | DECIDED | LLM estimate plus 30 seed foods, editable portions. No USDA. | team review | |
 | D-09 | Modeling libraries on serverless | PENDING | | | |
@@ -61,12 +61,13 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 | D-34 | Fleet accuracy cache and model loading | DECIDED (Backend confirmed, 20 s refresh) | A background task refreshes stream_gold_accuracy every 15 to 30 seconds, and /fleet serves the cache. gummi_model code ships in the App bundle, coefficients load from /Volumes/<CATALOG>/gummi_ml/artifacts/gummi_model_v1/. Owner (Backend) confirms. | iOS Lead (default) | 2026-10-03 |
 | D-35 | Meal.source values and due_id | DECIDED (Backend confirmed, due_id "d_<n>") | "chat", "manual", "replay", "replay_due", "replay_auto". The log_due_meal action carries due_id. Owner (Backend) confirms. | iOS Lead (default) | 2026-10-03 |
 | D-36 | Background meal_due notifications | DECIDED | Yes. State.upcoming_due lists the next 6 replay hours of due meals with wall-clock due_at, so the phone schedules meal_due notifications in the background (CONTRACT 1.2). | Pranav (Backend Lead) | 2026-10-03 |
-| D-37 | Excluded participants in replay | ASSUMED | Participants excluded under D-20 are not replayed. Owner (Data) confirms. | iOS Lead (default) | 2026-10-03 |
+| D-37 | Excluded participants in replay | DECIDED (Data confirmed: 015 not replayed) | Participants excluded under D-20 are not replayed. Owner (Data) confirms. | iOS Lead (default) | 2026-10-03 |
+| D-50 | Mock events location | ASSUMED | Mock mode writes StreamEvents to /Volumes/workspace/gummi_data/landing/mock_events/, a sibling of events/, so synthetic data never reaches the gummi_stream tables. Live mode writes to events/. Verified: the deployed App wrote 2 files (30 events) with its own service principal. Backend rows use D-50 and up, Data renumbers from D-38. | Backend agent | 2026-10-03 |
 
 ## Status board
 
 | Role | Phase | Last update | Blocked on |
 |---|---|---|---|
 | iOS Lead | 0 | | |
-| Backend Lead | 0B: App deployed, auth and SSE verified with a user token | 2026-10-03 | Pranav: service principal for the iPhone, App SP grants on volumes |
+| Backend Lead | 1: every route deployed in mock mode, 14 contract tests pass, smoke test passes through the proxy with the phone token, App writes to landing | 2026-10-03 | Nikhil: Pranav's own UC grants on gummi_data and gummi_ml; v1.1 model |
 | Data Lead | 0 | | |
