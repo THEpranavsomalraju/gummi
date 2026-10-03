@@ -1,0 +1,12 @@
+.env
+*.env
+*.xcconfig.local
+secrets/
+__pycache__/
+.venv/
+build/
+DerivedData/
+*.zip
+.databricks/
+big-ideas/
+raw_downloads/
