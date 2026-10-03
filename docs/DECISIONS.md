@@ -1,6 +1,6 @@
 # Decisions Log
 
-Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent chose a reversible default, humans review), PENDING (needs a human).
+Agents append rows in their own ID range: Data D-38 to D-49, Backend D-50 to D-59, iOS D-60 to D-69 (then D-70 and up in blocks of 10, in the same order). Status values: DECIDED (a human chose), ASSUMED (an agent chose a reversible default, humans review), PENDING (needs a human).
 
 ## Team answers needed (humans fill these in)
 
@@ -17,9 +17,9 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 
 | Role | Onboarding interview | Done at |
 |---|---|---|
-| iOS Lead | INCOMPLETE | |
 | Backend Lead | PARTIAL: name, repo, Python 3.12 venv, CLI profile gummi (somalrajupc@gmail.com, admin), workspace, LinkedIn, catalog, D-04 done. MLflow experiment /Users/somalrajupc@gmail.com/gummi-agent (id 3505481683626519). Open: Dexcom account, secrets | 2026-10-03 |
 | Data Lead | COMPLETE. Name (D-01), repo on data/work, Python, disk, download route B (D-38), LinkedIn done, catalog (D-07), T-2 answered. The Databricks CLI runs from the Data agent's shell with Nikhil's workspace token (git-ignored); a Windows `gummi` profile is optional | 2026-10-03 |
+| iOS Lead | COMPLETE | 2026-10-03 |
 
 ## Decisions
 
@@ -34,10 +34,10 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 | D-07 | Unity Catalog catalog | DECIDED | workspace: the only catalog this workspace can write to (system and samples are read-only). Schemas workspace.gummi_data and workspace.gummi_ml; the bundle defaults to it. Nikhil can still move it | Data agent | 2026-10-03 |
 | D-08 | Nutrition source | DECIDED | LLM estimate plus 30 seed foods, editable portions. No USDA. | team review | |
 | D-09 | Modeling libraries on serverless | DECIDED (verified) | Serverless job tasks run numpy 2.3.4, pandas 2.3.3, scipy 1.16.3, scikit-learn 1.7.2, mlflow 3.12.0, pyarrow 21.0.0 (data/notebooks/00_setup.py). No installs needed. Data code also tested on pandas 1.5.3 to 3.0.5 | Data agent | 2026-10-03 |
-| D-10 | iPhone iOS version, Xcode version, minimum target | PENDING | | | |
+| D-10 | iPhone iOS version, Xcode version, minimum target | DECIDED | iPhone 17 Pro (iPhone18,1), iOS 26.6.2 (23G90), Developer Mode on. Mac: macOS 26.6.2, Xcode 26.4 (17E192), XcodeGen 2.46.0. Minimum target iOS 18.0 (RealityView). Verified with sw_vers, xcodebuild, devicectl. If Xcode 26.4 can't deploy to iOS 26.6.2, Mahil updates Xcode. | iOS Lead | 2026-10-03 |
 | D-11 | Walk effect source | DECIDED | "literature" until a personal permutation test passes. Buffey et al. 2022, Sports Med 52:1765-1787, light walking vs sitting d = -0.72 (95% CI -1.03 to -0.41), times the SD of post-meal rises in BIG IDEAs (28.1 mg/dL), full effect at 10 minutes, capped at 50% of the meal's predicted effect (D-43). data/reports/walk_effect.md | Nikhil | 2026-10-03 |
 | D-12 | High and low lines | ASSUMED | 140 and 70 mg/dL | docs | |
-| D-13 | Bundle ID and Personal Team ID | PENDING | | | |
+| D-13 | Bundle ID and Personal Team ID | DECIDED | Bundle ID com.mahilmanoharan.gummi. Free Personal Team "Mahil Manoharan (Personal Team)", Team ID 656VZ34X6H (verified in Xcode defaults: isFreeProvisioningTeam = 1). Free only: 7-day installs, no server push. | iOS Lead | 2026-10-03 |
 | D-14 | Final name | DECIDED | Gummi (project and puppet) | all three leads | 2026-10-03 |
 | D-15 | Followed participant and replay day for the demo | DECIDED | p_012, replay day 6 (9 meals, standardized breakfast at 05:54, so start the replay near day6T05:00). Alternates were p_013 day 4 and p_014 day 8. data/reports/demo_day_candidates.md, data/reports/demo_day/ | Nikhil | 2026-10-03 |
 | D-16 | Repo URL | DECIDED | https://github.com/mahilmanoharan/gummi (public). Branches main, ios/work, backend/work, data/work. | iOS Lead | 2026-10-03 |
@@ -49,7 +49,7 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 | D-22 | Replay speed, delay, start day, LLM budget for event-driven cards | ASSUMED | 60x, 60 minutes, D-15 day, LLM only for followed users | docs | |
 | D-23 | Genie available in Free Edition for ask_data | PENDING (stretch) | | | |
 | D-24 | Forecast horizon | DECIDED | 2 hours | team review | |
-| D-25 | Puppet | DECIDED | 2D SwiftUI puppet first, 3D RealityKit upgrade behind the same interface | team review | |
+| D-25 | Puppet | DECIDED | 3D RealityKit puppet from the start, behind the PuppetRenderer protocol so a simpler fallback stays possible. Replaces "2D first, 3D upgrade". No 2D timebox: push on 3D. Any fallback toggle is debug-only and hidden in filming mode. Look (Mahil): an original koala, smooth eucalyptus-green gummy-jelly material with soft rounded features (big round ears, oval nose, small dot eyes, seated pose), never fuzzy. Mood colors in CONTRACT section 9 stay. Recoloring the body per mood is tabled. Build a base first, then iterate on the phone. | iOS Lead | 2026-10-03 |
 | D-26 | Fold models for replay | DECIDED | 5 participant-grouped fold models plus a participant-to-fold map. Replay participants are predicted only by the fold that never saw them. Full model for teammates and the sandbox. Replay accuracy labeled out-of-sample. | all three leads | 2026-10-03 |
 | D-27 | Acting-as | DECIDED | Following p_xxx means acting as p_xxx. Their meals are withheld and come due as meal_due cards, auto-logged as replay_auto after 10 replay minutes. Non-matching chat meals become simulations. | all three leads | 2026-10-03 |
 | D-28 | Walk honesty | DECIDED | Phone walks overlay the followed participant. Windows overlapping a phone walk on replayed data get walk_effect_graded false and are excluded from accuracy. | all three leads | 2026-10-03 |
@@ -75,11 +75,15 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 | D-48 | Personal layer fit | ASSUMED | update_personal fits the carb factor and a constant offset together on the person's closed meal windows (shrunk toward 1 and 0), instead of averaging grade errors that already include the previous offset | Data agent | 2026-10-03 |
 | D-49 | Fold models implementation (D-26) | ASSUMED | The 5 folds are the baseline-reproduction folds. Each fold component holds Gummi and CGM-only coefficients; its bands come from out-of-fold residuals of the other folds. for_user returns the full model for any id not in the fold map (u_*, sandbox). One gummi_model_v1/ (model.npz plus meta.json) holds everything | Data agent | 2026-10-03 |
 | D-50 | Mock events location | ASSUMED | Mock mode writes StreamEvents to /Volumes/workspace/gummi_data/landing/mock_events/, a sibling of events/, so synthetic data never reaches the gummi_stream tables. Live mode writes to events/. Verified: the deployed App wrote 2 files (30 events) with its own service principal. Backend rows use D-50 and up, Data renumbers from D-38. | Backend agent | 2026-10-03 |
+| D-51 | CONTRACT 1.3 (iOS REQUEST 20261003-1815) | DECIDED | Accepted all ten iOS proposals: State.replay_now and State.stream; Grade.gummi_beats_cgm_only and gummi_beats_last_value from gummi_model.grade (proud only when beating CGM-only); Meal.is_standard_breakfast; chat card_type "meal_due"; cards upsert by card_id, a logged due meal re-sends its meal_due card with actions [] then a meal_logged card, a second log returns 409 due_already_logged; attachments keys per card type; walk_completed body with started_at, steps, cadence_spm; unfollow with user_id null; mood owned by Backend; nullable fields and error codes listed in CONTRACT section 1. /stream/start defaults to day6T05:00 (D-62). gummi-iphone holds only CAN USE on the App. | Pranav (Backend Lead, delegated) | 2026-10-03 |
+| D-60 | App palette | PENDING | Eucalyptus green for accents and highlights (Mahil). Main color still to pick. The app follows the phone's light or dark setting. Colors come from named semantic tokens backed by system colors (placeholders: system background, white and black), with no hard-coded hex in views, so the final palette is a one-place swap. | iOS Lead | 2026-10-03 |
+| D-61 | First launch with no follow | DECIDED | The app auto-follows p_012 (D-15) on first launch, since u_mahil has no CGM. The Follow picker changes it. | Mahil | 2026-10-03 |
+| D-62 | Demo controls default start | DECIDED | /stream/start defaults to speed 60, delay 60, start_at "day6T05:00", so the 05:54 standardized breakfast comes due on screen. | Mahil | 2026-10-03 |
 
 ## Status board
 
 | Role | Phase | Last update | Blocked on |
 |---|---|---|---|
-| iOS Lead | 0 | | |
 | Backend Lead | 1: every route deployed in mock mode, 14 contract tests pass, smoke test passes through the proxy with the phone token, App writes to landing | 2026-10-03 | Nikhil: Pranav's own UC grants on gummi_data and gummi_ml; v1.1 model |
 | Data Lead | 3 (Phases 0 to 2 done; v1.1 model shipped; IMU50 check running) | 2026-10-03 | Nikhil: approve judge-facing numbers |
+| iOS Lead | 0 | 2026-10-03: onboarding items 1 to 3 and 5 verified, D-10 recorded, D-25 changed to 3D, onboarding COMPLETE, D-32 to D-37 confirmed | Phone credentials from Backend (not blocking, MockAPI) |

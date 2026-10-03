@@ -21,7 +21,7 @@ Nobody on the team needs a Dexcom. Live demo data comes from replaying 16 real p
 
 | Role | Who (GitHub) | Folder | Branch | Owns |
 |---|---|---|---|---|
-| iOS Lead | Mahil (`mahilmanoharan`) | ios/ | ios/work | Swift app, puppet (2D first, 3D upgrade), live home, Today feed, chat, Follow picker, walks, notifications |
+| iOS Lead | Mahil (`mahilmanoharan`) | ios/ | ios/work | Swift app, 3D RealityKit puppet, live home, Today feed, chat, Follow picker, walks, notifications |
 | Backend Lead | Pranav (`THEpranavsomalraju`) | backend/ | backend/work | Databricks App (FastAPI), live push channel, replay producer, Dexcom OAuth and status, event-driven agent, chat agent, fleet web view |
 | Data Lead | Nikhil (`NikhilAmbavaram`) | data/ | data/work | BIG IDEAs ingestion, baseline reproduction, the glucose model and fold models, the streaming pipeline, replay tables, evaluation, IMU50 if required |
 
