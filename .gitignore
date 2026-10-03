@@ -10,3 +10,8 @@ DerivedData/
 .databricks/
 big-ideas/
 raw_downloads/
+.DS_Store
+xcuserdata/
+*.p8
+*.pem
+*.xcodeproj/
