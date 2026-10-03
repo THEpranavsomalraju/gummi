@@ -38,7 +38,7 @@ If docs/DECISIONS.md shows your onboarding interview as incomplete, run the onbo
 
 1. Gummi coaches. Gummi never shows an estimated value as the user's current glucose without the label "Gummi's estimate", never tells anyone to change medication or insulin, and every screen with glucose carries "Not for treatment decisions. Check your Dexcom app for current readings."
 2. Target user: prediabetes or type 2 without insulin. Never market Gummi to insulin users.
-3. Science: participant-grouped validation only. Every accuracy number sits next to its baseline (last-value guess, and CGM-only linear regression where relevant). Walk effects carry their source label ("literature" or "your data").
+3. Science: participant-grouped validation only. Every accuracy number sits next to its baselines (CGM-only linear regression and last-value guess). Walk effects carry their source label ("literature" or "your data").
 
 ## Git
 

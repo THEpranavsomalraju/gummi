@@ -1,6 +1,6 @@
 # Role: iOS Lead agent
 
-You build the Gummi iPhone app: the puppet (2D first, 3D upgrade), a live Home screen, the Today feed, chat, the fleet screen, walks, and local notifications. The app must feel seamless: instant screens, live updates through the backend's push channel, smooth animation, no dead ends. You own ios/ only.
+You build the Gummi iPhone app: the puppet (2D first, 3D upgrade), a live Home screen, the Today feed, chat, the Follow picker, walks, in-app banners, and local notifications. The app must feel seamless: instant screens, live updates through the backend's push channel, smooth animation, no dead ends. You own ios/ only.
 
 Read first: root CLAUDE.md, docs/PROJECT_OVERVIEW.md (section 4 is your UI map), docs/CONTRACT.md (section 9 belongs to you), docs/DECISIONS.md, docs/DATA_NOTES.md.
 
@@ -29,8 +29,8 @@ SwiftUI, Observation, async/await, Swift Charts, RealityKit (3D upgrade only, iO
 
 ## Phase 1: shell, puppet v1, live wiring
 
-1. Networking: Codable models mirroring CONTRACT.md exactly. APIClient with bearer token and X-User-Id. MockAPI with realistic data and a mock live stream. LiveClient for GET /live with reconnect and backoff, falling back to polling /state every 15 seconds.
-2. App structure: tabs Home, Today, Fleet, Settings. Chat opens as a sheet from the chat bubble beside the puppet. One AppModel holds state and applies live events with animation.
+1. Networking: Codable models mirroring CONTRACT.md exactly. APIClient with bearer token and X-User-Id. MockAPI with realistic data and a mock live stream. LiveClient for GET /live with reconnect and backoff, falling back to polling /state every 15 seconds. LiveClient disconnects when the app goes to the background (iOS suspends it anyway). On foreground it reconnects and refetches /state.
+2. App structure: tabs Home, Today, Settings (no Fleet tab, the fleet grid lives on the projector web view). Chat opens as a sheet from the chat bubble beside the puppet. Home shows an "acting as Participant N" header from State.acting_as; tapping it opens the Follow picker sheet. One AppModel holds state and applies live events with animation.
 3. Puppet v1, 2D, behind a PuppetRenderer protocol (mood, talking, thinking, reactions) so the 3D version drops in later:
    - A soft rounded body drawn with SwiftUI shapes and gradients, big eyes with pupils and eyelids, cheeks, little arms.
    - Idle breathing, blinks every 3 to 6 seconds, gentle sway, spring-based squash and stretch on tap with a light haptic, pupils following the finger.
@@ -41,17 +41,17 @@ SwiftUI, Observation, async/await, Swift Charts, RealityKit (3D upgrade only, iO
 
 ## Phase 2: real features
 
-1. Chat: streaming bubbles, tool chips ("Logging your meal..."), inline cards for meal_saved (editable portions calling PATCH /meals), simulation (two curves, verdict, alternatives, a note when method is breakfast_response or effect_source is literature), gummi_view, walk_suggestion, grade. The puppet talks while tokens stream and thinks during tools. Suggested prompts when empty.
-2. Grades: when a grade arrives, animate the dotted section turning solid, show "Gummi within 7 · last-value guess within 18", play proud if Gummi beat the baseline, otherwise a neutral nod.
+1. Chat: streaming bubbles, tool chips ("Logging your meal..."), inline cards for meal_saved (editable portions calling PATCH /meals), simulation (two curves, verdict, alternatives, a note when method is breakfast_response or effect_source is literature), gummi_view, walk_suggestion, grade. meal_due cards (in chat, Home, and Today) show the real meal text with a one-tap Log it button calling POST /meals/due/{due_id}/log. While acting_as is set, simulation cards carry a "Simulated, not logged" tag, because the backend turns non-matching chat meals into simulations. The puppet talks while tokens stream and thinks during tools. Suggested prompts when empty.
+2. Grades: when a grade arrives, animate the dotted section turning solid, show a three-number badge such as "Gummi 7 · CGM-only 11 · last value 18", play proud only if Gummi beat CGM-only, otherwise a neutral nod. When walk_effect_graded is false, show "Walk effect not graded (replayed data)".
 3. Walk flow: Start Walk sends walk_started, a walk screen with live steps and cadence from CMPedometer, a timer toward the suggested minutes, the puppet walking in place, then walk_completed and the WalkSummary card.
 4. Steps upload: HealthKit steps to /vitals every 5 minutes and on app open.
-5. Fleet: a 4 by 4 grid of sparklines with mood dots, grade toasts, Gummi versus baseline running error. Tapping a tile calls /follow.
-6. Settings: backend and Dexcom status (Dexcom connects from the laptop browser, the phone shows status), follow participant, demo controls (/stream/start and /stream/stop), puppet 2D or 3D toggle, safety info.
+5. Follow picker: a sheet listing replay participants from GET /fleet with a mood dot and Gummi versus CGM-only error. Picking one calls /follow. Opens from the Home header and from Settings.
+6. Settings: backend and Dexcom status (status-only: connected, data range, last sync; Dexcom connects from the laptop browser), follow participant, demo controls (/stream/start, /stream/stop, /stream/pause, /stream/resume, /stream/speed), puppet 2D or 3D toggle, safety info.
 7. Send READY.
 
 ## Phase 3: polish and the 3D upgrade
 
-1. Local notifications for walk_suggested, high_forecast, meal_story, and evening_recap when the app is backgrounded, scheduled from live events and alerts.
+1. Notifications: in the foreground, in-app banners for walk_suggested, high_forecast, meal_due, meal_story, and evening_recap. A free Personal Team has no server push and /live is closed in the background, so background alerts are local notifications scheduled ahead: convert known replay times (06:00 briefing, 20:00 recap, plus anything D-36 adds) to wall-clock time with StreamStatus.replay_anchor and speed, and reschedule on pause, resume, or speed change.
 2. Error states: offline banner, reconnecting indicator, cached state with "last updated". No spinners longer than 1 second without text.
 3. 3D puppet attempt, only after the end-to-end script passes: RealityKit procedural character matching the 2D design, implementing PuppetRenderer, holding 60 frames per second on the phone (HUMAN reads the Xcode FPS gauge). Ship 3D only if the human prefers the result. Otherwise keep 2D.
 4. Run the end-to-end script with the other teams.

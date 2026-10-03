@@ -2,7 +2,7 @@
 
 Everything your three Claude Code agents need lives in this folder. Read this file top to bottom before opening Claude Code. Steps marked HUMAN need a person at the keyboard.
 
-Working codename: Gummi (project and puppet). Rename before Phase 1 if you want, and log the change as D-14.
+Name: Gummi (project and puppet), decided in D-14. The plan is at v1.1: see the "v1.1 changes" list at the top of docs/CONTRACT.md.
 
 ## Gummi in one breath
 
@@ -19,11 +19,11 @@ Nobody on the team needs a Dexcom. Live demo data comes from replaying 16 real p
 
 ## The three roles
 
-| Role | Folder | Owns |
-|---|---|---|
-| iOS Lead | ios/ | Swift app, puppet (2D first, 3D upgrade), live home, Today feed, chat, fleet screen, walks, notifications |
-| Backend Lead | backend/ | Databricks App (FastAPI), live push channel, replay producer, Dexcom OAuth and sync, event-driven agent, chat agent, fleet web view |
-| Data Lead | data/ | BIG IDEAs ingestion, baseline reproduction, the glucose model, the streaming pipeline, replay tables, evaluation, IMU50 if required |
+| Role | Who (GitHub) | Folder | Branch | Owns |
+|---|---|---|---|---|
+| iOS Lead | Mahil (`mahilmanoharan`) | ios/ | ios/work | Swift app, puppet (2D first, 3D upgrade), live home, Today feed, chat, Follow picker, walks, notifications |
+| Backend Lead | Pranav (`THEpranavsomalraju`) | backend/ | backend/work | Databricks App (FastAPI), live push channel, replay producer, Dexcom OAuth and status, event-driven agent, chat agent, fleet web view |
+| Data Lead | Nikhil (`NikhilAmbavaram`) | data/ | data/work | BIG IDEAs ingestion, baseline reproduction, the glucose model and fold models, the streaming pipeline, replay tables, evaluation, IMU50 if required |
 
 ## Repo layout
 
@@ -35,6 +35,7 @@ gummi/
   docs/CONTRACT.md          API, events, tables, tools, model interface, puppet moods
   docs/DECISIONS.md         decisions and team answers
   docs/DATA_NOTES.md        dataset facts and prior research
+  docs/prompts/             the prompts the iOS Lead used to build this repo (S1 to S6)
   updates/outbox, inbox     lead-to-lead messages
   ios/CLAUDE.md  backend/CLAUDE.md  data/CLAUDE.md
 ```
@@ -49,9 +50,15 @@ Launching Claude Code inside a role folder loads that folder's CLAUDE.md plus th
 4. Backend and Data Leads: Python 3.11 or newer (`python3 --version`, else `brew install python@3.11`).
 5. Optional, for the skills fallback: `brew install node`.
 
-## Step 2. Shared repo (HUMAN, 5 minutes, one teammate)
+## Step 2. Accept the GitHub invite and clone (HUMAN, 5 minutes)
 
-Create a private GitHub repo, copy this folder in (keep .gitignore), push, add teammates, everyone clones.
+The iOS Lead created https://github.com/mahilmanoharan/gummi (D-16). Accept the invite from your email or https://github.com/notifications, then:
+```
+git clone https://github.com/mahilmanoharan/gummi.git
+cd gummi
+git checkout backend/work     (or data/work, or ios/work)
+```
+main is protected: merge your branch into main through a pull request at each phase end.
 
 ## Step 3. Databricks access (HUMAN, 10 minutes)
 

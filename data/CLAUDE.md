@@ -44,7 +44,7 @@ Glucose comes from CGM history plus logged meals. Wrist signals never feed the g
 2. Silver: silver_cgm_5min (CGM as master clock, segments split at gaps over 15 minutes), silver_meals (food log rows within 15 minutes grouped into one meal, macro totals, a Standard Breakfast flag).
 3. Completeness per participant. Present the candidate exclusion, record D-20.
 4. Baseline reproduction: five-fold subject-grouped CV, 24 readings of history, 30 minutes ahead. Report mean, persistence, linear regression. Target near 13.9 mg/dL RMSE. A unit test fails if any participant appears in train and test. If off by more than about 1 mg/dL, check alignment before moving on.
-5. gummi_stream pipeline in data/pipelines/, deployed with an Asset Bundle: Auto Loader from landing to stream_bronze_events, then the silver and gold stream tables in CONTRACT.md section 10. gold_fleet and gold_accuracy compare Gummi and the baseline by participant and by window type (meal windows versus quiet windows).
+5. gummi_stream pipeline in data/pipelines/, deployed with an Asset Bundle: Auto Loader from landing to stream_bronze_events, then the silver and gold stream tables in CONTRACT.md section 10. gold_fleet and gold_accuracy compare Gummi, CGM-only, and last value by participant and by window type (meal windows versus quiet windows), label replay numbers out-of-sample, and exclude windows with walk_effect_graded false.
 6. Exploration into data/reports/phase1_findings.md and a Lead Update to all: coverage, meal rise versus carbs, Standard Breakfast responses per person, post-meal activity versus peak if HR or ACC were approved.
 
 ## Phase 2: models
@@ -55,13 +55,15 @@ Glucose comes from CGM history plus logged meals. Wrist signals never feed the g
    - Bands from per-horizon held-out residual quantiles. Report band coverage.
    - Personal layer: an exponentially weighted personal offset from recent grades, plus a personal carb factor from that person's meals. No Kalman filter.
    - simulate: add the hypothetical meal's features and run the forecast. If the meal ablation shows no gain, switch method to breakfast_response: scale the person's Standard Breakfast rise by carbs, and label the method.
-   - grade: Gummi error and last-value baseline error over a closed window.
-   - walk_effect: literature effect with citation (find a published study or meta-analysis on post-meal walking and glucose, store the effect and citation in reports/walk_effect.md). A permutation test function on a person's meals with versus without a walk after, returning "not enough data yet" when underpowered.
+   - Fold models (D-26): also train 5 participant-grouped fold models, using the same folds as the baseline reproduction, and save the participant-to-fold map. Each replay participant is predicted only by the fold that never saw them. The full model serves teammates and the sandbox.
+   - cgm_only_forecast: one CGM-only linear model per horizon on the same folds (D-33), so live grades compare against the published method.
+   - grade: Gummi, CGM-only, and last-value errors over a closed window.
+   - walk_effect: literature effect with citation (start from the lead in DATA_NOTES section 6, Buffey et al. 2022, and VERIFY it; store the effect and citation in reports/walk_effect.md). A permutation test function on a person's meals with versus without a walk after, returning "not enough data yet" when underpowered.
 2. Evaluation into gummi_ml.eval_results and MLflow, participant-grouped: horizons 30, 60, 90, 120, 180, with RMSE, MAE, band coverage, split by meal windows and quiet windows, with mean, persistence, and CGM-only linear baselines.
 3. Ablation into gummi_ml.ablation_results: CGM only, CGM plus meals, CGM plus meals plus HR (if approved). The headline answer: do logged meals help, at which horizons, with fold spread. Hard stop: show the human before anyone puts the result in pitch copy.
-4. Package gummi_model per CONTRACT.md section 8 with saved coefficients, unit tests on tiny fixtures, latency checks (estimate plus forecast under 50 ms). Save to gummi_ml.artifacts/gummi_model_v1/, register in MLflow, send READY with paths and an example call.
+4. Package gummi_model per CONTRACT.md section 8 with saved coefficients for the full model and all 5 folds, the participant-to-fold map, and for_user, fold_of, and cgm_only_forecast. Unit tests on tiny fixtures, including one that fails if for_user returns a model trained on that participant. Latency checks (estimate plus forecast under 50 ms). Save to gummi_ml.artifacts/gummi_model_v1/, register in MLflow, send READY with paths and an example call.
 5. gummi_activity: intensity from step cadence using published bands (cited), plus summarize_walk.
-6. Replay tables: replay_cgm and replay_meals for all included participants, timestamps relative to each participant's day start.
+6. Replay tables: replay_cgm and replay_meals for all included participants, timestamps relative to each participant's day start. Participants excluded under D-20 are not replayed (D-37), so the projector grid may show 15 tiles.
 
 ## Phase 3
 

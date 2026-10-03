@@ -8,7 +8,7 @@ Read first: root CLAUDE.md, docs/PROJECT_OVERVIEW.md, docs/CONTRACT.md (sections
 
 - Phone-facing routes answer in under 100 ms from memory. Chat's first token in under 2 seconds. Live events reach the phone within 1 second of a change.
 - One process, one uvicorn worker (in-memory state breaks with several workers).
-- Nothing on the request path waits for Spark, a SQL warehouse, or file writes.
+- Nothing on the request path waits for Spark, a SQL warehouse, or file writes. Gold-table reads run in a background refresher and routes serve the cache (D-34).
 
 ## Phase 0A: onboarding interview (ask one item at a time, verify each)
 
@@ -70,21 +70,23 @@ backend/
 3. Replay producer, a background task inside the App:
    - Loads replay_cgm and replay_meals for all participants from the Data agent's tables at /stream/start (SQL warehouse or Files API, whichever the Data agent recommends).
    - A replay clock at the chosen speed. CGM becomes visible at event time plus delay_minutes. Meals release at their event time.
+   - Pause, resume, and speed (POST /stream/pause, /stream/resume, /stream/speed). StreamStatus carries paused and a replay_anchor {replay_time, wall_time} that is reset on every pause, resume, or speed change.
+   - Acting-as (D-27): following p_xxx means the user acts as p_xxx. Withhold p_xxx's food-log meals. When one comes due, push a meal_due StoryCard with the real meal text and a log_due_meal action carrying due_id. POST /meals/due/{due_id}/log logs it with source "replay_due". Not logged within 10 replay minutes: log it with source "replay_auto".
    - Releases events every 5 seconds through ingest.
 4. Landing writer: drains the queue every 5 seconds into one JSON lines file per batch via the Files API, off the request path, with retry.
-5. Engine: until gummi_model arrives, stub_model.py implements the CONTRACT.md section 8 interface (trend with mean reversion, carb bumps, widening bands). Predictions: every logged meal and every simulate call stores a Prediction with the last-value baseline. Grading: when confirmed data covers a closed window, grade Gummi and the baseline.
+5. Engine: until gummi_model arrives, stub_model.py implements the CONTRACT.md section 8 interface (trend with mean reversion, carb bumps, widening bands). Replay participants use model.for_user(user_id), the fold model that never saw them (D-26). Teammates and the sandbox use the full model. Predictions: every logged meal and every simulate call stores a Prediction with cgm_only_peak_mg_dl (from cgm_only_forecast) and last_value_peak_mg_dl. Grading: when confirmed data covers a closed window, grade Gummi, CGM-only, and last value. Set walk_effect_graded false when the window overlaps a phone walk on replayed data, and say "Walk effect not graded (replayed data)" (D-28).
 6. Nutrition: seed foods first, LLM estimate as structured JSON otherwise, nutrition_source set, every item editable. PATCH /meals recomputes the prediction.
-7. Chat agent: OpenAI-compatible client against <WORKSPACE_URL>/serving-endpoints with the D-04 endpoint, tool calling, streaming, up to 6 tool steps, copy rules from CONTRACT.md section 7, MLflow tracing to the experiment path confirmed in onboarding, trace id in done.
+7. Chat agent: OpenAI-compatible client against <WORKSPACE_URL>/serving-endpoints with the D-04 endpoint, tool calling, streaming, up to 6 tool steps, copy rules from CONTRACT.md section 7, MLflow tracing to the experiment path confirmed in onboarding, trace id in done. Simulation rule: while acting as a replay participant, a chat meal that doesn't match the due meal becomes a simulation, not a logged meal, and the reply says so.
 8. Steps and walks: /vitals stores steps, /events walk_started and walk_completed produce a WalkSummary using gummi_activity once available.
-9. Dexcom sync: every 5 minutes for connected users, refresh tokens, fetch /egvs since the last reading, ingest as source dexcom_sandbox. Disconnect deletes tokens.
+9. Dexcom (D-30): status-only by default (ingest_mode "status_only"): every 5 minutes for connected users, refresh tokens and update connected, data range, and last sync. Sandbox data never feeds coaching or hot state. Optional ingest_mode "time_shifted" ingests EGVs shifted to today as source dexcom_sandbox, labeled "Sandbox (time-shifted)". Disconnect deletes tokens.
 10. Send READY.
 
 ## Phase 3: event-driven agent and integration
 
-1. Event bus in agent/events.py with the triggers in CONTRACT.md section 7. Followed users get LLM-written cards through tools and post_card, traced in MLflow. Fleet participants get template cards with the same structure and no LLM call.
+1. Event bus in agent/events.py with the triggers in CONTRACT.md section 7. Followed users get LLM-written cards through tools and post_card, traced in MLflow. Fleet participants get template cards with the same structure and no LLM call. Include the meal due trigger. evening_recap must call get_gold_summary(user_id, days), which reads the gold tables.
 2. LLM budget guard: a per-minute cap on agent runs, a queue, and graceful template fallback when the cap hits.
-3. Load gummi_model and gummi_activity from the Data agent's artifact path at startup (deploy.sh copies the packages into the bundle). Measure latency, report.
-4. Fleet: GET /fleet from the hot store. pipeline_lag_seconds from the newest released_at in stream_bronze_events, cached 15 seconds. GET /fleet/view serves fleet.html: 4 by 4 sparklines, mood dots, grade toasts, Gummi versus baseline running error, events per second, pipeline lag. Inline CSS and JS only, large type for a projector.
+3. deploy.sh copies the gummi_model and gummi_activity packages into the bundle. At startup, load the coefficients (full model, 5 fold models, participant-to-fold map) from /Volumes/<CATALOG>/gummi_ml/artifacts/gummi_model_v1/ (D-34). Measure latency, report.
+4. Fleet: accuracy fields in GET /fleet come from stream_gold_accuracy via the SQL warehouse, refreshed by a background task every 15 to 30 seconds and labeled out-of-sample (D-34). Sparklines and moods come from the hot store. pipeline_lag_seconds from the newest released_at in stream_bronze_events, cached 15 seconds. GET /fleet/view serves fleet.html, the only fleet grid (D-31): 15 or 16 tiles (D-20) of sparklines, mood dots, grade toasts, Gummi versus CGM-only and last-value running error, events per second, pipeline lag. Inline CSS and JS only, large type for a projector.
 5. Rehydration: on startup, load the last 24 hours per user from stream_silver tables so a redeploy keeps history.
 6. Run e2e.sh with the iOS and Data humans (PROJECT_OVERVIEW section 9).
 
