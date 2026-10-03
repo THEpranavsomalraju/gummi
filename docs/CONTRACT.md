@@ -1,6 +1,7 @@
 # Gummi Contract
 
-Contract version: 1.1 (draft, frozen at the end of Phase 0)
+Contract version: 1.2 (draft, frozen at the end of Phase 0)
+Changelog: 1.2 (2026-10-03, Backend Lead, human-approved D-36): State gains upcoming_due for background meal_due notifications. Additive, no other shape changes.
 Section owners: API and agent (Backend Lead), model interface, pipeline, and data tables (Data Lead), puppet moods and UI copy (iOS Lead).
 Changes: CONTRACT CHANGE REQUEST to the owner (docs/PROJECT_OVERVIEW.md section 8).
 Placeholders resolved in docs/DECISIONS.md: <WORKSPACE_URL>, <APP_URL>, <CATALOG>, <LLM_ENDPOINT>.
@@ -19,7 +20,7 @@ v1.1, agreed by all three leads.
 8. Dexcom sandbox is status-only by default, optional time-shifted mode (D-30).
 9. Fleet grid lives only on the projector web view. The phone gets a Follow picker (D-31).
 
-Defaults set while writing v1.1, ASSUMED until the owner confirms: last_value_* field names (D-32), CGM-only definition (D-33), fleet cache and model loading (D-34), Meal.source values and due_id (D-35), background meal_due notifications (D-36, PENDING), excluded participants not replayed (D-37).
+Defaults set while writing v1.1, ASSUMED until the owner confirms: last_value_* field names (D-32), CGM-only definition (D-33), fleet cache and model loading (D-34), Meal.source values and due_id (D-35), background meal_due notifications (D-36, DECIDED in 1.2: State.upcoming_due), excluded participants not replayed (D-37).
 
 ## 1. Conventions
 
@@ -102,9 +103,11 @@ source: "dexcom_api", "replay", "none". ingest_mode: "status_only" (default: con
   "today": { "time_in_range_pct": 82.0, "peak_mg_dl": 151.0, "meals": 2, "steps": 4210, "walks": 1,
              "gummi_mae_mg_dl": 7.4, "cgm_only_mae_mg_dl": 10.8, "last_value_mae_mg_dl": 13.9 },
   "profile": { "high_line_mg_dl": 140.0, "low_line_mg_dl": 70.0 },
+  "upcoming_due": [{ "due_id": "d_12", "due_at": "...", "title": "Lunch time for Participant 12", "body": "Turkey sandwich and an apple" }],
   "model_version": "gummi_model_v1", "server_time": "..." }
 ```
-acting_as: the replay participant the user acts as (user_id), or null. Steps and walks in today belong to the teammate user and display as an overlay on the followed participant.
+acting_as: the replay participant the user acts as (user_id), or null.
+upcoming_due (1.2, D-36): the acted-as participant's withheld meals coming due in the next 6 replay hours, oldest first, empty when not acting as anyone or the stream is stopped or paused. due_at is wall-clock time (already converted from the replay clock), so the phone schedules local notifications straight from it. Recomputed and pushed in a state event on every pause, resume, speed change, follow, and when a meal comes due. Steps and walks in today belong to the teammate user and display as an overlay on the followed participant.
 
 ### Meal
 ```json

@@ -1,0 +1,4 @@
+command: ["python", "-m", "gummi_api"]
+env:
+  - name: GUMMI_MODE
+    value: mock
