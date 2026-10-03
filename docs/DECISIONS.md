@@ -62,7 +62,9 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 | D-35 | Meal.source values and due_id | DECIDED | "chat", "manual", "replay", "replay_due", "replay_auto". The log_due_meal action carries due_id, format "d_<n>". Confirmed by Backend. | iOS Lead, confirmed by Backend | 2026-10-03 |
 | D-36 | Background meal_due notifications | DECIDED | CONTRACT 1.2 (backend/work, merges at phase end): State.upcoming_due lists the next 6 replay hours of due meals with due_at already in wall-clock time. The phone schedules local notifications from it plus the 06:00 briefing and 20:00 recap. | Backend Lead, human-approved | 2026-10-03 |
 | D-37 | Excluded participants in replay | DECIDED | Participants excluded under D-20 are not replayed. Confirmed by Data: p_015 excluded, 15 replayed. | iOS Lead, confirmed by Data | 2026-10-03 |
-| D-38 | App palette | PENDING | Eucalyptus green for accents and highlights (Mahil). Main color still to pick. Until then the app uses a neutral placeholder token that is easy to swap. | iOS Lead | 2026-10-03 |
+| D-38 | App palette | PENDING | Eucalyptus green for accents and highlights (Mahil). Main color still to pick. The app follows the phone's light or dark setting. Colors come from named semantic tokens backed by system colors (placeholders: system background, white and black), with no hard-coded hex in views, so the final palette is a one-place swap. | iOS Lead | 2026-10-03 |
+| D-39 | First launch with no follow | DECIDED | The app auto-follows p_012 (D-15) on first launch, since u_mahil has no CGM. The Follow picker changes it. | Mahil | 2026-10-03 |
+| D-40 | Demo controls default start | DECIDED | /stream/start defaults to speed 60, delay 60, start_at "day6T05:00", so the 05:54 standardized breakfast comes due on screen. | Mahil | 2026-10-03 |
 
 ## Status board
 
