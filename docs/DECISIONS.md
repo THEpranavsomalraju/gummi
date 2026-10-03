@@ -8,7 +8,7 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 |---|---|---|
 | T-1 | Progress: workspace created? LinkedIn verification done? Dexcom developer app created? Xcode project on the phone? BIG IDEAs downloaded? | PENDING |
 | T-2 | Did organizers require using both datasets (BIG IDEAs and IMU50)? Decides whether IMU50 stays. | PENDING |
-| T-3 | Output of `databricks serving-endpoints list --profile bean` | PENDING (Backend agent collects) |
+| T-3 | Output of `databricks serving-endpoints list --profile gummi` | PENDING (Backend agent collects) |
 | T-4 | Real header row and first 3 lines of one Dexcom file and one food log | PENDING (Data agent collects) |
 | T-5 | Who holds which role, plus comfort with Swift, Spark, FastAPI | Backend Lead: the teammate who shared these files. Others PENDING |
 | T-6 | Agree with the reframe: non-insulin users, coaching first, nowcast as the engine? | PENDING (files assume yes) |
@@ -29,7 +29,7 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 | D-02 | Workspace URL and owner | PENDING | | | |
 | D-03 | Live store | DECIDED | In-memory hot state in the App plus Delta tables through the landing volume and pipeline. No Lakebase. | team review | |
 | D-04 | LLM serving endpoint (tool calling required) | PENDING | | | |
-| D-05 | Model hosting | DECIDED | bean_model runs inside the App process on CPU | team review | |
+| D-05 | Model hosting | DECIDED | gummi_model runs inside the App process on CPU | team review | |
 | D-06 | iPhone token type and delivery | PENDING (auth spike) | | | |
 | D-07 | Unity Catalog catalog | PENDING | | | |
 | D-08 | Nutrition source | DECIDED | LLM estimate plus 30 seed foods, editable portions. No USDA. | team review | |
@@ -38,7 +38,7 @@ Agents append rows. Status values: DECIDED (a human chose), ASSUMED (an agent ch
 | D-11 | Walk effect source | PENDING | Default "literature" with citation until a personal permutation test passes | | |
 | D-12 | High and low lines | ASSUMED | 140 and 70 mg/dL | docs | |
 | D-13 | Bundle ID and Personal Team ID | PENDING | | | |
-| D-14 | Final name | PENDING | codename Bean | | |
+| D-14 | Final name | DECIDED | Gummi (project and puppet) | all three leads | 2026-10-03 |
 | D-15 | Followed participant and replay day for the demo | PENDING (Data proposes 3) | | | |
 | D-16 | Repo URL | PENDING | | | |
 | D-17 | Dexcom OAuth path | ASSUMED | Connect from the App's web page in a laptop browser, callback at <APP_URL>/api/v1/dexcom/callback. Verify in the auth spike. | docs | |

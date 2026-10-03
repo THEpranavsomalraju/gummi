@@ -2,13 +2,13 @@
 
 Everything your three Claude Code agents need lives in this folder. Read this file top to bottom before opening Claude Code. Steps marked HUMAN need a person at the keyboard.
 
-Working codename: Bean (project and puppet). Rename before Phase 1 if you want, and log the change as D-14.
+Working codename: Gummi (project and puppet). Rename before Phase 1 if you want, and log the change as D-14.
 
-## Bean in one breath
+## Gummi in one breath
 
-Bean is a CGM coach for people with prediabetes or type 2 diabetes who do not take insulin. Bean lives on the iPhone as a cute interactive puppet. Bean reads Dexcom data, predicts where glucose heads after meals, nudges walks before spikes, answers "can I eat this right now?", and grades every prediction against what actually happened. An AI agent acts on its own when events happen (a meal window closes, delayed readings arrive, the evening comes) and posts story cards to the user's day. The backend, the streaming pipeline, the models, and the agent run on Databricks.
+Gummi is a CGM coach for people with prediabetes or type 2 diabetes who do not take insulin. Gummi lives on the iPhone as a cute interactive puppet. Gummi reads Dexcom data, predicts where glucose heads after meals, nudges walks before spikes, answers "can I eat this right now?", and grades every prediction against what actually happened. An AI agent acts on its own when events happen (a meal window closes, delayed readings arrive, the evening comes) and posts story cards to the user's day. The backend, the streaming pipeline, the models, and the agent run on Databricks.
 
-Why a nowcast engine: Dexcom's API delivers data to third-party apps one hour late in the US, on purpose, so apps never drive real-time treatment. Bean never replaces the Dexcom readout. Bean's internal estimate of the missing hour lets the coach reason about the present with delayed data.
+Why a nowcast engine: Dexcom's API delivers data to third-party apps one hour late in the US, on purpose, so apps never drive real-time treatment. Gummi never replaces the Dexcom readout. Gummi's internal estimate of the missing hour lets the coach reason about the present with delayed data.
 
 Nobody on the team needs a Dexcom. Live demo data comes from replaying 16 real participants from the BIG IDEAs study through Databricks as a stream. The Dexcom sandbox proves the real connection works.
 
@@ -28,7 +28,7 @@ Nobody on the team needs a Dexcom. Live demo data comes from replaying 16 real p
 ## Repo layout
 
 ```
-bean/
+gummi/
   README_START_HERE.md      this file
   CLAUDE.md                 shared agent rules, imports the docs
   docs/PROJECT_OVERVIEW.md  product, UI map, architecture, phases, protocols, judge Q&A
@@ -57,8 +57,8 @@ Create a private GitHub repo, copy this folder in (keep .gitignore), push, add t
 
 1. Workspace owner invites the other two teammates (workspace Settings, user management). Record the URL and owner in D-02.
 2. Backend and Data Leads (iOS Lead too, for curl tests): `brew tap databricks/tap && brew install databricks`
-3. `databricks auth login --host <WORKSPACE_URL> --profile bean`, approve in the browser.
-4. Test: `databricks current-user me --profile bean`
+3. `databricks auth login --host <WORKSPACE_URL> --profile gummi`, approve in the browser.
+4. Test: `databricks current-user me --profile gummi`
 
 ## Step 4. Databricks skills for Claude Code (HUMAN, 5 minutes, Backend and Data Leads)
 
@@ -75,12 +75,12 @@ Register at https://developer.dexcom.com and create an app. Wait for the Backend
 3. Connect the iPhone, then Settings, Privacy and Security, Developer Mode: on, restart.
 4. Record iOS and Xcode versions in D-10.
 5. `brew install xcodegen`
-6. Free Personal Team limits: apps expire after 7 days, no server push (Bean uses its own live channel and local notifications).
+6. Free Personal Team limits: apps expire after 7 days, no server push (Gummi uses its own live channel and local notifications).
 
 ## Step 7. Start the agents
 
 ```
-cd bean/ios       (or bean/backend, or bean/data)
+cd gummi/ios       (or gummi/backend, or gummi/data)
 claude
 ```
 Paste, replacing ROLE:
@@ -93,7 +93,7 @@ Use plan mode (Shift+Tab) for big tasks.
 
 Every agent opens Phase 0 with an onboarding interview: a checklist of everything it needs from you, each item verified with a command before moving on. Keep these handy:
 - Everyone: your name and role, the repo URL, whether `claude --version` and git work.
-- Backend Lead: workspace URL, CLI profile working, LinkedIn verification status, output of `databricks serving-endpoints list --profile bean`, Dexcom developer account, where App secrets go.
+- Backend Lead: workspace URL, CLI profile working, LinkedIn verification status, output of `databricks serving-endpoints list --profile gummi`, Dexcom developer account, where App secrets go.
 - Data Lead: free disk space (`df -h ~`), whether downloads go straight into Databricks or through your laptop, the catalog name, whether organizers require both datasets.
 - iOS Lead: Mac model, Xcode and iOS versions, iPhone plugged in with Developer Mode on, Apple ID added in Xcode, Personal Team ID, a bundle identifier you like.
 

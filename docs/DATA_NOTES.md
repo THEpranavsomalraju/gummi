@@ -20,9 +20,9 @@ Food log columns: date, time_of_day (VERIFY, an older version shows "time"), tim
 
 Dates are shifted for privacy. v1.1.3 fixed misaligned food log dates.
 
-Files Bean needs: Dexcom, Food_Log, Demographics, SHA256SUMS.txt, LICENSE.txt. HR only for the ablation. ACC, BVP, EDA, TEMP, IBI not needed.
+Files Gummi needs: Dexcom, Food_Log, Demographics, SHA256SUMS.txt, LICENSE.txt. HR only for the ablation. ACC, BVP, EDA, TEMP, IBI not needed.
 
-## 2. Prior research Bean must respect
+## 2. Prior research Gummi must respect
 
 Seyedebrahimi, Ojeda, Zarrintaj (2026), "A Leakage-Controlled Evaluation of Multimodal Sensor Fusion for Wrist-Worn Glucose Estimation", medRxiv, doi 10.64898/2026.08.03.26359550. Code: https://github.com/mirmehdi/PhysioFusion
 
@@ -33,7 +33,7 @@ Seyedebrahimi, Ojeda, Zarrintaj (2026), "A Leakage-Controlled Evaluation of Mult
 - E4 IBI unfit for HRV at 5-minute resolution.
 - Food logs were not used. Meals drive the biggest deviations.
 
-Implications: glucose from CGM history plus meals. Bean's research question: do logged meals improve on CGM history? Baselines always shown: mean, last value (persistence), CGM-only linear regression. Never quote the original paper's 84 or 87 percent figures, which came from within-subject or record-wise splits.
+Implications: glucose from CGM history plus meals. Gummi's research question: do logged meals improve on CGM history? Baselines always shown: mean, last value (persistence), CGM-only linear regression. Never quote the original paper's 84 or 87 percent figures, which came from within-subject or record-wise splits.
 
 Expectation management: in this flat cohort, long horizons drift toward the mean. Quiet periods flatter any method. Grade meal windows separately from quiet windows.
 
@@ -48,7 +48,7 @@ Expectation management: in this flat cohort, long horizons drift toward the mean
 
 - https://zenodo.org/records/21468410, CC BY 4.0. One file, IMU50.zip, 46.7 GB. Internal structure undocumented on the record page. VERIFY by listing the zip with HTTP range reads.
 - 50 healthy volunteers, Actigraph Leap wrist, about 136 hours each. Accelerometer and gyroscope 128 Hz, PPG 25 Hz, skin temperature per minute, hourly METs and calories from Actigraph's Freedson algorithms, metadata (age, sex, weight, height, BMI, hip and waist, education, lifestyle). No glucose. No activity labels.
-- Honest job if used: check that Bean's cadence-to-intensity bands agree with wrist motion during walking-like minutes in a small sample. Say exactly that in the pitch.
+- Honest job if used: check that Gummi's cadence-to-intensity bands agree with wrist motion during walking-like minutes in a small sample. Say exactly that in the pitch.
 
 ## 5. Databricks Free Edition
 
@@ -60,4 +60,4 @@ Expectation management: in this flat cohort, long horizons drift toward the mean
 
 ## 6. Walk effect
 
-The prior work found accelerometry adds nothing to 30-minute forecasts. Bean uses a literature-based post-meal walking effect, cited, labeled "literature" in the UI, until a person's own data passes a permutation test (meals with a walk after versus without). With about 10 days per person, expect "not enough data yet" for most people and show that message honestly.
+The prior work found accelerometry adds nothing to 30-minute forecasts. Gummi uses a literature-based post-meal walking effect, cited, labeled "literature" in the UI, until a person's own data passes a permutation test (meals with a walk after versus without). With about 10 days per person, expect "not enough data yet" for most people and show that message honestly.

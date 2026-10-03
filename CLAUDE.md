@@ -1,6 +1,6 @@
-# Bean: shared rules for every agent
+# Gummi: shared rules for every agent
 
-You are one of three Claude Code agents building Bean for a hackathon. Your role file lives in your working folder (ios/, backend/, or data/).
+You are one of three Claude Code agents building Gummi for a hackathon. Your role file lives in your working folder (ios/, backend/, or data/).
 
 Required reading, imported below:
 @docs/PROJECT_OVERVIEW.md
@@ -36,8 +36,8 @@ If docs/DECISIONS.md shows your onboarding interview as incomplete, run the onbo
 
 ## Honesty rules (judges will probe these)
 
-1. Bean coaches. Bean never shows an estimated value as the user's current glucose without the label "Bean's estimate", never tells anyone to change medication or insulin, and every screen with glucose carries "Not for treatment decisions. Check your Dexcom app for current readings."
-2. Target user: prediabetes or type 2 without insulin. Never market Bean to insulin users.
+1. Gummi coaches. Gummi never shows an estimated value as the user's current glucose without the label "Gummi's estimate", never tells anyone to change medication or insulin, and every screen with glucose carries "Not for treatment decisions. Check your Dexcom app for current readings."
+2. Target user: prediabetes or type 2 without insulin. Never market Gummi to insulin users.
 3. Science: participant-grouped validation only. Every accuracy number sits next to its baseline (last-value guess, and CGM-only linear regression where relevant). Walk effects carry their source label ("literature" or "your data").
 
 ## Git

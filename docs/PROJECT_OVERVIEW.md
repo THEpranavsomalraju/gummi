@@ -1,14 +1,14 @@
-# Bean: Project Overview
+# Gummi: Project Overview
 
 ## 1. Product
 
-Bean is a CGM coach on the iPhone for adults with prediabetes or type 2 diabetes who do not take insulin and wear a Dexcom. A cute, interactive puppet fronts the experience. Bean predicts where glucose heads after meals, nudges a walk before a predicted spike, answers "can I eat this right now?", and grades every prediction against what actually happened. An agent acts on its own when events happen and posts story cards to the user's day: a morning briefing, a meal story when a meal's two-hour window closes, a grade when delayed readings arrive, an evening recap with one lesson and one small experiment for tomorrow.
+Gummi is a CGM coach on the iPhone for adults with prediabetes or type 2 diabetes who do not take insulin and wear a Dexcom. A cute, interactive puppet fronts the experience. Gummi predicts where glucose heads after meals, nudges a walk before a predicted spike, answers "can I eat this right now?", and grades every prediction against what actually happened. An agent acts on its own when events happen and posts story cards to the user's day: a morning briefing, a meal story when a meal's two-hour window closes, a grade when delayed readings arrive, an evening recap with one lesson and one small experiment for tomorrow.
 
-Pitch line: "Bean is a CGM coach that predicts, acts, and checks its own work."
+Pitch line: "Gummi is a CGM coach that predicts, acts, and checks its own work."
 
-The nowcast engine: Dexcom's API gives third-party apps data one hour late in the US, on purpose, so apps never drive real-time treatment. Bean respects that. Bean never replaces the Dexcom readout. Internally, Bean estimates the missing hour so the coach reasons about the present. The UI shows Bean's estimate small and clearly labeled, and puts coaching first.
+The nowcast engine: Dexcom's API gives third-party apps data one hour late in the US, on purpose, so apps never drive real-time treatment. Gummi respects that. Gummi never replaces the Dexcom readout. Internally, Gummi estimates the missing hour so the coach reasons about the present. The UI shows Gummi's estimate small and clearly labeled, and puts coaching first.
 
-Why this user: Bean's model trains on BIG IDEAs, a cohort with high-normal to prediabetic glucose. That matches people with prediabetes or type 2 not on insulin. A type 1 user swinging 40 to 400 sits far outside the training data, so Bean excludes insulin users.
+Why this user: Gummi's model trains on BIG IDEAs, a cohort with high-normal to prediabetic glucose. That matches people with prediabetes or type 2 not on insulin. A type 1 user swinging 40 to 400 sits far outside the training data, so Gummi excludes insulin users.
 
 ## 2. Hackathon context
 
@@ -22,16 +22,16 @@ Why this user: Bean's model trains on BIG IDEAs, a cohort with high-normal to pr
 1. A delightful puppet: idle breathing, blinks, taps, moods tied to glucose, a proud spin when a prediction lands close.
 2. A live, seamless app: new readings, cards, and grades appear without refresh, through a push channel from the backend.
 3. Coaching first: the Home screen leads with the latest coach card, then the puppet, then a compact chart.
-4. Predict, then grade: "Can I eat this?" and every meal produce a prediction. Two hours later Bean grades the prediction: "I predicted 168 for the pizza. It was 172. A last-value guess said 120."
+4. Predict, then grade: "Can I eat this?" and every meal produce a prediction. Two hours later Gummi grades the prediction: "I predicted 168 for the pizza. It was 172. A last-value guess said 120."
 5. The event-driven agent: cards appear because events happened, not because someone typed. The MLflow trace shows the agent's tool calls.
-6. A walk loop: forecast crosses the high line, Bean suggests a walk, live steps count up, the walk card shows minutes and intensity, the forecast responds (labeled "literature" or "your data").
+6. A walk loop: forecast crosses the high line, Gummi suggests a walk, live steps count up, the walk card shows minutes and intensity, the forecast responds (labeled "literature" or "your data").
 7. Streaming at scale: 16 BIG IDEAs participants stream through a Databricks streaming pipeline at once, shown on a fleet view with grades landing and a running accuracy number next to the baseline.
 8. A real Dexcom connection through the official sandbox.
 9. Honest science: participant-grouped evaluation, the reproduced published baseline, the meal ablation result, baselines next to every number.
 
 ## 4. UI map (iPhone)
 
-- Home: the latest coach card on top (swipeable stack), the puppet in the middle, a compact chart at the bottom (confirmed Dexcom solid, Bean's estimate dotted with band, forecast dashed with band, 2 hours ahead), the safety line "Not for treatment decisions. Check your Dexcom app for current readings." A chat bubble button beside the puppet opens chat.
+- Home: the latest coach card on top (swipeable stack), the puppet in the middle, a compact chart at the bottom (confirmed Dexcom solid, Gummi's estimate dotted with band, forecast dashed with band, 2 hours ahead), the safety line "Not for treatment decisions. Check your Dexcom app for current readings." A chat bubble button beside the puppet opens chat.
 - Today: a vertical feed of story cards for the day: briefing, meals, predictions, grades, walks, recap.
 - Chat: a sheet over Home. Streaming replies, cards inline, editable meal portions. Keyboard dictation works through the system keyboard.
 - Fleet: a 4 by 4 grid of mini charts for the streaming participants, grade toasts, running error versus baseline, events per second, pipeline lag. Tap a tile to follow that participant on the phone.
@@ -50,7 +50,7 @@ SOURCES (no physical Dexcom needed)
 DATABRICKS APP (FastAPI, single worker)                      backend/
   Ingest (one code path for A, B, C)
   HOT STATE in memory: per-user readings, meals, predictions, grades, mood, cards
-  bean_model in process (CPU, milliseconds): estimate, forecast, simulate, grade
+  gummi_model in process (CPU, milliseconds): estimate, forecast, simulate, grade
   Event bus -> event-driven agent (LLM on a Databricks serving endpoint, MLflow tracing)
   Chat agent (same tools)
   GET /live (server-sent events) pushes state, cards, mood, grades to iPhones
@@ -58,17 +58,17 @@ DATABRICKS APP (FastAPI, single worker)                      backend/
   Landing writer: every event, prediction, grade, card -> JSON lines batch every 5 s
           |
           v
-UNITY CATALOG VOLUME <CATALOG>.bean_data.landing / events/
+UNITY CATALOG VOLUME <CATALOG>.gummi_data.landing / events/
           |
           v
-LAKEFLOW DECLARATIVE PIPELINE "bean_stream" (continuous mode if allowed, D-21)   data/
+LAKEFLOW DECLARATIVE PIPELINE "gummi_stream" (continuous mode if allowed, D-21)   data/
   Auto Loader -> stream_bronze_events
   -> stream_silver_cgm, stream_silver_meals, stream_silver_predictions, stream_silver_grades, stream_silver_cards
-  -> stream_gold_fleet, stream_gold_accuracy (Bean versus baseline by participant and window type)
+  -> stream_gold_fleet, stream_gold_accuracy (Gummi versus baseline by participant and window type)
           |
           v
 DELTA TABLES (durable history, rehydration on App restart, Genie space if available)
-MLFLOW: bean_model registered, evaluation runs, agent traces
+MLFLOW: gummi_model registered, evaluation runs, agent traces
 ```
 
 Why this shape: the phone never waits on Spark. The App answers in milliseconds from memory and pushes updates instantly. The pipeline makes every event durable, queryable, and visible in Databricks within seconds, which is the streaming story judges look for.
@@ -80,7 +80,7 @@ Why this shape: the phone never waits on Spark. The App answers in milliseconds 
 - Continuous streaming on serverless runs as a Lakeflow declarative pipeline in continuous mode (D-21). Fallback: the same pipeline in triggered mode every minute.
 - Outbound internet is limited to trusted domains until the workspace owner completes LinkedIn verification.
 - Apps: limited count per account, and apps may stop after a runtime window. One App serves everything. Redeploy before filming and judging.
-- Model serving: no GPU. bean_model runs inside the App on CPU.
+- Model serving: no GPU. gummi_model runs inside the App on CPU.
 - Fair usage quotas: run the continuous pipeline only during rehearsal, filming, and judging. Event-driven LLM calls run only for followed users. Fleet participants get template cards without LLM calls.
 - Event volume: 16 participants at 60x speed is about 3 CGM events per second. Never stream raw accelerometer samples.
 
@@ -98,12 +98,12 @@ Exit: no PENDING item blocks Phase 1.
 
 ### Phase 1: skeletons and data
 - Backend: every route in mock mode, including /live pushing mock updates, mock stream to landing.
-- Data: BIG IDEAs loaded, published baseline reproduced near 13.9 mg/dL RMSE at 30 minutes, bean_stream pipeline running on mock events, exploration findings shared.
+- Data: BIG IDEAs loaded, published baseline reproduced near 13.9 mg/dL RMSE at 30 minutes, gummi_stream pipeline running on mock events, exploration findings shared.
 - iOS: app shell, 2D puppet with moods, Home, Today, chat UI on mock, live channel connected.
 Exit: the phone updates live from the deployed App with mock data.
 
 ### Phase 2: core
-- Data: bean_model v1 (estimate, 2-hour forecast, simulate, grade, personal offset), meal ablation result, breakfast-response fallback, replay tables.
+- Data: gummi_model v1 (estimate, 2-hour forecast, simulate, grade, personal offset), meal ablation result, breakfast-response fallback, replay tables.
 - Backend: replay producer, hot state, real grading with baselines, prediction tracking, chat agent with tools and tracing, Dexcom sync, landing writer.
 - iOS: real data on Home and Today, chat cards, grade animations, fleet screen, walk flow with live steps.
 Exit: each piece works on real or replayed data.
@@ -169,12 +169,12 @@ Contract changes go to the section owner (API: Backend, model and data tables: D
 
 ## 9. End-to-end script (Phase 3 exit)
 
-1. Start the bean_stream pipeline and the replay producer. The fleet view fills, grades land.
+1. Start the gummi_stream pipeline and the replay producer. The fleet view fills, grades land.
 2. On the phone, follow the D-15 participant. Home shows the morning briefing card and the puppet waking up.
 3. In chat, log "two waffles and coffee". A meal card appears with editable portions and a prediction.
 4. Ask "can I eat a cookie now?" Two curves, a verdict, alternatives.
 5. The forecast crosses the high line. A walk card and a local notification appear. Start the walk, steps count live, the walk summary appears.
-6. Two hours of replay later, the meal story card and the prediction grade appear on their own, with the baseline next to Bean.
+6. Two hours of replay later, the meal story card and the prediction grade appear on their own, with the baseline next to Gummi.
 7. Evening recap card appears.
 8. In Databricks, stream tables grow, the MLflow trace for the meal story shows the agent's tool calls.
 9. Connect the Dexcom sandbox from the laptop browser, and the phone shows Dexcom connected.
@@ -183,14 +183,14 @@ Contract changes go to the section owner (API: Backend, model and data tables: D
 
 Video: morning briefing, chat meal logging, "can I eat this", walk nudge and walk, the meal story and grade arriving on their own, the fleet view on 16 participants, the evening recap, a quick Databricks tour (pipeline graph, tables growing, MLflow trace).
 
-Live segment: the real phone on stage, ask Bean one question, show a grade landing on the fleet view, show the pipeline graph running. Say plainly: "No one here wears a Dexcom. Bean uses Dexcom's sandbox for the real connection and streams 16 real participants from the BIG IDEAs study through Databricks."
+Live segment: the real phone on stage, ask Gummi one question, show a grade landing on the fleet view, show the pipeline graph running. Say plainly: "No one here wears a Dexcom. Gummi uses Dexcom's sandbox for the real connection and streams 16 real participants from the BIG IDEAs study through Databricks."
 
 ## 11. Judge questions, one-line answers (fill numbers from real results)
 
-1. Why not just open the Dexcom app? Dexcom shows the number. Bean coaches: predictions, walk nudges, "can I eat this", and checks its own predictions.
-2. Dexcom delays data on purpose. Are you working around that? No. Bean never shows its estimate as your current glucose and never supports treatment decisions. The estimate powers coaching only.
-3. Who is the user? Adults with prediabetes or type 2 not on insulin, matching the cohort Bean trains on.
-4. How accurate is Bean versus repeating the last value? Every grade shows both. Overall: Bean X mg/dL, last-value Y mg/dL, after meals: Bean X2, last-value Y2.
+1. Why not just open the Dexcom app? Dexcom shows the number. Gummi coaches: predictions, walk nudges, "can I eat this", and checks its own predictions.
+2. Dexcom delays data on purpose. Are you working around that? No. Gummi never shows its estimate as your current glucose and never supports treatment decisions. The estimate powers coaching only.
+3. Who is the user? Adults with prediabetes or type 2 not on insulin, matching the cohort Gummi trains on.
+4. How accurate is Gummi versus repeating the last value? Every grade shows both. Overall: Gummi X mg/dL, last-value Y mg/dL, after meals: Gummi X2, last-value Y2.
 5. Trained on 16 women. Does it generalize? Not proven beyond this cohort. Evaluation is participant-grouped, and the personal offset adapts per user. We say so on the slide.
 6. Does logging meals help? Our ablation: <result with fold spread>.
 7. Where does the walk effect come from? <literature citation> until a person's own data passes a permutation test. The label shows which.
