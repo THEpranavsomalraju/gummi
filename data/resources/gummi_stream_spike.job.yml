@@ -1,0 +1,31 @@
+# Streaming spike for decision D-21, one command:
+#   databricks bundle run gummi_stream_spike --var="catalog=<CATALOG>" --profile gummi
+# land: copies the sample StreamEvent files (data/pipelines/gummi_stream/sample_events/) into the landing volume
+# pipeline: one triggered update of gummi_stream (deploy with continuous=false, the default, for this job)
+# check: rows per table against EXPECTED.json, file-to-table lag, gold accuracy. Fails if this run's events are missing.
+resources:
+  jobs:
+    gummi_stream_spike:
+      name: gummi_stream_spike
+      max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+      tasks:
+        - task_key: land
+          notebook_task:
+            notebook_path: ../notebooks/03_streaming_spike.py
+            base_parameters:
+              mode: land
+        - task_key: pipeline
+          depends_on:
+            - task_key: land
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.gummi_stream.id}
+        - task_key: check
+          depends_on:
+            - task_key: pipeline
+          notebook_task:
+            notebook_path: ../notebooks/03_streaming_spike.py
+            base_parameters:
+              mode: check

@@ -1,0 +1,37 @@
+# Databricks Asset Bundle for the Data Lead's folder (gummi/data).
+# Deploy from inside gummi/data:
+#   databricks bundle validate --var="catalog=<CATALOG>" --profile gummi
+#   databricks bundle deploy   --var="catalog=<CATALOG>" --profile gummi
+#   databricks bundle run gummi_data_load_train --var="catalog=<CATALOG>" --profile gummi
+#   databricks bundle run gummi_stream          --var="catalog=<CATALOG>" --profile gummi
+# Catalog defaults to workspace (D-07, the workspace's only writable catalog). Serverless only (Free Edition).
+# Continuous streaming for rehearsal, filming and judging: add --var="continuous=true" to deploy, then stop the
+# pipeline afterward to save quota (D-21).
+
+bundle:
+  name: gummi-data
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for Gummi (decision D-07). Override with --var="catalog=...".
+    default: workspace
+  continuous:
+    description: Run gummi_stream in continuous mode (decision D-21). false = triggered updates.
+    default: false
+
+include:
+  - resources/*.yml
+
+sync:
+  exclude:
+    - raw/**
+    - local_out/**
+    - "**/__pycache__/**"
+    - .pytest_cache/**
+
+targets:
+  dev:
+    # No "mode: development" on purpose: development mode prefixes every name with "[dev <user>]" and drops
+    # continuous: true from pipelines, and judges see these names. One Data Lead deploys this bundle, so the
+    # isolation development mode gives is not needed. Target name kept as "dev" so the deployed state carries over.
+    default: true

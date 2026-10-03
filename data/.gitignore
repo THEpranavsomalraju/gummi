@@ -1,0 +1,5 @@
+# Raw datasets and local outputs never go into git (too big; licenses ask you to download from the source)
+raw/
+local_out/
+*.part
+.pytest_cache/

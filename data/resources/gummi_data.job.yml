@@ -1,0 +1,22 @@
+# One manual job: load BIG IDEAs from the raw volume into bronze/silver/replay tables, run the evaluation,
+# train gummi_model_v1, log to MLflow, register it in Unity Catalog, and copy the artifact to the volume
+# the App reads (D-05). Serverless notebook tasks; expected runtime 5-10 minutes (well under the 15-minute hard stop).
+resources:
+  jobs:
+    gummi_data_load_train:
+      name: gummi_data_load_train
+      max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: exclude
+          default: "015"
+      tasks:
+        - task_key: setup
+          notebook_task:
+            notebook_path: ../notebooks/00_setup.py
+        - task_key: load_and_train
+          depends_on:
+            - task_key: setup
+          notebook_task:
+            notebook_path: ../notebooks/02_load_and_train.py
