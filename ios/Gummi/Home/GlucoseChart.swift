@@ -126,9 +126,10 @@ struct GlucoseChart: View {
 }
 
 /// A legend swatch drawn with the series' line style.
-private struct LegendItem: View {
+struct LegendItem: View {
     let title: String
     let dash: [CGFloat]
+    var color = Theme.confirmedLine
 
     var body: some View {
         HStack(spacing: 5) {
@@ -136,7 +137,7 @@ private struct LegendItem: View {
                 var path = Path()
                 path.move(to: CGPoint(x: 0, y: size.height / 2))
                 path.addLine(to: CGPoint(x: size.width, y: size.height / 2))
-                context.stroke(path, with: .color(Theme.confirmedLine), style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: dash))
+                context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: dash))
             }
             .frame(width: 22, height: 6)
             Text(title)

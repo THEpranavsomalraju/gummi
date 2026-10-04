@@ -23,14 +23,22 @@ struct GummiApp: App {
             }
             .environment(model)
             #if DEBUG
-            // Screenshot helpers: -gummi.tab today, -gummi.sheet follow|chat.
+            // Screenshot helpers: -gummi.tab today, -gummi.sheet follow|chat, and -gummi.chat "first|second"
+            // to ask questions in turn (an empty -gummi.chat opens the empty chat).
             .task {
                 let defaults = UserDefaults.standard
                 if defaults.string(forKey: "gummi.tab") == "today" { model.selectedTab = .today }
                 try? await Task.sleep(for: .seconds(2))
                 switch defaults.string(forKey: "gummi.sheet") {
                 case "follow": model.showsFollowPicker = true
-                case "chat": model.askGummi("Why did I peak at 174?")
+                case "chat":
+                    let prompts = (defaults.string(forKey: "gummi.chat") ?? "").split(separator: "|").map(String.init)
+                    model.askGummi(prompts.first)
+                    for prompt in prompts.dropFirst() {
+                        try? await Task.sleep(for: .seconds(1))
+                        while model.chat.isBusy || model.chat.isTalking { try? await Task.sleep(for: .milliseconds(200)) }
+                        model.chat.send(prompt)
+                    }
                 default: break
                 }
             }
