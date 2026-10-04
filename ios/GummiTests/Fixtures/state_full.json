@@ -1,0 +1,189 @@
+{
+  "user_id": "u_mahil",
+  "following": "p_012",
+  "acting_as": "p_012",
+  "dexcom": {
+    "connected": true,
+    "environment": "sandbox",
+    "data_through": "2026-10-03T20:55:00-04:00",
+    "delay_minutes": 60,
+    "last_sync": "2026-10-03T21:05:00-04:00",
+    "last_error": null,
+    "source": "dexcom_api",
+    "ingest_mode": "status_only"
+  },
+  "gummi_view": {
+    "glucose_mg_dl": 152.4,
+    "band_low_mg_dl": 127.0,
+    "band_high_mg_dl": 178.0,
+    "trend": "rising_fast",
+    "as_of": "2026-10-03T06:10:00-04:00",
+    "minutes_since_confirmed": 60,
+    "confidence": "low"
+  },
+  "confirmed": [
+    {
+      "t": "2026-10-03T05:00:00-04:00",
+      "glucose_mg_dl": 104.0,
+      "kind": "confirmed"
+    },
+    {
+      "t": "2026-10-03T05:05:00-04:00",
+      "glucose_mg_dl": 105.0,
+      "kind": "confirmed"
+    },
+    {
+      "t": "2026-10-03T05:10:00-04:00",
+      "glucose_mg_dl": 104.0,
+      "kind": "confirmed"
+    }
+  ],
+  "estimate": [
+    {
+      "t": "2026-10-03T05:15:00-04:00",
+      "glucose_mg_dl": 110.0,
+      "band_low_mg_dl": 95.0,
+      "band_high_mg_dl": 125.0,
+      "kind": "estimate"
+    },
+    {
+      "t": "2026-10-03T06:10:00-04:00",
+      "glucose_mg_dl": 152.4,
+      "band_low_mg_dl": 127.0,
+      "band_high_mg_dl": 178.0,
+      "kind": "estimate"
+    }
+  ],
+  "forecast": [
+    {
+      "t": "2026-10-03T06:15:00-04:00",
+      "glucose_mg_dl": 158.0,
+      "band_low_mg_dl": 130.0,
+      "band_high_mg_dl": 186.0,
+      "kind": "forecast"
+    },
+    {
+      "t": "2026-10-03T08:10:00-04:00",
+      "glucose_mg_dl": 120.0,
+      "band_low_mg_dl": 92.0,
+      "band_high_mg_dl": 147.0,
+      "kind": "forecast"
+    }
+  ],
+  "mood": "high",
+  "alert": {
+    "alert_id": "a_1",
+    "type": "walk_suggested",
+    "message": "Your forecast crosses 140 in about 25 minutes. A 10-minute walk now likely helps.",
+    "created_at": "2026-10-03T06:15:00-04:00",
+    "expires_at": "2026-10-03T06:45:00-04:00",
+    "action": {
+      "label": "Start walk",
+      "kind": "start_walk",
+      "minutes": 10
+    }
+  },
+  "top_card": {
+    "card_id": "c_ws_1",
+    "type": "walk_suggested",
+    "created_at": "2026-10-03T06:15:00-04:00",
+    "title": "A walk would help",
+    "body": "Your forecast crosses 140 in about 25 minutes. A 10-minute walk now likely helps.",
+    "mood": "high",
+    "attachments": {
+      "alert": {
+        "alert_id": "a_1",
+        "type": "walk_suggested",
+        "message": "Your forecast crosses 140 in about 25 minutes. A 10-minute walk now likely helps.",
+        "created_at": "2026-10-03T06:15:00-04:00",
+        "expires_at": "2026-10-03T06:45:00-04:00",
+        "action": {
+          "label": "Start walk",
+          "kind": "start_walk",
+          "minutes": 10
+        }
+      }
+    },
+    "actions": [],
+    "trace_id": null,
+    "generated_by": "template"
+  },
+  "pending_predictions": [
+    {
+      "prediction_id": "pr_1",
+      "kind": "meal",
+      "made_at": "2026-10-03T05:58:00-04:00",
+      "about": "Milk and Frosted Flake",
+      "meal_id": "m_1",
+      "window_start": "2026-10-03T05:54:00-04:00",
+      "window_end": "2026-10-03T07:54:00-04:00",
+      "predicted_peak_mg_dl": 165.0,
+      "predicted_curve": [
+        {
+          "t": "2026-10-03T06:00:00-04:00",
+          "glucose_mg_dl": 128.0,
+          "band_low_mg_dl": 105.0,
+          "band_high_mg_dl": 151.0,
+          "kind": "forecast"
+        },
+        {
+          "t": "2026-10-03T06:30:00-04:00",
+          "glucose_mg_dl": 165.0,
+          "band_low_mg_dl": 137.0,
+          "band_high_mg_dl": 192.0,
+          "kind": "forecast"
+        },
+        {
+          "t": "2026-10-03T07:00:00-04:00",
+          "glucose_mg_dl": 160.0,
+          "band_low_mg_dl": 132.0,
+          "band_high_mg_dl": 189.0,
+          "kind": "forecast"
+        }
+      ],
+      "cgm_only_peak_mg_dl": 139.0,
+      "last_value_peak_mg_dl": 121.0,
+      "status": "pending"
+    }
+  ],
+  "today": {
+    "time_in_range_pct": 88.0,
+    "peak_mg_dl": 152.4,
+    "meals": 1,
+    "steps": 2310,
+    "walks": 0,
+    "gummi_mae_mg_dl": 7.4,
+    "cgm_only_mae_mg_dl": 10.8,
+    "last_value_mae_mg_dl": 13.9
+  },
+  "profile": {
+    "high_line_mg_dl": 140.0,
+    "low_line_mg_dl": 70.0
+  },
+  "upcoming_due": [
+    {
+      "due_id": "d_2",
+      "due_at": "2026-10-03T21:01:46-04:00",
+      "title": "Breakfast time for Participant 12",
+      "body": "Whole Wheat Toast, Butter, Cream Cheese, Coffee"
+    }
+  ],
+  "replay_now": "2026-10-03T06:10:00-04:00",
+  "stream": {
+    "running": true,
+    "paused": false,
+    "speed": 60.0,
+    "delay_minutes": 60,
+    "participants": 15,
+    "replay_clock": "day6T06:10",
+    "replay_anchor": {
+      "replay_time": "2026-10-03T05:00:00-04:00",
+      "wall_time": "2026-10-03T21:00:00-04:00"
+    },
+    "events_released": 1210,
+    "events_per_second": 3.1,
+    "pipeline_lag_seconds": 18.0
+  },
+  "model_version": "gummi_model_v1.2",
+  "server_time": "2026-10-03T21:01:10-04:00"
+}

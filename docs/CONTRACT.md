@@ -1,6 +1,9 @@
 # Gummi Contract
 
-Contract version: 1.3 (draft, frozen at the end of Phase 0)
+Contract version: 1.6 (draft, frozen at the end of Phase 0)
+Changelog: 1.6 (2026-10-04, Backend Lead, answers iOS REQUEST on chat plus Pranav's UI requests): GET /day (DaySummary); State.data_status and minutes_since_reading (no estimate when the last reading is over 3 h old); tool events carry label; meal_saved payload adds simulated, likely_peak_mg_dl, peak_at; WalkSuggestion object; error code stale_data; ": working" heartbeat during slow tools; every chat turn ends with done; simulation rule rewritten to match D-59. All additive.
+Changelog: 1.5 (2026-10-04, Backend Lead, Pranav's request): GET /foodlog, one list of the day's meals by origin. While acting as a participant, POST /meals and chat meals go into the food log as simulated entries (never graded) instead of being simulation-only (D-59). Additive.
+Changelog: 1.4 (2026-10-03, Backend Lead, answers iOS CONTRACT CHANGE REQUEST 1-6): documentation only, no shape changes. Grade.gummi_beats_cgm_only nullable; WalkSummary.intensity and effect_source values listed; DexcomStatus.environment values; date query format; MealItem.unit may be ""; SSE comment lines.
 Changelog: 1.3 (2026-10-03, Backend Lead, human-delegated, answers iOS REQUEST 20261003-1815): State gains replay_now and stream; Grade gains gummi_beats_cgm_only and gummi_beats_last_value; Meal gains is_standard_breakfast; chat card_type gains "meal_due"; meal_due cards resolve by upsert; attachments keys per card type; walk_completed body; nullable fields marked; error codes listed. All additive.
 Changelog: 1.2 (2026-10-03, Backend Lead, human-approved D-36): State gains upcoming_due for background meal_due notifications. Additive, no other shape changes.
 Section owners: API and agent (Backend Lead), model interface, pipeline, and data tables (Data Lead), puppet moods and UI copy (iOS Lead).
@@ -30,8 +33,8 @@ Defaults set while writing v1.1, ASSUMED until the owner confirms: last_value_* 
 - IDs: users "u_<name>" for teammates, "p_<participant_id>" for replay participants.
 - Errors: HTTP status plus `{"error": {"code": "...", "message": "..."}}`.
 - Every response carries `X-Gummi-Mode: mock | live`.
-- Nullable (1.3): every field marked "or null" below may be null. In particular: State.following, acting_as, replay_now, alert, top_card; Prediction.meal_id, cgm_only_peak_mg_dl; Grade.cgm_only_mae_mg_dl (null when no CGM-only curve was stored); State.today.*_mae_mg_dl (null before the first grade of the day); FleetEntry.data_through, *_mae_mg_dl and last_grade (null before data or the first grade); StreamStatus.replay_clock, replay_anchor.*, pipeline_lag_seconds (null when stopped or unknown); DexcomStatus.data_through, last_sync, last_error; StoryCard.attachments, trace_id. Before any CGM data, State.gummi_view is null and confirmed, estimate, forecast are empty.
-- Error codes (1.3): bad_request (400), unauthorized (401, from the App; the Databricks proxy's own 401 has an empty body), not_found (404), method_not_allowed (405), due_already_logged (409), no_cgm_data (409: simulate or chat simulation while not following anyone), invalid (422), rate_limited (429), internal (500), warming_up (503: /stream/start before the model and replay tables finish loading; /health then reports status "warming_up"), llm_unavailable (503, chat only, sent as an SSE error event). GET /walks/latest returns 404 not_found before the first walk.
+- Nullable (1.3): every field marked "or null" below may be null. In particular: State.following, acting_as, replay_now, alert, top_card; Prediction.meal_id, cgm_only_peak_mg_dl; Grade.cgm_only_mae_mg_dl and Grade.gummi_beats_cgm_only (both null when no CGM-only curve was stored; treat null as "not proud" and show "CGM-only n/a"); State.today.*_mae_mg_dl (null before the first grade of the day); FleetEntry.data_through, *_mae_mg_dl and last_grade (null before data or the first grade); StreamStatus.replay_clock, replay_anchor.*, pipeline_lag_seconds (null when stopped or unknown); DexcomStatus.data_through, last_sync, last_error; StoryCard.attachments, trace_id. Before any CGM data, State.gummi_view is null and confirmed, estimate, forecast are empty.
+- Error codes (1.3): bad_request (400), unauthorized (401, from the App; the Databricks proxy's own 401 has an empty body), not_found (404), method_not_allowed (405), due_already_logged (409), stale_data (409: no reading in the last 3 hours, so no simulation), no_cgm_data (409: simulate or chat simulation while not following anyone), invalid (422), rate_limited (429), internal (500), warming_up (503: /stream/start before the model and replay tables finish loading; /health then reports status "warming_up"), llm_unavailable (503, chat only, sent as an SSE error event). GET /walks/latest returns 404 not_found before the first walk.
 - Comparisons: every accuracy number carries three values: gummi, cgm_only (the published CGM-only linear method, one model per horizon, fold-matched, D-33), and last_value (persistence). Numbers for replay participants are labeled "out-of-sample".
 
 ## 2. Auth
@@ -95,7 +98,7 @@ type: "walk_suggested", "high_forecast", "low_forecast", "dexcom_gap". action.ki
 
 ### DexcomStatus
 `{ "connected": true, "environment": "sandbox", "data_through": "...", "delay_minutes": 60, "last_sync": "...", "last_error": null, "source": "dexcom_api", "ingest_mode": "status_only" }`
-source: "dexcom_api", "replay", "none". ingest_mode: "status_only" (default: connection, data range, and last sync only, never feeds coaching or hot state) or "time_shifted" (optional, labeled "Sandbox (time-shifted)").
+environment: "sandbox" or "production". source: "dexcom_api", "replay", "none". ingest_mode: "status_only" (default: connection, data range, and last sync only, never feeds coaching or hot state) or "time_shifted" (optional, labeled "Sandbox (time-shifted)").
 
 ### State (GET /state and the "state" live event)
 ```json
@@ -114,6 +117,7 @@ source: "dexcom_api", "replay", "none". ingest_mode: "status_only" (default: con
   "model_version": "gummi_model_v1", "server_time": "..." }
 ```
 acting_as: the replay participant the user acts as (user_id), or null.
+data_status (1.6): "live", "stale" (the newest reading is more than 3 hours old at the replay clock: gummi_view is null and estimate and forecast are empty, and the phone shows "No recent readings"), or "none" (no glucose source). minutes_since_reading: minutes since the newest confirmed reading, or null.
 server_time is the wall clock. replay_now (1.3) is the replay clock mapped to today (D-45), the "now" for the chart, estimate, and forecast while acting as a replay participant; null when not acting as anyone or the stream is stopped. stream (1.3) is the current StreamStatus, so every state event carries it.
 upcoming_due (1.2, D-36): the acted-as participant's withheld meals coming due in the next 6 replay hours, oldest first, empty when not acting as anyone or the stream is stopped or paused. due_at is wall-clock time (already converted from the replay clock), so the phone schedules local notifications straight from it. Recomputed and pushed in a state event on every pause, resume, speed change, follow, and when a meal comes due. Steps and walks in today belong to the teammate user and display as an overlay on the followed participant.
 
@@ -126,8 +130,22 @@ upcoming_due (1.2, D-36): the acted-as participant's withheld meals coming due i
   "totals": { "carbs_g": 70.0, "sugar_g": 8.0, "fiber_g": 4.0, "protein_g": 24.0, "fat_g": 20.0, "calories": 570 },
   "is_standard_breakfast": false, "prediction_id": "pr_1" }
 ```
+MealItem.unit is always a string and may be "" when the source has no unit; quantity is always a number.
 is_standard_breakfast (1.3): true for the study's standardized breakfast (Data's silver_meals flag), false otherwise.
 source: "chat", "manual", "replay" (meals of participants nobody follows), "replay_due" (the user tapped Log it on a meal_due card), "replay_auto" (auto-logged 10 replay minutes after it came due) (D-35).
+
+### FoodLog (1.5)
+```json
+{ "date": "2026-10-04", "entries": [
+  { "meal": "Meal", "origin": "study_log", "graded": true,
+    "prediction": { "predicted_peak_mg_dl": 153.0, "cgm_only_peak_mg_dl": 120.0, "last_value_peak_mg_dl": 121.0, "status": "graded" },
+    "grade": "Grade or null", "note": null },
+  { "meal": "Meal", "origin": "gummi", "graded": false,
+    "prediction": { "predicted_peak_mg_dl": 149.0, "cgm_only_peak_mg_dl": null, "last_value_peak_mg_dl": null, "status": "pending" },
+    "grade": null, "note": "Simulated on the participant's day; not graded" } ] }
+```
+origin: "study_log" (the acted-as participant's real meals), "you" (POST /meals), "gummi" (added by the agent from chat). Newest first.
+graded is true once the meal's 2-hour window was graded. Entries from "you" or "gummi" while acting as a replay participant carry Gummi's simulated prediction and are never graded, because the participant didn't really eat them (D-59). The phone refetches /foodlog when a meal_due, meal_logged or meal_story card arrives.
 
 ### Simulation
 ```json
@@ -142,8 +160,29 @@ source: "chat", "manual", "replay" (meals of participants nobody follows), "repl
 ```
 verdict: "go" (peak under high line), "go_with_tweak", "wait". method "breakfast_response" means scaled from the person's standardized breakfast response, and the card says so.
 
+### WalkSuggestion (1.6, chat card_type "walk_suggestion")
+`{ "minutes": 10, "start": "...", "forecast_peak_mg_dl": 147.0, "forecast_peak_drop_mg_dl": 20.0, "effect_source": "literature" }`
+The last three are nullable.
+
+### DaySummary (1.6, GET /day)
+```json
+{ "date": "2026-10-04", "participant": "p_012", "data_status": "live",
+  "glucose": { "readings": 180, "time_in_range_pct": 88.0, "average_mg_dl": 121.0,
+               "peak": { "mg_dl": 174.0, "at": "..." }, "low": { "mg_dl": 92.0, "at": "..." } },
+  "hourly": [{ "hour": 6, "avg_mg_dl": 140.2, "min_mg_dl": 117.0, "max_mg_dl": 174.0 }],
+  "meals": { "count": 4, "carbs_g": 180.0, "biggest": { "food": "Milk, Frosted Flake", "carbs_g": 56.5, "at": "..." } },
+  "activity": { "steps": 3120, "walks": 1, "walk_minutes": 11 },
+  "predictions": { "made": 9, "graded": 6, "gummi_mae_mg_dl": 10.7, "cgm_only_mae_mg_dl": 11.1, "last_value_mae_mg_dl": 12.8, "beat_cgm_only_pct": 50.0 },
+  "best_call": { "about": "...", "message": "I predicted ...", "gummi_peak_error_mg_dl": 3.0 },
+  "biggest_spike": { "peak_mg_dl": 174.0, "at": "...", "after_meal": "Milk, Frosted Flake" },
+  "highlights": ["You were in range 88% of the day, averaging about 121 mg/dL."],
+  "recap": "StoryCard (evening_recap) or null" }
+```
+glucose, best_call, biggest_spike and recap are null when there's nothing yet. Computed from hot state without an LLM; highlights are first person, every number from the data above.
+
 ### WalkSummary
 `{ "started_at": "...", "ended_at": "...", "minutes": 11, "steps": 1180, "cadence_spm": 107, "intensity": "moderate", "forecast_peak_drop_mg_dl": 14, "effect_source": "literature" }`
+intensity: "sedentary" (0 steps/min), "light" (1 to 99), "moderate" (100 to 129), "vigorous" (130+) (D-44). effect_source: "literature" or "your data" (with a space).
 
 ### StreamEvent (one JSON line in the landing volume)
 ```json
@@ -166,13 +205,15 @@ replay_anchor pairs a replay time with a wall-clock time. With speed, the phone 
 | GET | /health | | `{"status","mode","version"}` |
 | GET | /state | | State |
 | GET | /live | | server-sent events, section 5 |
-| GET | /feed?date= | | `{"cards": [StoryCard]}` |
+| GET | /feed?date= | | `{"cards": [StoryCard]}`. date is YYYY-MM-DD in the profile timezone, compared with the local date of created_at. While acting as a replay participant, dates are on the replay clock mapped to today (D-45), so today's date shows the replayed day. Same rule for /grades and /meals |
 | GET | /predictions?status= | | `{"predictions": [Prediction]}` |
 | GET | /grades?date= | | `{"grades": [Grade]}` |
 | POST | /meals | `{"items": [...], "eaten_at": "...", "source": "manual"}` | Meal |
 | PATCH | /meals/{meal_id} | `{"items": [...]}` | Meal (prediction recomputed) |
 | DELETE | /meals/{meal_id} | | `{"deleted": true}` |
 | GET | /meals?date= | | `{"meals": [Meal]}` |
+| GET | /foodlog?date= | | FoodLog (1.5) |
+| GET | /day?date= | | DaySummary (1.6) |
 | POST | /meals/due/{due_id}/log | | Meal (source "replay_due"). 409 due_already_logged if it was logged already |
 | POST | /simulate | `{"items": [...], "eat_at": null}` | Simulation |
 | POST | /vitals | `{"samples": [{"type": "steps", "value": 112, "start": "...", "end": "..."}]}` | `{"accepted": n}` |
@@ -207,14 +248,16 @@ event: alert   data: Alert
 event: mood    data: {"mood": "proud"}
 event: ping    data: {"t": "..."}           (every 15 seconds)
 ```
+Chat streaming rules (1.6): tool events carry a short label for the status chip (start: in progress, end: done with a check); at most one start/end pair per tool name per turn; name "self_check" appears when the agent rewrites a draft. During slow tools the stream sends the SSE comment ": working" every 5 s. Every turn ends with done, including after an error event. Conversation history is in memory, so after an App restart a known conversation_id starts fresh. meal_saved payload: the Meal fields plus "simulated" (bool), "likely_peak_mg_dl" and "peak_at" (null when not simulated). card_type "grade" and "meal_due" are reserved and not emitted by chat today.
 Mood ownership (1.3): State.mood and mood events are the truth, including the 20-second proud expiry, which Backend runs. The phone adds only thinking and talking locally.
+Lines starting with ":" are SSE comments (the stream opens with ": connected"); clients ignore them.
 The iPhone reconnects with backoff. Fallback: poll GET /state every 15 seconds while the channel is down. iOS suspends backgrounded apps, so the phone closes /live in the background and reconnects plus refetches /state on foreground.
 
 ## 6. Chat (POST /chat, server-sent events)
 
 ```
 event: token   data: {"text": "..."}
-event: tool    data: {"name": "log_meal", "status": "start" | "end"}
+event: tool    data: {"name": "log_meal", "status": "start" | "end", "label": "Adding it to your food log…"}
 event: card    data: {"card_type": "meal_saved" | "simulation" | "gummi_view" | "walk_suggestion" | "grade" | "meal_due", "payload": {...}}
 event: mood    data: {"mood": "thinking"}
 event: done    data: {"conversation_id": "...", "trace_id": "..."}
@@ -252,7 +295,7 @@ Triggers for the event-driven agent (followed users only, LLM budget per D-22):
 | 20:00 | evening_recap: predicted versus actual from get_gold_summary (required), one lesson, one small experiment for tomorrow |
 
 Agent copy rules: every number from a tool. Gummi's estimate is "likely" or "estimate". Dexcom values are "Dexcom reading". No medication or insulin advice. Past or present eating gets logged, food questions get simulated. Walk effects state their source.
-Simulation rule: while acting as a replay participant, a free-text chat meal that does not match the due meal becomes a simulation, not a logged meal, and the reply says so ("I simulated that, since Participant 3's real meals come from the study log").
+Simulation rule (1.6, D-59): while acting as a replay participant, a meal the user says they ate goes into their food log as a simulated entry with a likely peak and is never graded (the participant didn't really eat it); the reply says so in one line. "Can I / should I" questions use simulate_food.
 
 ## 8. Model interfaces (owner: Data)
 

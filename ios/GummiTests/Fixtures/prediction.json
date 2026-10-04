@@ -1,0 +1,36 @@
+{
+  "prediction_id": "pr_1",
+  "kind": "meal",
+  "made_at": "2026-10-03T05:58:00-04:00",
+  "about": "Milk and Frosted Flake",
+  "meal_id": "m_1",
+  "window_start": "2026-10-03T05:54:00-04:00",
+  "window_end": "2026-10-03T07:54:00-04:00",
+  "predicted_peak_mg_dl": 165.0,
+  "predicted_curve": [
+    {
+      "t": "2026-10-03T06:00:00-04:00",
+      "glucose_mg_dl": 128.0,
+      "band_low_mg_dl": 105.0,
+      "band_high_mg_dl": 151.0,
+      "kind": "forecast"
+    },
+    {
+      "t": "2026-10-03T06:30:00-04:00",
+      "glucose_mg_dl": 165.0,
+      "band_low_mg_dl": 137.0,
+      "band_high_mg_dl": 192.0,
+      "kind": "forecast"
+    },
+    {
+      "t": "2026-10-03T07:00:00-04:00",
+      "glucose_mg_dl": 160.0,
+      "band_low_mg_dl": 132.0,
+      "band_high_mg_dl": 189.0,
+      "kind": "forecast"
+    }
+  ],
+  "cgm_only_peak_mg_dl": 139.0,
+  "last_value_peak_mg_dl": 121.0,
+  "status": "pending"
+}

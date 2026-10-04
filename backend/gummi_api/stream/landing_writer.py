@@ -11,7 +11,7 @@ import logging
 import threading
 from collections import defaultdict
 
-from .. import config
+from .. import activity, config
 from ..util import new_id, utcnow
 
 log = logging.getLogger("gummi.landing")
@@ -65,6 +65,7 @@ class LandingWriter:
                     await asyncio.to_thread(self._upload, path, body)
                     self.files_written += 1
                     self.events_written += len(events)
+                    activity.hit("databricks.landing", detail=path.rsplit("/", 1)[-1])
                     self.last_file, self.last_error = path, None
                     break
                 except Exception as e:  # noqa: BLE001 (any SDK or network error: retry, then requeue)

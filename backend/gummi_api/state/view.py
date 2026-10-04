@@ -9,7 +9,8 @@ from ..engine.engine import engine
 from ..engine.gold import gold
 from ..stream.producer import clock
 from ..util import TZ, iso, r1
-from .hot_store import dexcom_status, store
+from ..dexcom import client as dexcom
+from .hot_store import store
 
 VIEW_KEYS = ("glucose_mg_dl", "band_low_mg_dl", "band_high_mg_dl", "trend", "as_of", "minutes_since_confirmed", "confidence")
 _cache: dict = {}
@@ -30,6 +31,15 @@ def subject_view(pid: str) -> dict | None:
     if hit and hit[0] == key:
         return hit[1]
     now = clock.replay_to_wall(now_r)
+    if engine.stale(s, now_r):
+        # CONTRACT 1.6: never extrapolate hours past the last reading; say the data is stale instead
+        since = now - timedelta(hours=6)
+        n = min(len(s.conf_t), len(s.conf_v))
+        conf = [{"t": iso(t), "glucose_mg_dl": v, "kind": "confirmed"} for t, v in zip(s.conf_t[:n], s.conf_v[:n]) if t >= since]
+        out = {"now": now, "confirmed": conf, "estimate": [], "forecast": [], "gummi_view": None, "stale": True,
+               "minutes_since_reading": int((now - s.conf_t[-1].to_pydatetime()).total_seconds() // 60) if s.conf_t else None}
+        _cache[pid] = (key, out)
+        return out
     ctx = engine.ctx(s)
     est = s.model.estimate_gap(ctx, now)
     fc = s.model.forecast(ctx, now, 120)
@@ -37,7 +47,8 @@ def subject_view(pid: str) -> dict | None:
     since = now - timedelta(hours=6)
     n = min(len(s.conf_t), len(s.conf_v))
     conf = [{"t": iso(t), "glucose_mg_dl": v, "kind": "confirmed"} for t, v in zip(s.conf_t[:n], s.conf_v[:n]) if t >= since]
-    out = {"now": now, "confirmed": conf, "estimate": est, "forecast": fc, "gummi_view": view}
+    out = {"now": now, "confirmed": conf, "estimate": est, "forecast": fc, "gummi_view": view, "stale": False,
+           "minutes_since_reading": view["minutes_since_confirmed"]}
     _cache[pid] = (key, out)
     return out
 
@@ -54,6 +65,8 @@ def mood(u, v: dict | None) -> str:
         return "high"
     if now < u.proud_until:
         return "proud"
+    if v.get("stale") or not v["gummi_view"]:
+        return "sleepy"
     trend = v["gummi_view"]["trend"]
     if trend == "falling_fast":
         return "dipping"
@@ -98,7 +111,7 @@ def build_state(uid: str) -> dict:
         if u.alert and u.alert["expires_at"] >= iso(v["now"]):
             alert = u.alert
     return {
-        "user_id": uid, "following": pid, "acting_as": pid if s is not None else None, "dexcom": dexcom_status(),
+        "user_id": uid, "following": pid, "acting_as": pid if s is not None else None, "dexcom": dexcom.status(uid),
         "gummi_view": v["gummi_view"] if v else None,
         "confirmed": v["confirmed"] if v else [], "estimate": v["estimate"] if v else [],
         "forecast": v["forecast"] if v else [],
@@ -107,6 +120,8 @@ def build_state(uid: str) -> dict:
         "profile": {"high_line_mg_dl": u.profile["high_line_mg_dl"], "low_line_mg_dl": u.profile["low_line_mg_dl"]},
         "upcoming_due": engine.upcoming_due(pid),
         "replay_now": iso(v["now"]) if v and clock.running else None, "stream": status,
+        "data_status": "none" if v is None else ("stale" if v.get("stale") else "live"),
+        "minutes_since_reading": v.get("minutes_since_reading") if v else None,
         "model_version": engine.model.version if engine.model else config.MODEL_VERSION,
         "server_time": iso(datetime.now(TZ)),
     }

@@ -1,0 +1,16 @@
+{
+  "grade_id": "g_1",
+  "prediction_id": "pr_1",
+  "kind": "meal",
+  "graded_at": "2026-10-03T07:55:00-04:00",
+  "points": 24,
+  "gummi_mae_mg_dl": 9.1,
+  "cgm_only_mae_mg_dl": 16.4,
+  "last_value_mae_mg_dl": 31.2,
+  "gummi_peak_error_mg_dl": 9.0,
+  "within_band_pct": 79.2,
+  "walk_effect_graded": false,
+  "gummi_beats_cgm_only": true,
+  "gummi_beats_last_value": true,
+  "message": "I predicted 165 for the Frosted Flake. It was 174. CGM-only said 139, last value said 121. Walk effect not graded (replayed data)."
+}

@@ -1,0 +1,43 @@
+{
+  "meal_id": "m_1",
+  "eaten_at": "2026-10-03T05:54:00-04:00",
+  "source": "replay_due",
+  "items": [
+    {
+      "name": "Milk",
+      "quantity": 4.0,
+      "unit": "ounce",
+      "carbs_g": 4.5,
+      "sugar_g": 4.0,
+      "fiber_g": 0.0,
+      "protein_g": 6.0,
+      "fat_g": 2.5,
+      "calories": 60.0,
+      "nutrition_source": "dataset",
+      "editable": true
+    },
+    {
+      "name": "Frosted Flake",
+      "quantity": 1.5,
+      "unit": "cup",
+      "carbs_g": 52.0,
+      "sugar_g": 20.0,
+      "fiber_g": 1.0,
+      "protein_g": 2.0,
+      "fat_g": 0.0,
+      "calories": 220.0,
+      "nutrition_source": "dataset",
+      "editable": true
+    }
+  ],
+  "totals": {
+    "carbs_g": 56.5,
+    "sugar_g": 24.0,
+    "fiber_g": 1.0,
+    "protein_g": 8.0,
+    "fat_g": 2.5,
+    "calories": 280.0
+  },
+  "is_standard_breakfast": true,
+  "prediction_id": "pr_1"
+}

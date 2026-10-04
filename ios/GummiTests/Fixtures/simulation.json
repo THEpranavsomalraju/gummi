@@ -1,0 +1,67 @@
+{
+  "items": [
+    {
+      "name": "cookie",
+      "quantity": 1.0,
+      "unit": "",
+      "carbs_g": 22.0,
+      "sugar_g": 12.0,
+      "fiber_g": 0.5,
+      "protein_g": 1.5,
+      "fat_g": 7.0,
+      "calories": 160.0,
+      "nutrition_source": "seed",
+      "editable": true
+    }
+  ],
+  "eat_at": "2026-10-03T15:00:00-04:00",
+  "baseline_curve": [
+    {
+      "t": "2026-10-03T15:00:00-04:00",
+      "glucose_mg_dl": 112.0,
+      "band_low_mg_dl": 99.0,
+      "band_high_mg_dl": 125.0,
+      "kind": "forecast"
+    },
+    {
+      "t": "2026-10-03T17:00:00-04:00",
+      "glucose_mg_dl": 108.0,
+      "band_low_mg_dl": 85.0,
+      "band_high_mg_dl": 131.0,
+      "kind": "forecast"
+    }
+  ],
+  "with_food_curve": [
+    {
+      "t": "2026-10-03T15:00:00-04:00",
+      "glucose_mg_dl": 112.0,
+      "band_low_mg_dl": 99.0,
+      "band_high_mg_dl": 125.0,
+      "kind": "forecast"
+    },
+    {
+      "t": "2026-10-03T15:50:00-04:00",
+      "glucose_mg_dl": 148.0,
+      "band_low_mg_dl": 121.0,
+      "band_high_mg_dl": 176.0,
+      "kind": "forecast"
+    }
+  ],
+  "peak_mg_dl": 148.0,
+  "peak_at": "2026-10-03T15:50:00-04:00",
+  "verdict": "go_with_tweak",
+  "summary": "With the cookie you'd likely peak near 148.",
+  "alternatives": [
+    {
+      "label": "Half portion",
+      "peak_mg_dl": 131.0
+    },
+    {
+      "label": "Walk 10 minutes after",
+      "peak_mg_dl": 136.0,
+      "effect_source": "literature"
+    }
+  ],
+  "method": "model",
+  "prediction_id": "pr_2"
+}

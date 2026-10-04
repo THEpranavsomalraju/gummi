@@ -1,0 +1,10 @@
+{
+    "connected": false,
+    "environment": "sandbox",
+    "data_through": null,
+    "delay_minutes": 60,
+    "last_sync": null,
+    "last_error": null,
+    "source": "replay",
+    "ingest_mode": "status_only"
+}

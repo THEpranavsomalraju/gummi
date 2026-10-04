@@ -12,14 +12,20 @@ LOW_LINE = 70.0
 DELAY_MINUTES = 60
 MODEL_VERSION = "gummi_model_v1"
 WAREHOUSE_ID = os.environ.get("GUMMI_WAREHOUSE_ID", "1b929fe5bf415d65")
-LLM_ENDPOINT = os.environ.get("GUMMI_LLM_ENDPOINT", "databricks-gpt-oss-120b")
-LLM_FALLBACK = os.environ.get("GUMMI_LLM_FALLBACK", "databricks-qwen3-next-80b-a3b-instruct")
+# Chat: gpt-oss-20b first (0.3 to 0.9 s per step, where 120b swung 4 to 13 s under shared Free Edition load), then
+# 120b, then qwen. Each endpoint has its own per-workspace rate limit, so the chain also rides out 429s (D-60x).
+LLM_ENDPOINT = os.environ.get("GUMMI_LLM_ENDPOINT", "databricks-gpt-oss-20b")
+LLM_FALLBACKS = [m for m in os.environ.get("GUMMI_LLM_FALLBACKS", "databricks-gpt-oss-120b,databricks-qwen3-next-80b-a3b-instruct").split(",") if m]
+LLM_FALLBACK = LLM_FALLBACKS[-1]
+AGENT_ENDPOINT = os.environ.get("GUMMI_AGENT_ENDPOINT", "databricks-qwen3-next-80b-a3b-instruct")   # background agents (D-56)
+JUDGE_ENDPOINT = os.environ.get("GUMMI_JUDGE_ENDPOINT", "databricks-llama-4-maverick")     # Reviewer agent (D-57)
 INSIGHTS_ENDPOINT = os.environ.get("GUMMI_INSIGHTS_ENDPOINT", "mas-becc8b0e-endpoint")
 MLFLOW_EXPERIMENT_ID = os.environ.get("GUMMI_MLFLOW_EXPERIMENT_ID", "3505481683626519")
 
 BACKEND = Path(__file__).resolve().parents[1]
-# gummi_model and gummi_activity: copied into backend/vendor by scripts/deploy.sh, read from ../data when developing
-for p in (BACKEND / "vendor", BACKEND.parent / "data"):
+# gummi_model and gummi_activity: read from ../data when developing (always the current code), from backend/vendor
+# in the App bundle, where scripts/deploy.sh copies them
+for p in (BACKEND.parent / "data", BACKEND / "vendor"):
     if (p / "gummi_model").is_dir() and str(p) not in sys.path:
         sys.path.insert(0, str(p))
         break
@@ -35,19 +41,24 @@ LANDING_DIR = os.environ.get("GUMMI_LANDING_DIR", f"{LANDING_ROOT}/mock_events" 
 LANDING_ENABLED = os.environ.get("GUMMI_LANDING_ENABLED", "true").lower() == "true"
 LANDING_INTERVAL_S = 5.0
 
+# Session, lessons and Dexcom tokens persist to the volume; tests turn this off so they never touch real state
+PERSIST = os.environ.get("GUMMI_PERSIST", "true").lower() == "true"
+
 PING_SECONDS = 15.0
 STATE_PUSH_SECONDS = 1.0            # state events at most once per second (CONTRACT section 5)
 MOCK_CARD_SECONDS = float(os.environ.get("GUMMI_MOCK_CARD_SECONDS", "60"))
 MOCK_STATE_SECONDS = 5.0
-GOLD_REFRESH_SECONDS = 20.0
+GOLD_REFRESH_SECONDS = 60.0        # only while someone is watching (quota: the warehouse can auto-stop)
+IDLE_PAUSE_MIN = 15                 # replay pauses itself after 15 min with no phone, map or fleet view open
 
 # Replay engine
-DEFAULT_START = "day6T05:00"        # D-62: the 05:54 standardized breakfast comes due on screen
+DEFAULT_START = "day4T05:00"        # D-15 (Nikhil, 2026-10-04): p_012 day 4; breakfast at 05:56
 DUE_AUTOLOG_MIN = 10                # D-27: unlogged due meals auto-log after 10 replay minutes
 UPCOMING_DUE_MIN = 360              # D-36: next 6 replay hours
 NOWCAST_EVERY_MIN = 60              # one nowcast prediction per participant per replay hour
 WALK_COOLDOWN_MIN = 45              # CONTRACT section 7
 PROUD_SECONDS = 20                  # CONTRACT section 9
+STALE_MIN = 180                     # no estimate when the last reading is older (Dexcom hour plus 2 h): CONTRACT 1.6
 
 # Participants replayed: 001 to 016 without 015 (D-20 exclusion, D-37 not replayed)
 PARTICIPANTS = [f"p_{i:03d}" for i in range(1, 17) if i != 15]

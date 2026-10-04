@@ -27,7 +27,7 @@ def push_state(uid: str) -> None:
 
 @router.get("/health")
 async def health():
-    status = "ok" if engine.ready else ("error" if engine.load_error else "warming_up")
+    status = "ok" if engine.ready and engine.started else ("error" if engine.load_error else "warming_up")
     return {"status": status, "mode": config.MODE, "version": config.VERSION}
 
 
@@ -96,6 +96,9 @@ async def follow(body: dict, uid: str = Depends(user_id)):
     u = store.get(uid)
     if target != u.following:
         u.following, u.alert, u.overlay_walks = target, None, []
+        import asyncio
+        from ..state import session
+        asyncio.get_running_loop().run_in_executor(None, session.save)
     s = build_state(uid)
     broadcaster.publish(uid, "state", s)
     return s

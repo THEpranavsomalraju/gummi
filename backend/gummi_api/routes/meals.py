@@ -5,6 +5,7 @@ from datetime import timedelta
 import pandas as pd
 from fastapi import APIRouter, Depends
 
+from .. import activity
 from ..auth import user_id
 from ..engine.engine import MACROS, engine
 from ..errors import ApiError
@@ -39,22 +40,74 @@ def _acting(uid: str):
 
 
 def create_meal(uid: str, items: list[dict], source: str) -> dict:
-    """A teammate's own meal. While acting as a replay participant it is kept for the teammate only and never feeds the
-    replay (D-53): the participant's real meals come from the study log, so grading a made-up meal against real
-    glucose would be dishonest. Chat turns such meals into simulations instead."""
+    """An entry in the teammate's food log, manual ("manual") or added by Gummi from chat ("chat").
+
+    While acting as a replay participant (D-53, D-59) the entry sits on the participant's day, at the replay clock,
+    with Gummi's simulated prediction attached. It never feeds the replay and is never graded: that participant
+    didn't really eat it, so scoring it against their real glucose would be dishonest."""
     u = store.get(uid)
-    meal = {"meal_id": new_id("m"), "eaten_at": iso(utcnow()), "source": source, "items": items,
+    s = _acting(uid)
+    when = clock.replay_to_wall(clock.now()) if s is not None and clock.now() is not None else utcnow()
+    meal = {"meal_id": new_id("m"), "eaten_at": iso(when), "source": source, "items": items,
             "totals": totals(items), "is_standard_breakfast": False, "prediction_id": None}
+    body = "Saved to your food log."
+    if s is not None:
+        try:
+            sim = run_simulation(uid, items)
+            u.meal_sims[meal["meal_id"]] = {"predicted_peak_mg_dl": sim["peak_mg_dl"], "peak_at": sim["peak_at"],
+                                            "verdict": sim["verdict"], "without_food_peak_mg_dl":
+                                            max(p["glucose_mg_dl"] for p in sim["baseline_curve"])}
+            body = (f"Added to your food log. I think this likely peaks near {sim['peak_mg_dl']:.0f} mg/dL. It's "
+                    f"simulated on {store.display_name(s.pid)}'s day, so I won't grade it.")
+        except ApiError:
+            pass
     u.meals.append(meal)
-    landing.enqueue({"source": "app", "user_id": uid, "kind": "meal", "t": iso_utc(utcnow()),
+    landing.enqueue({"source": "app", "user_id": uid, "kind": "meal", "t": iso_utc(when),
                      "released_at": iso_utc(utcnow()), "payload": meal})
-    c = cards.card("meal_logged", utcnow(), f"{items[0]['name'].capitalize()} logged",
-                   "Saved to your day. Follow a participant to see predictions on real glucose data.", "calm",
+    c = cards.card("meal_logged", when, f"{items[0]['name'].capitalize()} logged", body, "calm",
                    attachments={"meal": meal})
     u.add_card(c)
     broadcaster.publish(uid, "card", c)
     push_state(uid)
     return meal
+
+
+def foodlog_entries(uid: str, date: str | None = None) -> list[dict]:
+    """The day's food log: the study participant's real meals (graded) plus the teammate's own entries."""
+    u = store.get(uid)
+    s = _acting(uid)
+    out = []
+    if s is not None:
+        graded = {g["prediction_id"]: g for g in list(s.grades)}
+        for m in list(s.meals):
+            p = s.predictions.get(m["prediction_id"]) if m["prediction_id"] else None
+            g = graded.get(m["prediction_id"]) if m["prediction_id"] else None
+            out.append({"meal": m, "origin": "study_log", "graded": g is not None,
+                        "prediction": {k: p[k] for k in ("predicted_peak_mg_dl", "cgm_only_peak_mg_dl",
+                                                         "last_value_peak_mg_dl", "status")} if p else None,
+                        "grade": g,
+                        "note": None if p else "Before the replay started, so no prediction"})
+    for m in list(u.meals):
+        sim = u.meal_sims.get(m["meal_id"])
+        out.append({"meal": m, "origin": "gummi" if m["source"] == "chat" else "you", "graded": False,
+                    "prediction": {"predicted_peak_mg_dl": sim["predicted_peak_mg_dl"], "cgm_only_peak_mg_dl": None,
+                                   "last_value_peak_mg_dl": None, "status": "pending"} if sim else None,
+                    "grade": None,
+                    "note": "Simulated on the participant's day; not graded" if sim else None})
+    if date:
+        out = [e for e in out if e["meal"]["eaten_at"][:10] == date]
+    return sorted(out, key=lambda e: e["meal"]["eaten_at"], reverse=True)
+
+
+@router.get("/foodlog")
+async def foodlog(uid: str = Depends(user_id), date: str | None = None):
+    if not date:                       # default: today, which is the replayed day while acting as a participant (D-45)
+        import pandas as pd
+        from ..stream.producer import clock
+        from ..util import TZ
+        now = clock.replay_to_wall(clock.now()) if _acting(uid) is not None and clock.now() is not None else pd.Timestamp.now(tz=TZ)
+        date = pd.Timestamp(now).tz_convert(TZ).date().isoformat()
+    return {"date": date, "entries": foodlog_entries(uid, date)[:200]}
 
 
 def _find(uid: str, meal_id: str):
@@ -78,9 +131,21 @@ async def post_meal(body: dict, uid: str = Depends(user_id)):
 
 @router.patch("/meals/{meal_id}")
 async def patch_meal(meal_id: str, body: dict, uid: str = Depends(user_id)):
+    with engine.lock:
+        return _patch(uid, meal_id, body)
+
+
+def _patch(uid: str, meal_id: str, body: dict) -> dict:
     s, meal = _find(uid, meal_id)
     meal["items"] = _items(body.get("items", []))
     meal["totals"] = totals(meal["items"])
+    if s is None and meal["meal_id"] in store.get(uid).meal_sims:
+        try:                                              # the user's own simulated entry: refresh its likely peak
+            sim = run_simulation(uid, meal["items"])
+            store.get(uid).meal_sims[meal["meal_id"]].update(predicted_peak_mg_dl=sim["peak_mg_dl"], peak_at=sim["peak_at"],
+                                                              verdict=sim["verdict"])
+        except ApiError:
+            pass
     if s is not None:
         # portions corrected: update the model input and recompute the prediction (CONTRACT section 4)
         for row in s.meal_inputs:
@@ -97,6 +162,11 @@ async def patch_meal(meal_id: str, body: dict, uid: str = Depends(user_id)):
 
 @router.delete("/meals/{meal_id}")
 async def delete_meal(meal_id: str, uid: str = Depends(user_id)):
+    with engine.lock:
+        return _delete(uid, meal_id)
+
+
+def _delete(uid: str, meal_id: str) -> dict:
     s, meal = _find(uid, meal_id)
     if s is not None:
         s.meals.remove(meal)
@@ -135,6 +205,8 @@ def run_simulation(uid: str, items: list[dict], eat_at=None) -> dict:
     s = _acting(uid)
     if s is None or len(s.conf_t) < 3 or clock.now() is None:
         raise ApiError(409, "no_cgm_data", "Follow a participant first: simulations need glucose data")
+    if engine.stale(s, clock.now()):
+        raise ApiError(409, "stale_data", "No recent Dexcom readings, so I can't simulate right now")
     now = clock.replay_to_wall(clock.now())
     eat = parse(eat_at) if eat_at else now
     sim = s.model.simulate(engine.ctx(s), now, [{k: i[k] for k in MACROS} for i in items], eat_at=eat)
@@ -161,6 +233,8 @@ async def simulate(body: dict, uid: str = Depends(user_id)):
 async def vitals(body: dict, uid: str = Depends(user_id)):
     samples = [s for s in body.get("samples", []) if s.get("type") == "steps" and s.get("value") is not None]
     store.get(uid).steps += int(sum(s["value"] for s in samples))
+    if samples:
+        activity.hit("source.iphone", len(samples), detail=f"{uid}: {int(sum(s['value'] for s in samples))} steps")
     for smp in samples:
         landing.enqueue({"source": "iphone", "user_id": uid, "kind": "steps", "t": smp.get("end") or iso_utc(utcnow()),
                          "released_at": iso_utc(utcnow()),
@@ -198,10 +272,12 @@ async def events(body: dict, uid: str = Depends(user_id)):
             s.version += 1
         u.walk_started_at, u.walk_started_r, u.alert = None, None, None
         u.happy_until = time.time() + 20 * 60
+        activity.hit("source.iphone", detail=f"{uid}: walk {minutes} min", log=True)
         landing.enqueue({"source": "iphone", "user_id": uid, "kind": "walk", "t": iso_utc(at),
                          "released_at": iso_utc(utcnow()), "payload": walk})
         note = "" if s is None else " Your real walk is shown over the replayed day; its effect on replayed glucose isn't graded."
-        c = cards.card("walk_summary", utcnow(), "Nice walk",
+        when = clock.replay_to_wall(clock.now()) if s is not None and clock.now() is not None else utcnow()
+        c = cards.card("walk_summary", when, "Nice walk",
                        f"{minutes} minutes, {steps:,} steps, {intensity} pace. Modeled effect: about "
                        f"{walk['forecast_peak_drop_mg_dl']:.0f} mg/dL lower peak ({walk['effect_source']}).{note}",
                        "happy", attachments={"walk": walk})

@@ -1,0 +1,1342 @@
+{
+    "entries": [
+        {
+            "user_id": "p_001",
+            "display_name": "Participant 1",
+            "mood": "calm",
+            "data_through": "2026-10-03T22:43:27-04:00",
+            "sparkline": [
+                {
+                    "t": "2026-10-03T19:48:28-04:00",
+                    "glucose_mg_dl": 109.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:03:27-04:00",
+                    "glucose_mg_dl": 108.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:18:28-04:00",
+                    "glucose_mg_dl": 113.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:33:27-04:00",
+                    "glucose_mg_dl": 110.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:48:28-04:00",
+                    "glucose_mg_dl": 112.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:03:28-04:00",
+                    "glucose_mg_dl": 112.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:18:27-04:00",
+                    "glucose_mg_dl": 114.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:33:27-04:00",
+                    "glucose_mg_dl": 114.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:48:27-04:00",
+                    "glucose_mg_dl": 111.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:03:27-04:00",
+                    "glucose_mg_dl": 111.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:18:27-04:00",
+                    "glucose_mg_dl": 111.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:33:28-04:00",
+                    "glucose_mg_dl": 110.0,
+                    "kind": "confirmed"
+                }
+            ],
+            "grades": 33,
+            "gummi_mae_mg_dl": 9.6,
+            "cgm_only_mae_mg_dl": 9.7,
+            "last_value_mae_mg_dl": 11.0,
+            "last_grade": {
+                "grade_id": "g_001-now_3655",
+                "graded_at": "2026-10-03T23:08:58-04:00",
+                "prediction_id": "pr_001-now_3655",
+                "kind": "nowcast",
+                "points": 12,
+                "gummi_mae_mg_dl": 6.2,
+                "cgm_only_mae_mg_dl": 3.0,
+                "last_value_mae_mg_dl": 1.4,
+                "gummi_peak_error_mg_dl": 5.5,
+                "within_band_pct": 83.3,
+                "walk_effect_graded": true,
+                "gummi_beats_cgm_only": false,
+                "gummi_beats_last_value": false,
+                "message": "Gummi was within 7 mg/dL. CGM-only was within 3, last value within 2."
+            }
+        },
+        {
+            "user_id": "p_002",
+            "display_name": "Participant 2",
+            "mood": "calm",
+            "data_through": "2026-10-03T22:43:28-04:00",
+            "sparkline": [
+                {
+                    "t": "2026-10-03T19:48:28-04:00",
+                    "glucose_mg_dl": 116.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:03:28-04:00",
+                    "glucose_mg_dl": 112.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:18:28-04:00",
+                    "glucose_mg_dl": 109.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:33:28-04:00",
+                    "glucose_mg_dl": 99.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:48:28-04:00",
+                    "glucose_mg_dl": 94.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:03:28-04:00",
+                    "glucose_mg_dl": 95.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:18:28-04:00",
+                    "glucose_mg_dl": 93.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:33:28-04:00",
+                    "glucose_mg_dl": 106.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:48:28-04:00",
+                    "glucose_mg_dl": 124.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:03:28-04:00",
+                    "glucose_mg_dl": 132.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:18:28-04:00",
+                    "glucose_mg_dl": 133.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:33:28-04:00",
+                    "glucose_mg_dl": 135.0,
+                    "kind": "confirmed"
+                }
+            ],
+            "grades": 35,
+            "gummi_mae_mg_dl": 11.7,
+            "cgm_only_mae_mg_dl": 11.3,
+            "last_value_mae_mg_dl": 15.1,
+            "last_grade": {
+                "grade_id": "g_002-now_3668",
+                "graded_at": "2026-10-03T23:14:00-04:00",
+                "prediction_id": "pr_002-now_3668",
+                "kind": "nowcast",
+                "points": 12,
+                "gummi_mae_mg_dl": 13.4,
+                "cgm_only_mae_mg_dl": 18.2,
+                "last_value_mae_mg_dl": 24.9,
+                "gummi_peak_error_mg_dl": 21.7,
+                "within_band_pct": 91.7,
+                "walk_effect_graded": true,
+                "gummi_beats_cgm_only": true,
+                "gummi_beats_last_value": true,
+                "message": "Gummi was within 14 mg/dL. CGM-only was within 19, last value within 25."
+            }
+        },
+        {
+            "user_id": "p_003",
+            "display_name": "Participant 3",
+            "mood": "calm",
+            "data_through": "2026-10-03T22:46:34-04:00",
+            "sparkline": [
+                {
+                    "t": "2026-10-03T19:51:34-04:00",
+                    "glucose_mg_dl": 122.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:06:34-04:00",
+                    "glucose_mg_dl": 114.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:21:34-04:00",
+                    "glucose_mg_dl": 106.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:36:36-04:00",
+                    "glucose_mg_dl": 108.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:51:36-04:00",
+                    "glucose_mg_dl": 108.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:06:36-04:00",
+                    "glucose_mg_dl": 105.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:21:34-04:00",
+                    "glucose_mg_dl": 96.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:36:36-04:00",
+                    "glucose_mg_dl": 96.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:51:34-04:00",
+                    "glucose_mg_dl": 96.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:06:34-04:00",
+                    "glucose_mg_dl": 96.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:21:34-04:00",
+                    "glucose_mg_dl": 101.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:36:34-04:00",
+                    "glucose_mg_dl": 103.0,
+                    "kind": "confirmed"
+                }
+            ],
+            "grades": 34,
+            "gummi_mae_mg_dl": 6.7,
+            "cgm_only_mae_mg_dl": 7.1,
+            "last_value_mae_mg_dl": 7.1,
+            "last_grade": {
+                "grade_id": "g_003-now_3684",
+                "graded_at": "2026-10-03T23:17:02-04:00",
+                "prediction_id": "pr_003-now_3684",
+                "kind": "nowcast",
+                "points": 12,
+                "gummi_mae_mg_dl": 9.5,
+                "cgm_only_mae_mg_dl": 3.0,
+                "last_value_mae_mg_dl": 2.0,
+                "gummi_peak_error_mg_dl": 14.3,
+                "within_band_pct": 100.0,
+                "walk_effect_graded": true,
+                "gummi_beats_cgm_only": false,
+                "gummi_beats_last_value": false,
+                "message": "Gummi was within 10 mg/dL. CGM-only was within 4, last value within 2."
+            }
+        },
+        {
+            "user_id": "p_004",
+            "display_name": "Participant 4",
+            "mood": "calm",
+            "data_through": "2026-10-03T22:46:10-04:00",
+            "sparkline": [
+                {
+                    "t": "2026-10-03T19:51:10-04:00",
+                    "glucose_mg_dl": 113.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:06:10-04:00",
+                    "glucose_mg_dl": 120.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:21:10-04:00",
+                    "glucose_mg_dl": 137.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:36:10-04:00",
+                    "glucose_mg_dl": 152.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:51:10-04:00",
+                    "glucose_mg_dl": 148.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:06:10-04:00",
+                    "glucose_mg_dl": 133.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:21:10-04:00",
+                    "glucose_mg_dl": 137.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:36:09-04:00",
+                    "glucose_mg_dl": 143.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:51:10-04:00",
+                    "glucose_mg_dl": 123.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:06:10-04:00",
+                    "glucose_mg_dl": 105.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:21:10-04:00",
+                    "glucose_mg_dl": 115.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:36:10-04:00",
+                    "glucose_mg_dl": 133.0,
+                    "kind": "confirmed"
+                }
+            ],
+            "grades": 32,
+            "gummi_mae_mg_dl": 13.5,
+            "cgm_only_mae_mg_dl": 13.2,
+            "last_value_mae_mg_dl": 9.5,
+            "last_grade": {
+                "grade_id": "g_004-018",
+                "graded_at": "2026-10-03T23:31:12-04:00",
+                "prediction_id": "pr_004-018",
+                "kind": "meal",
+                "points": 24,
+                "gummi_mae_mg_dl": 21.5,
+                "cgm_only_mae_mg_dl": 18.5,
+                "last_value_mae_mg_dl": 18.1,
+                "gummi_peak_error_mg_dl": 37.2,
+                "within_band_pct": 70.8,
+                "walk_effect_graded": true,
+                "gummi_beats_cgm_only": false,
+                "gummi_beats_last_value": false,
+                "message": "I predicted 115 for salmon, spinach. It was 152. CGM-only said 119, last value said 119."
+            }
+        },
+        {
+            "user_id": "p_005",
+            "display_name": "Participant 5",
+            "mood": "calm",
+            "data_through": "2026-10-03T22:44:51-04:00",
+            "sparkline": [
+                {
+                    "t": "2026-10-03T19:49:49-04:00",
+                    "glucose_mg_dl": 106.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:04:49-04:00",
+                    "glucose_mg_dl": 112.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:19:51-04:00",
+                    "glucose_mg_dl": 134.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:34:49-04:00",
+                    "glucose_mg_dl": 121.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:49:49-04:00",
+                    "glucose_mg_dl": 108.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:04:49-04:00",
+                    "glucose_mg_dl": 113.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:19:51-04:00",
+                    "glucose_mg_dl": 109.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:34:49-04:00",
+                    "glucose_mg_dl": 105.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:49:49-04:00",
+                    "glucose_mg_dl": 110.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:04:49-04:00",
+                    "glucose_mg_dl": 110.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:19:49-04:00",
+                    "glucose_mg_dl": 106.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:34:49-04:00",
+                    "glucose_mg_dl": 106.0,
+                    "kind": "confirmed"
+                }
+            ],
+            "grades": 35,
+            "gummi_mae_mg_dl": 6.0,
+            "cgm_only_mae_mg_dl": 6.9,
+            "last_value_mae_mg_dl": 7.8,
+            "last_grade": {
+                "grade_id": "g_005-now_3715",
+                "graded_at": "2026-10-03T23:30:11-04:00",
+                "prediction_id": "pr_005-now_3715",
+                "kind": "nowcast",
+                "points": 12,
+                "gummi_mae_mg_dl": 7.3,
+                "cgm_only_mae_mg_dl": 3.1,
+                "last_value_mae_mg_dl": 2.9,
+                "gummi_peak_error_mg_dl": 7.6,
+                "within_band_pct": 75.0,
+                "walk_effect_graded": true,
+                "gummi_beats_cgm_only": false,
+                "gummi_beats_last_value": false,
+                "message": "Gummi was within 8 mg/dL. CGM-only was within 4, last value within 3."
+            }
+        },
+        {
+            "user_id": "p_006",
+            "display_name": "Participant 6",
+            "mood": "calm",
+            "data_through": "2026-10-03T22:43:03-04:00",
+            "sparkline": [
+                {
+                    "t": "2026-10-03T19:48:03-04:00",
+                    "glucose_mg_dl": 100.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:03:01-04:00",
+                    "glucose_mg_dl": 98.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:18:03-04:00",
+                    "glucose_mg_dl": 98.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:33:01-04:00",
+                    "glucose_mg_dl": 99.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:48:03-04:00",
+                    "glucose_mg_dl": 95.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:03:03-04:00",
+                    "glucose_mg_dl": 96.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:18:03-04:00",
+                    "glucose_mg_dl": 96.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:33:03-04:00",
+                    "glucose_mg_dl": 96.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:48:03-04:00",
+                    "glucose_mg_dl": 96.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:03:03-04:00",
+                    "glucose_mg_dl": 96.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:18:03-04:00",
+                    "glucose_mg_dl": 97.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:33:03-04:00",
+                    "glucose_mg_dl": 92.0,
+                    "kind": "confirmed"
+                }
+            ],
+            "grades": 33,
+            "gummi_mae_mg_dl": 12.2,
+            "cgm_only_mae_mg_dl": 11.5,
+            "last_value_mae_mg_dl": 12.9,
+            "last_grade": {
+                "grade_id": "g_006-now_3737",
+                "graded_at": "2026-10-03T23:28:08-04:00",
+                "prediction_id": "pr_006-now_3737",
+                "kind": "nowcast",
+                "points": 12,
+                "gummi_mae_mg_dl": 10.2,
+                "cgm_only_mae_mg_dl": 5.2,
+                "last_value_mae_mg_dl": 1.3,
+                "gummi_peak_error_mg_dl": 13.1,
+                "within_band_pct": 91.7,
+                "walk_effect_graded": true,
+                "gummi_beats_cgm_only": false,
+                "gummi_beats_last_value": false,
+                "message": "Gummi was within 11 mg/dL. CGM-only was within 6, last value within 2."
+            }
+        },
+        {
+            "user_id": "p_007",
+            "display_name": "Participant 7",
+            "mood": "low",
+            "data_through": "2026-10-03T22:47:03-04:00",
+            "sparkline": [
+                {
+                    "t": "2026-10-03T19:52:04-04:00",
+                    "glucose_mg_dl": 95.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:07:04-04:00",
+                    "glucose_mg_dl": 96.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:22:03-04:00",
+                    "glucose_mg_dl": 94.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:37:03-04:00",
+                    "glucose_mg_dl": 94.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:52:03-04:00",
+                    "glucose_mg_dl": 91.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:07:04-04:00",
+                    "glucose_mg_dl": 74.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:22:04-04:00",
+                    "glucose_mg_dl": 75.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:37:04-04:00",
+                    "glucose_mg_dl": 72.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:52:04-04:00",
+                    "glucose_mg_dl": 72.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:07:03-04:00",
+                    "glucose_mg_dl": 72.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:22:03-04:00",
+                    "glucose_mg_dl": 70.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:37:04-04:00",
+                    "glucose_mg_dl": 67.0,
+                    "kind": "confirmed"
+                }
+            ],
+            "grades": 33,
+            "gummi_mae_mg_dl": 8.2,
+            "cgm_only_mae_mg_dl": 10.7,
+            "last_value_mae_mg_dl": 10.2,
+            "last_grade": {
+                "grade_id": "g_007-now_3759",
+                "graded_at": "2026-10-03T23:32:13-04:00",
+                "prediction_id": "pr_007-now_3759",
+                "kind": "nowcast",
+                "points": 12,
+                "gummi_mae_mg_dl": 5.3,
+                "cgm_only_mae_mg_dl": 8.0,
+                "last_value_mae_mg_dl": 1.8,
+                "gummi_peak_error_mg_dl": 9.8,
+                "within_band_pct": 83.3,
+                "walk_effect_graded": true,
+                "gummi_beats_cgm_only": true,
+                "gummi_beats_last_value": false,
+                "message": "Gummi was within 6 mg/dL. CGM-only was within 8, last value within 2."
+            }
+        },
+        {
+            "user_id": "p_008",
+            "display_name": "Participant 8",
+            "mood": "calm",
+            "data_through": "2026-10-03T22:44:39-04:00",
+            "sparkline": [
+                {
+                    "t": "2026-10-03T19:49:39-04:00",
+                    "glucose_mg_dl": 140.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:04:39-04:00",
+                    "glucose_mg_dl": 114.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:19:40-04:00",
+                    "glucose_mg_dl": 113.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:34:39-04:00",
+                    "glucose_mg_dl": 133.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:49:40-04:00",
+                    "glucose_mg_dl": 125.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:04:39-04:00",
+                    "glucose_mg_dl": 123.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:19:40-04:00",
+                    "glucose_mg_dl": 120.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:34:39-04:00",
+                    "glucose_mg_dl": 124.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:49:40-04:00",
+                    "glucose_mg_dl": 121.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:04:39-04:00",
+                    "glucose_mg_dl": 120.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:19:39-04:00",
+                    "glucose_mg_dl": 120.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:34:39-04:00",
+                    "glucose_mg_dl": 123.0,
+                    "kind": "confirmed"
+                }
+            ],
+            "grades": 33,
+            "gummi_mae_mg_dl": 12.8,
+            "cgm_only_mae_mg_dl": 14.8,
+            "last_value_mae_mg_dl": 13.3,
+            "last_grade": {
+                "grade_id": "g_008-now_3775",
+                "graded_at": "2026-10-03T23:35:15-04:00",
+                "prediction_id": "pr_008-now_3775",
+                "kind": "nowcast",
+                "points": 12,
+                "gummi_mae_mg_dl": 5.0,
+                "cgm_only_mae_mg_dl": 1.6,
+                "last_value_mae_mg_dl": 3.0,
+                "gummi_peak_error_mg_dl": 6.0,
+                "within_band_pct": 75.0,
+                "walk_effect_graded": true,
+                "gummi_beats_cgm_only": false,
+                "gummi_beats_last_value": false,
+                "message": "Gummi was within 6 mg/dL. CGM-only was within 2, last value within 3."
+            }
+        },
+        {
+            "user_id": "p_009",
+            "display_name": "Participant 9",
+            "mood": "calm",
+            "data_through": "2026-10-03T22:46:43-04:00",
+            "sparkline": [
+                {
+                    "t": "2026-10-03T19:51:43-04:00",
+                    "glucose_mg_dl": 172.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:06:43-04:00",
+                    "glucose_mg_dl": 190.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:21:43-04:00",
+                    "glucose_mg_dl": 191.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:36:43-04:00",
+                    "glucose_mg_dl": 176.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:51:43-04:00",
+                    "glucose_mg_dl": 170.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:06:45-04:00",
+                    "glucose_mg_dl": 173.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:21:43-04:00",
+                    "glucose_mg_dl": 163.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:36:45-04:00",
+                    "glucose_mg_dl": 162.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:51:43-04:00",
+                    "glucose_mg_dl": 165.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:06:45-04:00",
+                    "glucose_mg_dl": 162.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:21:43-04:00",
+                    "glucose_mg_dl": 129.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:36:43-04:00",
+                    "glucose_mg_dl": 96.0,
+                    "kind": "confirmed"
+                }
+            ],
+            "grades": 33,
+            "gummi_mae_mg_dl": 14.3,
+            "cgm_only_mae_mg_dl": 16.4,
+            "last_value_mae_mg_dl": 19.8,
+            "last_grade": {
+                "grade_id": "g_009-now_3785",
+                "graded_at": "2026-10-03T23:42:18-04:00",
+                "prediction_id": "pr_009-now_3785",
+                "kind": "nowcast",
+                "points": 12,
+                "gummi_mae_mg_dl": 19.7,
+                "cgm_only_mae_mg_dl": 19.6,
+                "last_value_mae_mg_dl": 26.7,
+                "gummi_peak_error_mg_dl": 4.3,
+                "within_band_pct": 41.7,
+                "walk_effect_graded": true,
+                "gummi_beats_cgm_only": false,
+                "gummi_beats_last_value": true,
+                "message": "Gummi was within 20 mg/dL. CGM-only was within 20, last value within 27."
+            }
+        },
+        {
+            "user_id": "p_010",
+            "display_name": "Participant 10",
+            "mood": "calm",
+            "data_through": "2026-10-03T22:44:07-04:00",
+            "sparkline": [
+                {
+                    "t": "2026-10-03T19:49:07-04:00",
+                    "glucose_mg_dl": 108.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:04:07-04:00",
+                    "glucose_mg_dl": 90.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:19:07-04:00",
+                    "glucose_mg_dl": 90.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:34:07-04:00",
+                    "glucose_mg_dl": 94.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:49:07-04:00",
+                    "glucose_mg_dl": 82.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:04:07-04:00",
+                    "glucose_mg_dl": 89.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:19:07-04:00",
+                    "glucose_mg_dl": 97.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:34:07-04:00",
+                    "glucose_mg_dl": 99.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:49:07-04:00",
+                    "glucose_mg_dl": 101.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:04:07-04:00",
+                    "glucose_mg_dl": 103.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:19:07-04:00",
+                    "glucose_mg_dl": 104.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:34:07-04:00",
+                    "glucose_mg_dl": 104.0,
+                    "kind": "confirmed"
+                }
+            ],
+            "grades": 38,
+            "gummi_mae_mg_dl": 19.6,
+            "cgm_only_mae_mg_dl": 20.4,
+            "last_value_mae_mg_dl": 27.4,
+            "last_grade": {
+                "grade_id": "g_010-now_3803",
+                "graded_at": "2026-10-03T23:44:20-04:00",
+                "prediction_id": "pr_010-now_3803",
+                "kind": "nowcast",
+                "points": 12,
+                "gummi_mae_mg_dl": 8.9,
+                "cgm_only_mae_mg_dl": 3.4,
+                "last_value_mae_mg_dl": 3.6,
+                "gummi_peak_error_mg_dl": 4.6,
+                "within_band_pct": 50.0,
+                "walk_effect_graded": true,
+                "gummi_beats_cgm_only": false,
+                "gummi_beats_last_value": false,
+                "message": "Gummi was within 9 mg/dL. CGM-only was within 4, last value within 4."
+            }
+        },
+        {
+            "user_id": "p_011",
+            "display_name": "Participant 11",
+            "mood": "high",
+            "data_through": "2026-10-03T22:45:58-04:00",
+            "sparkline": [
+                {
+                    "t": "2026-10-03T19:50:58-04:00",
+                    "glucose_mg_dl": 129.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:05:58-04:00",
+                    "glucose_mg_dl": 118.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:20:58-04:00",
+                    "glucose_mg_dl": 111.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:35:58-04:00",
+                    "glucose_mg_dl": 130.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:50:58-04:00",
+                    "glucose_mg_dl": 154.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:05:58-04:00",
+                    "glucose_mg_dl": 169.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:20:58-04:00",
+                    "glucose_mg_dl": 187.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:35:58-04:00",
+                    "glucose_mg_dl": 178.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:50:58-04:00",
+                    "glucose_mg_dl": 170.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:05:58-04:00",
+                    "glucose_mg_dl": 159.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:20:58-04:00",
+                    "glucose_mg_dl": 151.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:35:58-04:00",
+                    "glucose_mg_dl": 154.0,
+                    "kind": "confirmed"
+                }
+            ],
+            "grades": 34,
+            "gummi_mae_mg_dl": 11.1,
+            "cgm_only_mae_mg_dl": 9.8,
+            "last_value_mae_mg_dl": 11.1,
+            "last_grade": {
+                "grade_id": "g_011-now_3819",
+                "graded_at": "2026-10-03T23:46:21-04:00",
+                "prediction_id": "pr_011-now_3819",
+                "kind": "nowcast",
+                "points": 12,
+                "gummi_mae_mg_dl": 5.7,
+                "cgm_only_mae_mg_dl": 5.8,
+                "last_value_mae_mg_dl": 15.2,
+                "gummi_peak_error_mg_dl": 1.1,
+                "within_band_pct": 83.3,
+                "walk_effect_graded": true,
+                "gummi_beats_cgm_only": true,
+                "gummi_beats_last_value": true,
+                "message": "Gummi was within 6 mg/dL. CGM-only was within 6, last value within 16."
+            }
+        },
+        {
+            "user_id": "p_012",
+            "display_name": "Participant 12",
+            "mood": "calm",
+            "data_through": "2026-10-03T22:47:03-04:00",
+            "sparkline": [
+                {
+                    "t": "2026-10-03T19:52:01-04:00",
+                    "glucose_mg_dl": 129.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:07:03-04:00",
+                    "glucose_mg_dl": 131.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:22:03-04:00",
+                    "glucose_mg_dl": 143.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:37:03-04:00",
+                    "glucose_mg_dl": 160.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:52:01-04:00",
+                    "glucose_mg_dl": 160.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:07:03-04:00",
+                    "glucose_mg_dl": 144.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:22:01-04:00",
+                    "glucose_mg_dl": 104.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:37:01-04:00",
+                    "glucose_mg_dl": 81.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:52:01-04:00",
+                    "glucose_mg_dl": 81.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:07:03-04:00",
+                    "glucose_mg_dl": 109.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:22:03-04:00",
+                    "glucose_mg_dl": 121.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:37:03-04:00",
+                    "glucose_mg_dl": 115.0,
+                    "kind": "confirmed"
+                }
+            ],
+            "grades": 38,
+            "gummi_mae_mg_dl": 11.0,
+            "cgm_only_mae_mg_dl": 7.8,
+            "last_value_mae_mg_dl": 10.9,
+            "last_grade": {
+                "grade_id": "g_012-now_3583",
+                "graded_at": "2026-10-03T22:52:46-04:00",
+                "prediction_id": "pr_012-now_3583",
+                "kind": "nowcast",
+                "points": 12,
+                "gummi_mae_mg_dl": 36.2,
+                "cgm_only_mae_mg_dl": 36.7,
+                "last_value_mae_mg_dl": 51.4,
+                "gummi_peak_error_mg_dl": 0.5,
+                "within_band_pct": 25.0,
+                "walk_effect_graded": true,
+                "gummi_beats_cgm_only": true,
+                "gummi_beats_last_value": true,
+                "message": "Gummi was within 37 mg/dL. CGM-only was within 37, last value within 52."
+            }
+        },
+        {
+            "user_id": "p_013",
+            "display_name": "Participant 13",
+            "mood": "high",
+            "data_through": "2026-10-03T22:46:43-04:00",
+            "sparkline": [
+                {
+                    "t": "2026-10-03T19:51:43-04:00",
+                    "glucose_mg_dl": 144.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:06:43-04:00",
+                    "glucose_mg_dl": 141.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:21:43-04:00",
+                    "glucose_mg_dl": 135.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:36:43-04:00",
+                    "glucose_mg_dl": 133.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:51:43-04:00",
+                    "glucose_mg_dl": 127.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:06:43-04:00",
+                    "glucose_mg_dl": 128.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:21:43-04:00",
+                    "glucose_mg_dl": 131.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:36:43-04:00",
+                    "glucose_mg_dl": 125.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:51:43-04:00",
+                    "glucose_mg_dl": 141.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:06:43-04:00",
+                    "glucose_mg_dl": 154.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:21:43-04:00",
+                    "glucose_mg_dl": 164.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:36:43-04:00",
+                    "glucose_mg_dl": 176.0,
+                    "kind": "confirmed"
+                }
+            ],
+            "grades": 35,
+            "gummi_mae_mg_dl": 12.8,
+            "cgm_only_mae_mg_dl": 14.5,
+            "last_value_mae_mg_dl": 18.3,
+            "last_grade": {
+                "grade_id": "g_013-now_3597",
+                "graded_at": "2026-10-03T22:56:48-04:00",
+                "prediction_id": "pr_013-now_3597",
+                "kind": "nowcast",
+                "points": 12,
+                "gummi_mae_mg_dl": 10.6,
+                "cgm_only_mae_mg_dl": 4.8,
+                "last_value_mae_mg_dl": 4.8,
+                "gummi_peak_error_mg_dl": 9.3,
+                "within_band_pct": 83.3,
+                "walk_effect_graded": true,
+                "gummi_beats_cgm_only": false,
+                "gummi_beats_last_value": false,
+                "message": "Gummi was within 11 mg/dL. CGM-only was within 5, last value within 5."
+            }
+        },
+        {
+            "user_id": "p_014",
+            "display_name": "Participant 14",
+            "mood": "high",
+            "data_through": "2026-10-03T22:43:00-04:00",
+            "sparkline": [
+                {
+                    "t": "2026-10-03T19:48:01-04:00",
+                    "glucose_mg_dl": 111.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:03:00-04:00",
+                    "glucose_mg_dl": 121.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:18:01-04:00",
+                    "glucose_mg_dl": 114.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:33:01-04:00",
+                    "glucose_mg_dl": 128.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:48:00-04:00",
+                    "glucose_mg_dl": 140.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:03:00-04:00",
+                    "glucose_mg_dl": 155.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:18:00-04:00",
+                    "glucose_mg_dl": 156.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:33:01-04:00",
+                    "glucose_mg_dl": 150.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:48:01-04:00",
+                    "glucose_mg_dl": 142.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:03:01-04:00",
+                    "glucose_mg_dl": 127.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:18:00-04:00",
+                    "glucose_mg_dl": 122.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:33:00-04:00",
+                    "glucose_mg_dl": 149.0,
+                    "kind": "confirmed"
+                }
+            ],
+            "grades": 33,
+            "gummi_mae_mg_dl": 12.0,
+            "cgm_only_mae_mg_dl": 9.7,
+            "last_value_mae_mg_dl": 10.2,
+            "last_grade": {
+                "grade_id": "g_014-now_3628",
+                "graded_at": "2026-10-03T23:03:51-04:00",
+                "prediction_id": "pr_014-now_3628",
+                "kind": "nowcast",
+                "points": 12,
+                "gummi_mae_mg_dl": 5.4,
+                "cgm_only_mae_mg_dl": 2.2,
+                "last_value_mae_mg_dl": 9.0,
+                "gummi_peak_error_mg_dl": 1.9,
+                "within_band_pct": 100.0,
+                "walk_effect_graded": true,
+                "gummi_beats_cgm_only": false,
+                "gummi_beats_last_value": true,
+                "message": "Gummi was within 6 mg/dL. CGM-only was within 3, last value within 9."
+            }
+        },
+        {
+            "user_id": "p_016",
+            "display_name": "Participant 16",
+            "mood": "calm",
+            "data_through": "2026-10-03T22:43:13-04:00",
+            "sparkline": [
+                {
+                    "t": "2026-10-03T19:48:10-04:00",
+                    "glucose_mg_dl": 82.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:03:12-04:00",
+                    "glucose_mg_dl": 93.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:18:12-04:00",
+                    "glucose_mg_dl": 105.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:33:12-04:00",
+                    "glucose_mg_dl": 96.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T20:48:12-04:00",
+                    "glucose_mg_dl": 95.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:03:12-04:00",
+                    "glucose_mg_dl": 96.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:18:12-04:00",
+                    "glucose_mg_dl": 105.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:33:13-04:00",
+                    "glucose_mg_dl": 106.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T21:48:13-04:00",
+                    "glucose_mg_dl": 107.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:03:13-04:00",
+                    "glucose_mg_dl": 97.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:18:13-04:00",
+                    "glucose_mg_dl": 99.0,
+                    "kind": "confirmed"
+                },
+                {
+                    "t": "2026-10-03T22:33:13-04:00",
+                    "glucose_mg_dl": 102.0,
+                    "kind": "confirmed"
+                }
+            ],
+            "grades": 32,
+            "gummi_mae_mg_dl": 13.9,
+            "cgm_only_mae_mg_dl": 13.0,
+            "last_value_mae_mg_dl": 19.1,
+            "last_grade": {
+                "grade_id": "g_016-now_3644",
+                "graded_at": "2026-10-03T23:03:51-04:00",
+                "prediction_id": "pr_016-now_3644",
+                "kind": "nowcast",
+                "points": 12,
+                "gummi_mae_mg_dl": 3.5,
+                "cgm_only_mae_mg_dl": 3.9,
+                "last_value_mae_mg_dl": 8.2,
+                "gummi_peak_error_mg_dl": 1.8,
+                "within_band_pct": 100.0,
+                "walk_effect_graded": true,
+                "gummi_beats_cgm_only": true,
+                "gummi_beats_last_value": true,
+                "message": "Gummi was within 4 mg/dL. CGM-only was within 4, last value within 9."
+            }
+        }
+    ],
+    "fleet_gummi_mae_mg_dl": 11.7,
+    "fleet_cgm_only_mae_mg_dl": 11.8,
+    "fleet_last_value_mae_mg_dl": 13.7,
+    "stream": {
+        "running": true,
+        "paused": false,
+        "speed": 60.0,
+        "delay_minutes": 60,
+        "participants": 15,
+        "replay_clock": "day6T23:47",
+        "replay_anchor": {
+            "replay_time": "2026-10-03T07:00:00-04:00",
+            "wall_time": "2026-10-03T21:50:36-04:00"
+        },
+        "events_released": 3073,
+        "events_per_second": 3.07,
+        "pipeline_lag_seconds": 14.4
+    }
+}

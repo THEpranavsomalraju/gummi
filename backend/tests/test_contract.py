@@ -10,6 +10,7 @@ from pathlib import Path
 
 CACHE = Path(__file__).resolve().parents[1] / ".cache"
 os.environ.setdefault("GUMMI_LANDING_ENABLED", "false")
+os.environ.setdefault("GUMMI_PERSIST", "false")
 os.environ.setdefault("GUMMI_REPLAY_SOURCE", "cache")
 os.environ.setdefault("GUMMI_MODEL_DIR", str(CACHE / "gummi_model_v1"))
 
@@ -69,7 +70,7 @@ def test_follow_and_replay_day(client):
     assert client.post("/api/v1/follow", json={"user_id": "p_015"}, headers=H).status_code == 404   # D-37
 
     st = M.StreamStatus.model_validate(ok(client.post("/api/v1/stream/start", json={"speed": 60})))
-    assert st.running and st.replay_clock == "day6T05:00" and st.participants == 15     # D-62 default start
+    assert st.running and st.replay_clock == "day4T05:00" and st.participants == 15     # D-15 default start
     s = M.State.model_validate(ok(client.get("/api/v1/state", headers=H)))
     assert s.replay_now and s.upcoming_due, "acting as p_012 with breakfast due within 6 h"
     due = s.upcoming_due[0]
@@ -128,7 +129,7 @@ def test_walk_overlay(client):
     w = M.WalkSummary.model_validate(ok(client.get("/api/v1/walks/latest", headers=H)))
     assert (w.minutes, w.steps, w.cadence_spm) == (12, 1300, 108)
     feed = ok(client.get("/api/v1/feed", headers=H))["cards"]
-    assert feed[0]["type"] == "walk_summary" and "replayed day" in feed[0]["body"]
+    assert any(c["type"] == "walk_summary" and "replayed day" in c["body"] for c in feed)
 
 
 def test_teammate_meal_lifecycle(client):
@@ -177,3 +178,61 @@ def test_profile_engine_errors(client):
     r = client.put("/api/v1/health")
     assert r.status_code == 405 and r.json()["error"]["code"] == "method_not_allowed"
     assert ok(client.post("/api/v1/follow", json={"user_id": None}, headers=H))["acting_as"] is None
+
+
+def test_rehydration_catch_up(client):
+    """A restart rebuilds the session silently: same predictions and grades, nothing re-sent to landing or agents."""
+    from gummi_api.agent import events
+    from gummi_api.state.hot_store import store
+    from gummi_api.stream.landing_writer import landing
+    from gummi_api.stream.producer import parse_start
+    store.get("u_rehydrate").following = "p_012"
+    ok(client.post("/api/v1/stream/stop"))                  # no live ticks while we measure
+    start = parse_start("day6T05:00")
+    queued_before, jobs_before = len(landing.queue), events._jobs.qsize()
+    engine.catch_up(start, start + 240)
+    s = engine.subjects["p_012"]
+    assert s.grades and s.predictions and s.meals, "4 replay hours rebuilt"
+    assert len(landing.queue) <= queued_before and events._jobs.qsize() <= jobs_before, "silent: nothing new sent"
+    assert any(c["type"] == "meal_due" for c in store.get("u_rehydrate").cards), "follower cards rebuilt as templates"
+    assert not engine.silent and landing.enabled == (os.environ.get("GUMMI_LANDING_ENABLED") != "false")
+
+
+def test_food_log(client):
+    """Study-log meals (graded) and the teammate's own entries (simulated, never graded) in one log."""
+    h = {"X-User-Id": "u_food"}
+    ok(client.post("/api/v1/follow", json={"user_id": "p_012"}, headers=h))
+    ok(client.post("/api/v1/stream/start", json={"speed": 60, "start_at": "day6T05:30"}))
+    advance(240)
+    m = M.Meal.model_validate(ok(client.post("/api/v1/meals", headers=h, json={"items": [{"name": "banana"}], "source": "manual"})))
+    log = M.FoodLog.model_validate(ok(client.get("/api/v1/foodlog", headers=h)))
+    origins = {e.origin for e in log.entries}
+    assert {"study_log", "you"} <= origins
+    mine = next(e for e in log.entries if e.meal.meal_id == m.meal_id)
+    assert not mine.graded and mine.prediction and mine.prediction.predicted_peak_mg_dl > 0 and mine.grade is None
+    assert any(e.graded and e.grade for e in log.entries if e.origin == "study_log"), "a study meal graded after 3 h"
+    ok(client.post("/api/v1/stream/stop"))
+
+
+def test_day_summary_and_stale(client):
+    h = {"X-User-Id": "u_day"}
+    ok(client.post("/api/v1/follow", json={"user_id": "p_012"}, headers=h))
+    ok(client.post("/api/v1/stream/start", json={"speed": 60, "start_at": "day6T05:30"}))
+    advance(300)
+    d = M.DaySummary.model_validate(ok(client.get("/api/v1/day", headers=h)))
+    assert d.glucose and d.hourly and d.meals.count >= 1 and d.predictions.graded >= 1 and d.highlights
+    s = M.State.model_validate(ok(client.get("/api/v1/state", headers=h)))
+    assert s.data_status == "live" and s.gummi_view is not None
+    # run past the end of p_012's data: the estimate must stop, not extrapolate for hours
+    from gummi_api.stream.producer import parse_start
+    from gummi_api.state.hot_store import store
+    last = engine.subjects["p_012"].cgm_off[-1]
+    from gummi_api.stream.producer import clock
+    target = last + 60 + 300
+    engine.catch_up(parse_start("day6T05:30"), target)
+    clock.anchor_replay, clock.paused = target, True
+    s = M.State.model_validate(ok(client.get("/api/v1/state", headers=h)))
+    assert s.data_status == "stale" and s.gummi_view is None and s.estimate == [] and s.forecast == []
+    r = client.post("/api/v1/simulate", headers=h, json={"items": [{"name": "cookie"}]})
+    assert r.status_code == 409 and r.json()["error"]["code"] == "stale_data"
+    ok(client.post("/api/v1/stream/stop"))

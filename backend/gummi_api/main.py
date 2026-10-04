@@ -14,7 +14,7 @@ from .errors import ApiError
 from .engine.engine import engine
 from .engine.gold import gold
 from .live.broadcaster import broadcaster
-from .routes import chat, core, meals, stream
+from .routes import chat, core, day, meals, stream, system_map
 from .state.hot_store import store
 from .state.view import build_state
 from .stream.landing_writer import landing
@@ -28,11 +28,21 @@ async def engine_loop() -> None:
     has a chart before anyone presses start), then tick once per second and push State to every connected phone."""
     broadcaster.bind(asyncio.get_running_loop())
     await asyncio.to_thread(engine.load)
-    if engine.ready and clock.anchor_replay is None:
+    from .agent import events
+    from .agent.llm import warm
+    events.start_workers(2)
+    from .agent import reviewer
+    reviewer.start()
+    asyncio.get_running_loop().run_in_executor(None, warm)     # first chat turn skips connection setup
+    from .state import session
+    restored = engine.ready and await asyncio.to_thread(session.restore, engine)
+    if engine.ready and not restored and clock.anchor_replay is None:
         start_r = parse_start(config.DEFAULT_START)
         clock.anchor_replay, clock.anchor_wall = start_r, time.time()
         clock.start_day = int(start_r // 1440) + 1
         engine.start(start_r)
+        session.mark_start(start_r)
+    last_save = time.monotonic()
     last_push = 0.0
     seen: dict[str, int] = {}
     while True:
@@ -42,6 +52,13 @@ async def engine_loop() -> None:
         except Exception:  # noqa: BLE001
             logging.exception("engine tick failed")
         now = time.monotonic()
+        from . import activity
+        if broadcaster.users():
+            activity.viewer_seen()
+        elif clock.running and not clock.paused and activity.idle_seconds() > config.IDLE_PAUSE_MIN * 60:
+            clock.pause()                         # nobody watching: stop spending quota; stage/go or Resume restarts it
+            logging.info("replay paused after %d idle minutes", config.IDLE_PAUSE_MIN)
+            await asyncio.to_thread(session.save)
         for uid in broadcaster.users():
             pid = store.get(uid).following
             v = engine.subjects[pid].version if pid in engine.subjects else -1
@@ -54,11 +71,16 @@ async def engine_loop() -> None:
                     logging.exception("state push failed for %s", uid)
         if now - last_push >= 5:
             last_push = now
+        if now - last_save >= 60:                 # the replay clock keeps moving; checkpoint it every minute
+            last_save = now
+            await asyncio.to_thread(session.save)
 
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
-    tasks = [asyncio.create_task(landing.run()), asyncio.create_task(engine_loop()), asyncio.create_task(gold.run())]
+    from .dexcom import client as dexcom
+    tasks = [asyncio.create_task(landing.run()), asyncio.create_task(engine_loop()), asyncio.create_task(gold.run()),
+             asyncio.create_task(dexcom.run())]
     yield
     for t in tasks:
         t.cancel()
@@ -106,6 +128,13 @@ async def server_error(request: Request, exc: Exception):
 
 
 api = APIRouter(prefix="/api/v1")
-for r in (core.router, meals.router, chat.router, stream.router):
+for r in (core.router, meals.router, chat.router, stream.router, system_map.router, day.router):
     api.include_router(r)
 app.include_router(api)
+
+
+@app.get("/", include_in_schema=False)
+async def home():
+    """The App's home page is where the Databricks Apps proxy signs a browser in; land on the system map after that."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse("/api/v1/map")

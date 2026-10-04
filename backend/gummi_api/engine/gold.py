@@ -7,7 +7,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
-from .. import config
+from .. import activity, config
 from ..stream.producer import clock
 
 log = logging.getLogger("gummi.gold")
@@ -52,6 +52,11 @@ class Gold:
             self.pipeline_lag_seconds = round(max(0.0, (datetime.now(timezone.utc) - ts).total_seconds()), 1)
         self.refreshed_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
         self.last_error = None
+        r = self.rollup or {}
+        activity.hit("databricks.gold", detail=f"{int(r.get('grades') or 0)} grades: Gummi {r.get('gummi_mae_mg_dl')} / "
+                     f"CGM-only {r.get('cgm_only_mae_mg_dl')} / last value {r.get('last_value_mae_mg_dl')}" if r else "empty")
+        if self.pipeline_lag_seconds is not None:
+            activity.hit("databricks.pipeline", detail=f"lag {self.pipeline_lag_seconds:.0f} s")
 
     def summary(self, user_id: str) -> list[dict]:
         """get_gold_summary: the user's rows plus the out-of-sample ALL rollup."""
@@ -60,7 +65,8 @@ class Gold:
     async def run(self) -> None:
         first = True
         while True:
-            if first or clock.running:
+            from .. import activity
+            if first or (clock.running and activity.idle_seconds() < 120):
                 try:
                     await asyncio.to_thread(self.refresh)
                 except Exception as e:  # noqa: BLE001
