@@ -110,18 +110,23 @@ struct StoryCardView: View {
                 GradeBadge(grade: grade)
             }
             if style == .full, let curve = card.attachments?.curve, !curve.isEmpty {
-                MiniCurve(points: curve.map { ($0.t, $0.glucoseMgDl) }, dashed: false)
+                // Gummi's prediction dotted, the real curve drawing in over it.
+                let predicted = card.attachments?.grade.flatMap { model.prediction(for: $0.predictionId) }?.predictedCurve ?? []
+                RevealingCurves(predicted: predicted.map { ($0.t, $0.glucoseMgDl) },
+                                actual: curve.map { ($0.t, $0.glucoseMgDl) }, height: 70)
             }
         case .walkSummary:
             if let walk = card.attachments?.walk {
                 WalkLine(walk: walk)
             }
+        case .walkSuggested:
+            StartWalkButton(minutes: card.attachments?.alert?.action.minutes ?? 10)
         default:
             EmptyView()
         }
     }
 
-    /// Only actions whose screens exist: "Ask Gummi" opens chat. Walks arrive with the walk chunk.
+    /// "Ask Gummi" opens chat; Start walk lives in the walk_suggested details.
     @ViewBuilder
     private var actions: some View {
         let chatActions = card.actions.filter { $0.kind == .openChat }
@@ -175,6 +180,24 @@ struct GradeBadge: View {
             .background(Theme.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Opens the walk screen with the suggested minutes.
+struct StartWalkButton: View {
+    @Environment(AppModel.self) private var model
+    let minutes: Int
+
+    var body: some View {
+        Button {
+            model.startWalk(minutes: minutes)
+        } label: {
+            Label("Start a \(minutes)-minute walk", systemImage: "figure.walk")
+                .font(.subheadline.bold())
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(Theme.accent)
     }
 }
 

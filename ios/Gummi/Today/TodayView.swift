@@ -68,6 +68,11 @@ struct TodayView: View {
                 }
             }
             .navigationTitle("Today")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Start a walk", systemImage: "figure.walk") { model.startWalk() }
+                }
+            }
             .background(Theme.background)
         }
     }

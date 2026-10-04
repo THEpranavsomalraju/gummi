@@ -21,6 +21,7 @@ struct RootView: View {
         .animation(.snappy, value: model.banner)
         .sheet(isPresented: $model.showsFollowPicker) { FollowPickerView() }
         .sheet(item: $model.chatRequest) { request in ChatSheet(request: request) }
+        .fullScreenCover(item: $model.walkRequest) { request in WalkView(request: request, service: model.activeService) }
     }
 }
 

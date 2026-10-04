@@ -55,8 +55,17 @@ final class AppModel {
     /// One conversation per app session; "New chat" clears it.
     let chat = ChatModel()
     var showsFollowPicker = false
+    /// Opens the walk screen.
+    var walkRequest: WalkRequest?
+    /// A grade that just landed, played over Home's chart.
+    private(set) var gradeMoment: GradeMoment?
 
     @ObservationIgnored private var bannerQueue: [Banner] = []
+    /// Every prediction seen while pending, so a grade can show what Gummi predicted.
+    @ObservationIgnored private var predictions: [String: Prediction] = [:]
+    @ObservationIgnored private let stepsUploader: StepsUploader?
+    @ObservationIgnored private let usesSystemServices: Bool
+    @ObservationIgnored private var stepsTask: Task<Void, Never>?
     /// Card types and alerts that get an in-app banner (ios/CLAUDE.md Phase 3).
     nonisolated static let bannerCardTypes: Set<CardType> = [.walkSuggested, .mealDue, .mealStory, .eveningRecap]
 
@@ -71,8 +80,11 @@ final class AppModel {
     /// D-61: the demo participant the app follows on first launch.
     nonisolated static let defaultParticipant = "p_012"
 
-    init(defaults: UserDefaults = .standard, makeService: ServiceFactory? = nil) {
+    /// `systemServices` is on for the real app (HealthKit steps to /vitals, notification permission) and off for tests.
+    init(defaults: UserDefaults = .standard, makeService: ServiceFactory? = nil, systemServices: Bool = false) {
         self.defaults = defaults
+        usesSystemServices = systemServices
+        stepsUploader = systemServices ? StepsUploader(defaults: defaults) : nil
         self.makeService = makeService ?? { mode in try AppModel.liveOrMockService(mode, defaults: defaults) }
         let configured = (try? AppConfig.load()) != nil
         mode = defaults.string(forKey: Self.modeKey).flatMap(AppMode.init(rawValue:)) ?? (configured ? .live : .mock)
@@ -96,11 +108,15 @@ final class AppModel {
         }
         self.service = service
         chat.service = service
+        startStepsUpload(using: service)
         lastError = nil
         connection = .connecting
         eventsTask = Task { [weak self] in
             await self?.refresh(using: service)
             await self?.autoFollowIfNeeded(using: service)
+            if let self, self.usesSystemServices, self.state?.actingAs != nil {
+                Task { await LocalNotifier.requestPermissionIfNeeded() }
+            }
             for await event in service.events() {
                 guard let self, !Task.isCancelled else { break }
                 switch event {
@@ -115,13 +131,30 @@ final class AppModel {
     func stop() {
         eventsTask?.cancel()
         eventsTask = nil
+        stepsTask?.cancel()
+        stepsTask = nil
         connection = .idle
+    }
+
+    /// Steps to /vitals on open and every 5 minutes while open, live mode only (mock must not move the cursor).
+    private func startStepsUpload(using service: any GummiService) {
+        guard let stepsUploader, mode == .live, stepsTask == nil else { return }
+        stepsTask = Task {
+            while !Task.isCancelled {
+                _ = try? await stepsUploader.uploadNew(using: service)
+                try? await Task.sleep(for: .seconds(StepsUploader.bucket))
+            }
+        }
     }
 
     func scenePhaseChanged(_ phase: ScenePhase) {
         switch phase {
-        case .active: start()
-        case .background: stop()
+        case .active:
+            LocalNotifier.clear()
+            start()
+        case .background:
+            scheduleNotifications()
+            stop()
         default: break
         }
     }
@@ -192,6 +225,7 @@ final class AppModel {
             case .state(let newState):
                 state = newState
                 mood = newState.mood
+                for prediction in newState.pendingPredictions { predictions[prediction.predictionId] = prediction }
                 alert = newState.alert
                 if let top = newState.topCard { upsert(top) }
                 if newState.following == nil { cards = [] }
@@ -202,7 +236,13 @@ final class AppModel {
                     enqueue(Banner(id: card.cardId, title: card.title, message: card.body, symbol: card.type.symbol, cardId: card.cardId))
                 }
             case .grade(let grade):
+                let isNew = latestGrade?.gradeId != grade.gradeId
                 latestGrade = grade
+                if isNew {
+                    gradeMoment = GradeMoment(grade: grade, prediction: predictions[grade.predictionId])
+                    // Proud spins only when Gummi beat CGM-only (and the mood hasn't already spun him).
+                    if !grade.earnsProud { cue(.nod) } else if mood != .proud { cue(.cheer) }
+                }
             case .alert(let newAlert):
                 if alert?.alertId != newAlert.alertId, newAlert.type == .highForecast || newAlert.type == .lowForecast {
                     enqueue(Banner(id: newAlert.alertId, title: newAlert.type == .highForecast ? "Heading high" : "Heading low",
@@ -238,6 +278,34 @@ final class AppModel {
 
     func cue(_ reaction: PuppetReaction) {
         puppetCue = PuppetCue(reaction: reaction)
+    }
+
+    func startWalk(minutes: Int = 10) {
+        walkRequest = WalkRequest(minutes: minutes)
+    }
+
+    /// The service a walk talks to.
+    var activeService: (any GummiService)? { service }
+
+    func prediction(for id: String) -> Prediction? { predictions[id] }
+
+    /// Dismisses the grade moment (only `id`'s, when given, so a newer one stays).
+    func dismissGradeMoment(_ id: UUID? = nil) {
+        guard id == nil || gradeMoment?.id == id else { return }
+        withAnimation(.snappy) { gradeMoment = nil }
+    }
+
+    /// Before suspension: schedule what's coming while the app can't listen (CONTRACT section 5, D-29).
+    private func scheduleNotifications() {
+        guard usesSystemServices, let state else { return }
+        let plan = NotificationPlanner.plan(state: state, displayName: displayName(for: state.actingAs), now: .now)
+        let application = UIApplication.shared
+        var task = UIBackgroundTaskIdentifier.invalid
+        task = application.beginBackgroundTask { application.endBackgroundTask(task) }
+        Task {
+            await LocalNotifier.schedule(plan)
+            application.endBackgroundTask(task)
+        }
     }
 
     func askGummi(_ prompt: String? = nil) {

@@ -54,6 +54,10 @@ nonisolated struct PuppetAnimator: Sendable {
     private var blush: Float = 0
     private var talkAmount: Float = 0
     private var thinkAmount: Float = 0
+    /// 0...1, eases in and out so a walk starts and stops smoothly.
+    private(set) var walkAmount: Float = 0
+    /// Walk cycle phase in cycles (one cycle is two steps).
+    private var walkPhase: Double = 0
     private var currentMood: Mood = .calm
     private var wasPressing = false
     private var rng: SplitMix64
@@ -113,6 +117,9 @@ nonisolated struct PuppetAnimator: Sendable {
         let k = 1 - exp(-fdt * 4 / 0.6)
         talkAmount += ((input.talking ? 1 : 0) - talkAmount) * k
         thinkAmount += ((input.thinking ? 1 : 0) - thinkAmount) * k
+        walkAmount += ((input.walking ? 1 : 0) - walkAmount) * k
+        // Two steps per cycle; a stopped pedometer still shows an easy pace so he never freezes mid-stride.
+        walkPhase += dt * max(input.walkCadence, 70) / 120
         let lookTarget = input.look.map { simd_clamp($0, SIMD2(-1, -1), SIMD2(1, 1)) } ?? .zero
         lookSmoothed += (lookTarget - lookSmoothed) * (1 - exp(-fdt * 10))
 
@@ -247,6 +254,23 @@ nonisolated struct PuppetAnimator: Sendable {
         target[.headPitch] -= lookSmoothed.y * 0.22
         target[.chestYaw] += lookSmoothed.x * 0.08
 
+        // Walking in place: legs alternate, arms swing opposite, hips bob and roll.
+        if walkAmount > 0.001 {
+            let w = walkAmount
+            let phase = Float(2 * Double.pi * walkPhase)
+            let left = max(0, sin(phase)), right = max(0, -sin(phase))
+            target[.leftLegLift] += 0.022 * left * w
+            target[.rightLegLift] += 0.022 * right * w
+            target[.leftLegPitch] += -0.35 * left * w
+            target[.rightLegPitch] += -0.35 * right * w
+            target[.leftArmPitch] += 0.45 * sin(phase) * w
+            target[.rightArmPitch] += -0.45 * sin(phase) * w
+            target[.hipsRoll] += 0.06 * sin(phase) * w
+            target[.rootY] += 0.008 * abs(sin(phase)) * w
+            target[.headPitch] += 0.05 * abs(sin(phase)) * w
+            target[.headRoll] += -0.05 * sin(phase) * w
+        }
+
         if input.pressing {
             target[.squash] -= 0.22
             target[.hipsRoll] += 0.04 * sin(2 * .pi * 1.6 * ft)
@@ -255,7 +279,7 @@ nonisolated struct PuppetAnimator: Sendable {
     }
 
     private mutating func scheduleIdle() {
-        let attentive = input.look != nil || input.pressing || input.talking
+        let attentive = input.look != nil || input.pressing || input.talking || input.walking
         if attentive, let current = motion, current.kind.isIdle {
             motion = nil
             nextIdleAt = time + 2

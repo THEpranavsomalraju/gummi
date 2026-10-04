@@ -43,6 +43,14 @@ nonisolated final class MockGummiService: GummiService {
     }
 
     func updateMeal(id: String, items: [MealItem]) async throws -> Meal { try await engine.updateMeal(id, items: items) }
+    func sendWalkEvent(_ body: WalkEventBody) async throws { await engine.walkEvent(body) }
+    func latestWalk() async throws -> WalkSummary {
+        guard let walk = await engine.latestWalk else {
+            throw APIError.http(status: 404, code: "not_found", message: "No walks yet")
+        }
+        return walk
+    }
+    func uploadSteps(_ samples: [StepSample]) async throws -> Int { samples.count }
 
     func events() -> AsyncStream<ServiceEvent> {
         AsyncStream { continuation in
@@ -64,6 +72,7 @@ actor MockEngine {
     private var ticker: Task<Void, Never>?
     private var chatTurns = 0
     private var chatMeals: [String: Meal] = [:]
+    private(set) var latestWalk: WalkSummary?
 
     init(session: MockSession, minutesPerSecond: Double) {
         self.session = session
@@ -167,6 +176,21 @@ actor MockEngine {
         chatMeals[id] = updated
         pushState()
         return updated
+    }
+
+    /// A real phone walk in mock mode: the same summary card and happy mood the backend sends.
+    func walkEvent(_ body: WalkEventBody) {
+        guard body.type == "walk_completed", let started = body.startedAt else { return }
+        let minutes = max(1, Int((body.at.timeIntervalSince(started) / 60).rounded()))
+        let steps = body.steps ?? minutes * 105
+        let cadence = body.cadenceSpm ?? steps / minutes
+        let intensity: WalkIntensity = cadence == 0 ? .sedentary : cadence < 100 ? .light : cadence < 130 ? .moderate : .vigorous
+        let walk = WalkSummary(startedAt: started, endedAt: body.at, minutes: minutes, steps: steps, cadenceSpm: cadence,
+                               intensity: intensity, forecastPeakDropMgDl: MockChat.walkDrop, effectSource: .literature)
+        latestWalk = walk
+        broadcast(.live(.card(session.addPhoneWalk(walk, wallNow: .now))))
+        broadcast(.live(.mood(.happy)))
+        pushState()
     }
 
     func restart() -> StreamStatus {

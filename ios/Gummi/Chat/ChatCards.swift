@@ -343,7 +343,7 @@ private struct GummiViewCard: View {
 
 // MARK: walk_suggestion and grade
 
-/// Minutes, the modeled peak drop, and where that effect comes from. Start walk arrives with the walk chunk.
+/// Minutes, the modeled peak drop, where that effect comes from, and Start walk.
 private struct WalkSuggestionCard: View {
     let walk: WalkSuggestion
 
@@ -362,6 +362,7 @@ private struct WalkSuggestionCard: View {
             if let source = walk.effectSource, source.isKnown {
                 ChatTag(text: source == .literature ? "Effect source: literature" : "Effect source: your data", symbol: "book")
             }
+            StartWalkButton(minutes: walk.minutes)
         }
         .chatCardStyle()
         .accessibilityElement(children: .combine)

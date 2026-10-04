@@ -22,12 +22,12 @@ Updated 2026-10-04. Read root CLAUDE.md, ios/CLAUDE.md, docs/CONTRACT.md (1.5), 
 - Open with Backend: the Lead Update updates/outbox/20261004-0230-ios-to-backend-REQUEST.md (chat contract gaps, and live p_012 estimate stale by 65 hours with a band of -631 to 878).
 - Unpushed commits on ios/work: b2fe9e8, 6405faa, a724f62, plus this one. Ask Mahil before pushing.
 
-## Current chunk: C2 "moments judges remember" (questions asked, waiting for answers)
-Scope: grade moment animation and badge, walk flow (CMPedometer, walk screen, walk_started and walk_completed, GET /walks/latest, WalkSummary card, happy mood), HealthKit steps to /vitals every 5 minutes and on open, local notifications scheduled from replay_anchor and speed. Verify on the iPhone with a real walk and a notification arriving in the background.
-- The questions and recommendations are in the conversation's last reply. If they're lost, re-ask them: which notifications matter, where the grade animation lives, walk entry points and end rules, the notification permission moment, and steps-upload windows.
-- Notification design explained to Mahil:
-  - Nothing runs in the background, so the phone schedules notifications ahead when it goes to the background, using State.upcoming_due (already wall-clock), pending predictions (grade lands about window_end plus the 60-minute delay on the replay clock), and fixed replay times (06:00 briefing, 20:00 recap).
-  - Replay times convert to wall time with `wall = anchor.wall_time + (replay - anchor.replay_time) / speed`.
-  - Clear everything on foreground (banners take over), reschedule on any State whose stream.paused, speed, or replay_anchor changed, and schedule nothing while paused or stopped.
-  - Walk suggestions can only be predicted from the current forecast crossing 140, so they're best effort.
-- Code to reuse: AppModel (state, cards, cue for proud and nod), PuppetAnimator (ClipKind; add a walk-in-place clip), GradeBadge and MiniCurve in Cards/StoryCardView.swift, APIClient.sendWalkEvent, latestWalk, uploadSteps (already written), WalkEventBody, StepSample. GummiService still needs sendWalkEvent, latestWalk, and uploadSteps, plus mock versions that emit a walk_summary card.
+## Chunk C2 (built, waiting on the iPhone check)
+- Built: the grade moment (Home/GradeMoment.swift), the walk flow (Walk/), steps upload (Health/StepsUploader.swift), and notifications (Notifications/NotificationPlanner.swift). Decisions D-161 to D-164. 104 tests pass.
+- Mahil still needs to verify on the iPhone:
+  1. A real walk from Today: Start a walk, walk 2+ minutes, End walk. The summary, the Nice walk card, and a happy Gummi should appear.
+  2. Mock mode with p_012 followed: press home, and a meal due notification should arrive within about a minute (mock runs at 360x).
+  3. The Health, Motion, and notification permission prompts.
+- More debug args: `-gummi.sheet walk`, `-gummi.fakeSteps YES`, `-gummi.noPrompts YES`.
+- Known limit: notifications use the State from when the app was backgrounded, so replay changes made from another device while the app is suspended aren't reflected.
+- Next chunks: Settings (demo controls, connection status), then Pranav's food log (D-152).

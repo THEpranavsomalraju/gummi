@@ -41,6 +41,15 @@ struct HomeView: View {
                 } else if let state = model.state {
                     GlucoseChart(state: state)
                         .frame(height: height * 0.21)
+                        .overlay(alignment: .bottom) {
+                            // A grade that just landed plays over the chart, then steps aside.
+                            if let moment = model.gradeMoment {
+                                GradeMomentView(moment: moment)
+                                    .id(moment.id)
+                                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                            }
+                        }
+                        .animation(.snappy, value: model.gradeMoment?.id)
                         .padding(.horizontal)
                         .transition(.opacity)
                 }

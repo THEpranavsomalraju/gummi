@@ -11,6 +11,9 @@ nonisolated struct PuppetInput: Equatable, Sendable {
     var look: SIMD2<Float>? = nil
     /// True while a finger presses and holds Gummi: he squishes, and bounces back on release.
     var pressing = false
+    /// True during a walk: Gummi walks in place at `walkCadence` steps per minute.
+    var walking = false
+    var walkCadence: Double = 105
 }
 
 nonisolated enum TapRegion: Sendable {

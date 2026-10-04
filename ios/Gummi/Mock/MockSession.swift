@@ -55,6 +55,9 @@ nonisolated struct MockSession: Sendable {
     private(set) var walk: ClosedRange<Double>?
     private var walkPosted = false
     private var proudUntil: Date?
+    /// Happy after a real phone walk (wall clock; the mock day runs fast).
+    private var happyUntil: Date?
+    private var phoneWalks = 0
     private(set) var eventsReleased = 0
 
     init(day: MockDay, today: Date = .now, timeZone: TimeZone = TimeZone(identifier: "America/New_York")!) {
@@ -241,6 +244,15 @@ nonisolated struct MockSession: Sendable {
                                   body: raised.message, mood: .high, attachments: CardAttachments(alert: raised))))]
     }
 
+    /// A real walk from the phone, overlaid on the replayed day (D-28).
+    mutating func addPhoneWalk(_ walk: WalkSummary, wallNow: Date) -> StoryCard {
+        phoneWalks += 1
+        happyUntil = wallNow.addingTimeInterval(60)
+        return card("c_phone_walk_\(phoneWalks)", .walkSummary, at: minute, title: "Nice walk",
+                    body: "\(walk.minutes) minutes, \(walk.steps.formatted()) steps, \(walk.intensity.rawValue) pace. Modeled effect: about \(Int(walk.forecastPeakDropMgDl)) mg/dL lower peak (literature). Your real walk is shown over the replayed day; its effect on replayed glucose isn't graded.",
+                    mood: .happy, attachments: CardAttachments(walk: walk))
+    }
+
     /// A meal Gummi saved from chat. Like the backend (D-59) it sits on the participant's day and is never graded.
     mutating func addChatMeal(_ meal: Meal, likelyPeak: Double?) -> StoryCard {
         let body = likelyPeak.map {
@@ -395,6 +407,7 @@ nonisolated struct MockSession: Sendable {
         if lowest <= Self.lowLine { return .low }
         if peak >= Self.highLine { return .high }
         if let proudUntil, wallNow < proudUntil { return .proud }
+        if let happyUntil, wallNow < happyUntil { return .happy }
         if view?.trend == .fallingFast { return .dipping }
         if view?.trend == .rising || view?.trend == .risingFast { return .rising }
         if let walk, minute >= walk.upperBound, minute < walk.upperBound + 30 { return .happy }

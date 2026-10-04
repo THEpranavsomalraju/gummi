@@ -27,6 +27,12 @@ nonisolated protocol GummiService: ChatService {
     func pauseStream() async throws -> StreamStatus
     func resumeStream() async throws -> StreamStatus
     func setStreamSpeed(_ speed: Double) async throws -> StreamStatus
+    /// POST /events: walk_started, or walk_completed with the phone's counts.
+    func sendWalkEvent(_ body: WalkEventBody) async throws
+    /// GET /walks/latest. Throws 404 not_found before the first walk.
+    func latestWalk() async throws -> WalkSummary
+    /// POST /vitals. The backend adds every sample, so never send a window twice.
+    func uploadSteps(_ samples: [StepSample]) async throws -> Int
     /// Live events plus connection status. Cancel the consuming task to disconnect.
     func events() -> AsyncStream<ServiceEvent>
 }
@@ -57,4 +63,7 @@ nonisolated final class LiveGummiService: GummiService {
         api.chat(message: message, conversationId: conversationId)
     }
     func updateMeal(id: String, items: [MealItem]) async throws -> Meal { try await api.updateMeal(id: id, items: items) }
+    func sendWalkEvent(_ body: WalkEventBody) async throws { try await api.sendWalkEvent(body) }
+    func latestWalk() async throws -> WalkSummary { try await api.latestWalk() }
+    func uploadSteps(_ samples: [StepSample]) async throws -> Int { try await api.uploadSteps(samples) }
 }
