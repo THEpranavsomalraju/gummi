@@ -1,11 +1,14 @@
 """Dexcom API v3 sandbox: OAuth 2.0 authorization code flow, token refresh, dataRange and EGVs (D-17, D-18, D-30).
 
 Status-only by default (D-30): Gummi shows the connection, the data range and the last sync. Sandbox glucose never
-feeds coaching or hot state. Tokens live only in this process (CONTRACT section 2: they never leave the backend);
-disconnect deletes them, and a redeploy means one more click on the connect page.
+feeds coaching or hot state. Tokens stay in the backend (CONTRACT section 2): in memory, plus an encrypted copy in the
+App's Unity Catalog volume so a redeploy keeps the connection. The key derives from the Dexcom client secret, which
+only the App can read from the gummi secret scope. Disconnect deletes both.
 """
 import hashlib
 import hmac
+import io
+import json
 import logging
 import os
 import secrets
@@ -28,6 +31,54 @@ _STATE_KEY = secrets.token_bytes(32)
 _lock = threading.Lock()
 _tokens: dict[str, dict] = {}        # user_id -> {access_token, refresh_token, expires_at}
 _status: dict[str, dict] = {}        # user_id -> DexcomStatus extras
+
+
+TOKENS_PATH = f"/Volumes/{config.CATALOG}/gummi_data/landing/agent_memory/dexcom_tokens.bin"
+
+
+def _keystream(n: int, nonce: bytes) -> bytes:
+    key = hashlib.sha256(b"gummi-dexcom-tokens:" + CLIENT_SECRET.encode()).digest()
+    out = b""
+    counter = 0
+    while len(out) < n:
+        out += hmac.new(key, nonce + counter.to_bytes(8, "big"), hashlib.sha256).digest()
+        counter += 1
+    return out[:n]
+
+
+def _persist() -> None:
+    try:
+        from databricks.sdk import WorkspaceClient
+        with _lock:
+            raw = json.dumps(_tokens).encode()
+        nonce = secrets.token_bytes(16)
+        body = nonce + bytes(a ^ b for a, b in zip(raw, _keystream(len(raw), nonce)))
+        mac = hmac.new(hashlib.sha256(CLIENT_SECRET.encode()).digest(), body, hashlib.sha256).digest()
+        WorkspaceClient().files.upload(TOKENS_PATH, io.BytesIO(mac + body), overwrite=True)
+    except Exception as e:  # noqa: BLE001
+        log.warning("dexcom tokens not persisted: %s", str(e)[:160])
+
+
+def restore() -> None:
+    """At startup: reload connections saved before a redeploy, then sync them."""
+    if not configured():
+        return
+    try:
+        from databricks.sdk import WorkspaceClient
+        blob = WorkspaceClient().files.download(TOKENS_PATH).contents.read()
+        mac, body = blob[:32], blob[32:]
+        if not hmac.compare_digest(mac, hmac.new(hashlib.sha256(CLIENT_SECRET.encode()).digest(), body, hashlib.sha256).digest()):
+            log.warning("dexcom token file failed its integrity check; ignoring it")
+            return
+        nonce, enc = body[:16], body[16:]
+        data = json.loads(bytes(a ^ b for a, b in zip(enc, _keystream(len(enc), nonce))))
+        with _lock:
+            _tokens.update(data)
+        log.info("restored Dexcom connections for %s", sorted(data))
+        for uid in list(data):
+            sync_user(uid)
+    except Exception as e:  # noqa: BLE001 (no file yet is normal)
+        log.info("no saved Dexcom connections (%s)", str(e)[:80])
 
 
 def configured() -> bool:
@@ -68,6 +119,7 @@ def exchange_code(user_id: str, code: str) -> None:
     tok = _token({"grant_type": "authorization_code", "code": code, "redirect_uri": REDIRECT_URI})
     with _lock:
         _tokens[user_id] = tok
+    _persist()
     activity.hit("source.dexcom", detail=f"{user_id} connected the Dexcom sandbox", log=True)
     sync_user(user_id)
 
@@ -82,6 +134,7 @@ def _access(user_id: str) -> str | None:
         new["refresh_token"] = new.get("refresh_token") or tok["refresh_token"]
         with _lock:
             _tokens[user_id] = tok = new
+        _persist()
     return tok["access_token"]
 
 
@@ -128,6 +181,7 @@ def disconnect(user_id: str) -> None:
     with _lock:
         _tokens.pop(user_id, None)
         _status.pop(user_id, None)
+    _persist()
 
 
 def status(user_id: str) -> dict:
@@ -153,6 +207,7 @@ def connected_users() -> list[str]:
 async def run() -> None:
     """Every 5 minutes: refresh tokens as needed and update status for every connected user (D-30)."""
     import asyncio
+    await asyncio.to_thread(restore)
     while True:
         await asyncio.sleep(300)
         for uid in connected_users():
