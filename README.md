@@ -1,61 +1,53 @@
 # Gummi
 
-A glucose coach that predicts, acts, and checks its own work. Built on Databricks for WolfHacks 2026 (Databricks track).
+Our WolfHacks 2026 project for the Databricks track.
 
-Gummi is an iPhone app for adults with prediabetes or type 2 diabetes who don't take insulin and wear a Dexcom. A glucose monitor shows what already happened, and Dexcom shares readings with apps about an hour late. Gummi estimates that missing hour with its own model, forecasts the next two hours, and coaches from it: "can I eat this?", "should I walk?", "why did I spike?". Two hours after every prediction, it grades itself against what actually happened, next to two simpler methods.
+Gummi is an iPhone app for people with prediabetes or type 2 diabetes (not on insulin) who wear a Dexcom. Your glucose monitor only tells you what already happened, and apps get Dexcom data an hour late. Gummi fills in that hour with its own model, predicts the next two hours, and helps with stuff like "can I eat this cookie?" or "should I go for a walk?". Two hours later it checks how close it was.
 
-Gummi is a jelly koala who talks to you in chat. It is not for treatment decisions; check your Dexcom app for current readings.
+Gummi is a little jelly koala you chat with. It's not meant for treatment decisions, so always check your Dexcom app for real readings.
 
 ## How it works
 
-```
-BIG IDEAs replay (15 participants)  ─┐
-Dexcom sandbox (OAuth)               ├─> Databricks App (FastAPI)  ──> iPhone (live push)
-iPhone steps and walks               ─┘      gummi_model, agents
-                                              │
-                                              ▼
-                     Unity Catalog volume ─> Lakeflow pipeline ─> bronze / silver / gold Delta tables
-                                                                    │
-                     MLflow (model, traces, reviews) <──────────────┤
-                     AI/BI dashboard, Genie, Agent Bricks <─────────┘
-```
+None of us wear a Dexcom, so we replay 15 real people from the BIG IDEAs study as if it's happening live, with the same one-hour delay. You pick someone to follow and live through their day. Their real meals pop up as cards you can log.
 
-- **Replay:** no one on the team wears a Dexcom, so 15 real participants from the BIG IDEAs study stream through as a live replay, with the real one-hour delay. Following a participant means living their day: their real meals come due as cards you log.
-- **Model (`data/gummi_model`):** our own forecaster on glucose history plus logged meals. Each participant is predicted by a model that never saw them.
-- **Agents:** a chat Coach with 9 tools (simulate a food, log a meal, suggest a walk, explain a spike, ...), background agents that write meal stories, walk nudges, and morning and evening recaps, a Reviewer that scores every answer in MLflow, and Gummi Insights (Agent Bricks supervisor over a Genie space and Unity Catalog functions).
-- **Streaming:** every event, prediction and grade lands in a Unity Catalog volume, and the `gummi_stream` Lakeflow pipeline turns it into Delta tables within seconds. The gold accuracy table feeds the dashboard, the fleet view and the evening recap.
+Everything runs on Databricks:
 
-## Accuracy
+- A Databricks App (FastAPI) runs the replay, our model, and the agents, and pushes updates to the phone.
+- Every reading, meal, prediction and grade gets written to a Unity Catalog volume. Our Lakeflow pipeline (`gummi_stream`) turns that into Delta tables within a few seconds.
+- The model is ours (`data/gummi_model`). It uses glucose history plus meals, and it's registered in Unity Catalog.
+- The chat agent can simulate a food, log a meal, suggest a walk or explain a spike. Background agents write meal stories and daily recaps. A second model reviews every answer, and all of it is traced in MLflow.
+- There's also a dashboard, a Genie space, and an Agent Bricks supervisor (Gummi Insights) for digging into someone's history.
 
-Average error in mg/dL, lower is better. Participant-grouped 5-fold cross-validation, so every number is on people the model never saw.
+## How accurate is it?
 
-| Looking ahead | Gummi (history + meals) | CGM-only (published method) | Last reading |
+Average error in mg/dL (lower is better). We always test on people the model never saw during training.
+
+| Looking ahead | Gummi | CGM-only (published method) | Last reading |
 |---|---|---|---|
-| 30 minutes | **8.9** | 9.5 | 10.7 |
-| 1 hour | **12.1** | 13.4 | 14.9 |
-| 2 hours | **14.2** | 15.7 | 18.4 |
-| 1 hour, right after a meal | **15.7** | 17.3 | 20.4 |
+| 30 min | 8.9 | 9.5 | 10.7 |
+| 1 hour | 12.1 | 13.4 | 14.9 |
+| 2 hours | 14.2 | 15.7 | 18.4 |
+| 1 hour after a meal | 15.7 | 17.3 | 20.4 |
 
-We first reproduced the published CGM-only baseline (13.90 RMSE at 30 minutes), then added meals.
+We reproduced the published CGM-only baseline first (13.90 RMSE at 30 min), then added meals on top.
 
 ## Repo
 
-| Folder | What | Owner |
-|---|---|---|
-| `ios/` | SwiftUI app, RealityKit jelly koala, live channel, chat | Mahil |
-| `backend/` | Databricks App: replay engine, grading, agents, food log, day summary, system map, fleet view | Pranav |
-| `data/` | Data load, `gummi_model`, Lakeflow pipeline, gold tables, Genie, dashboard | Nikhil |
-| `docs/` | `CONTRACT.md` (API v1.6), `DECISIONS.md`, project overview, data notes | everyone |
+- `ios/` is the app (SwiftUI, RealityKit koala). Mahil
+- `backend/` is the Databricks App. Pranav
+- `data/` has the data load, model, pipeline and gold tables. Nikhil
+- `docs/` has the API contract and our decision log
 
 ## Running it
 
-- **Backend:** `cd backend && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`, then `scripts/deploy.sh` (Databricks CLI profile `gummi`). Tests: `scripts/fetch_cache.py` once, then `pytest tests/`.
-- **Data:** `cd data && databricks bundle deploy`, then start `gummi_stream` (continuous for demos).
-- **iOS:** `cd ios && xcodegen generate`, open `Gummi.xcodeproj`. Secrets go in `ios/Config/Secrets.xcconfig.local` (git-ignored). Without them the app runs on built-in demo data.
-- **Demo:** `backend/scripts/demo_stage.py stage`, then `go` on stage.
+Backend: make a venv in `backend/`, install `requirements.txt`, then run `scripts/deploy.sh` (uses a Databricks CLI profile called `gummi`).
 
-## Data and credits
+Data: `databricks bundle deploy` in `data/`, then start the `gummi_stream` pipeline.
 
-BIG IDEAs Lab Glycemic Variability and Wearable Device Data v1.1.3 (PhysioNet, Open Data Commons Attribution v1.0; Bent et al. 2021, npj Digital Medicine 4:89). Walk effect: Buffey et al. 2022, Sports Medicine 52:1765-1787. Dexcom API sandbox.
+iOS: `xcodegen generate` in `ios/` and open the project. Without secrets in `Config/Secrets.xcconfig.local` it just runs on demo data.
 
-Team: Mahil Manoharan (iOS), Pranav Somalraju (Backend), Nikhil Ambavaram (Data).
+## Credits
+
+Data from the BIG IDEAs Lab Glycemic Variability and Wearable Device Data v1.1.3 on PhysioNet (Bent et al. 2021, npj Digital Medicine). Walking effect from Buffey et al. 2022, Sports Medicine. Dexcom sandbox API.
+
+Made by Mahil Manoharan, Pranav Somalraju and Nikhil Ambavaram.
