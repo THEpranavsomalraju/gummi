@@ -6,7 +6,7 @@
 
 Stage leaves the replay paused at day 4, 10:10 PM for p_012 (D-15). The 7:22 PM snack (dark chocolate chip, corn
 cheese puffs) is logged and predicted, and its 2-hour grade is due once the 9:22 PM reading arrives an hour later.
-Resuming at 60x lands the Meal Story ("I predicted 178 ... It was 186. CGM-only said 135, last value said 146"), the
+Resuming at 60x lands the Meal Story ("I predicted 185 ... It was 186. CGM-only said 155, last value said 178"), the
 grade and the proud mood about 12 replay minutes (12 s) later. The brownie walk nudge and the evening recap happen
 during staging, so they're already in Activity.
 """
