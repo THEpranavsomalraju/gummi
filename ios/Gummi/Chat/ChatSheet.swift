@@ -125,6 +125,7 @@ private struct ChatWelcome: View {
     let actingAs: String?
     let onPick: (String) -> Void
     @State private var typed = 0
+    @State private var reveals: [Reveal] = []
 
     private var greeting: String {
         if let actingAs {
@@ -136,8 +137,11 @@ private struct ChatWelcome: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            DialogueBox(speaker: "Gummi", text: greeting, revealed: typed)
-                .onTapGesture { typed = greeting.count }
+            DialogueBox(speaker: "Gummi", text: greeting, revealed: typed, reveals: reveals)
+                .onTapGesture {
+                    typed = greeting.count
+                    reveals.append(Reveal(end: typed, at: .now))
+                }
             FlowLayout(spacing: 8) {
                 ForEach(ChatSheet.prompts, id: \.self) { prompt in
                     Button {
@@ -157,10 +161,12 @@ private struct ChatWelcome: View {
         }
         .task(id: greeting) {
             typed = 0
+            reveals = []
             while typed < greeting.count {
-                try? await Task.sleep(for: .milliseconds(22))
+                try? await Task.sleep(for: .milliseconds(45))
                 if Task.isCancelled { return }
-                typed += 1
+                typed = ChatModel.wordEnd(in: greeting, from: typed, words: 1)
+                reveals.append(Reveal(end: typed, at: .now))
             }
         }
     }
@@ -185,12 +191,10 @@ private struct ChatTurnView: View {
             }
         case .gummi:
             VStack(alignment: .leading, spacing: 10) {
-                if !turn.tools.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(turn.tools) { ToolChipView(chip: $0) }
-                    }
+                if let chip = turn.tools.last {
+                    CurrentToolChip(chip: chip)
                 }
-                DialogueBox(speaker: "Gummi", text: turn.text, revealed: turn.revealed,
+                DialogueBox(speaker: "Gummi", text: turn.text, revealed: turn.revealed, reveals: turn.reveals,
                             thinking: !turn.finished && turn.text.isEmpty)
                     .onTapGesture { model.chat.skipTyping() }
                 if turn.failure != nil, turn.finished {
@@ -205,6 +209,30 @@ private struct ChatTurnView: View {
                         .transition(.scale(scale: 0.92, anchor: .top).combined(with: .opacity))
                 }
             }
+        }
+    }
+}
+
+/// One chip at a time: each new tool replaces it in place, and it fades out 1.2 s after the last one ends.
+private struct CurrentToolChip: View {
+    let chip: ToolChip
+    @State private var gone = false
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            if !gone {
+                ToolChipView(chip: chip)
+                    .id(chip.id)
+                    .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .leading)))
+            }
+        }
+        .animation(.snappy, value: chip)
+        .animation(.easeOut(duration: 0.35), value: gone)
+        .task(id: "\(chip.id)-\(chip.finished)") {
+            gone = false
+            guard chip.finished else { return }
+            try? await Task.sleep(for: .seconds(1.2))
+            if !Task.isCancelled { gone = true }
         }
     }
 }
@@ -232,14 +260,20 @@ private struct ToolChipView: View {
 }
 
 /// A game-style dialogue box: thick rounded frame, the speaker's name on a tab, bouncing dots while thinking,
-/// text that types out, and a ▼ when the line is done. Unrevealed text is laid out but invisible,
-/// so the box never jumps in size while it types.
+/// words that fade in as they arrive, and a ▼ when the line is done. Unrevealed text is laid out but invisible,
+/// so the box never jumps in size.
 struct DialogueBox: View {
+    nonisolated static let fade: TimeInterval = 0.28
+
     let speaker: String
     let text: String
     var revealed: Int
+    /// When each run of words appeared. Empty means everything shows at once.
+    var reveals: [Reveal] = []
     var thinking = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var arrowUp = false
+    @State private var settle = 0
 
     private var isFinished: Bool { !thinking && revealed >= text.count }
 
@@ -249,7 +283,11 @@ struct DialogueBox: View {
                 if thinking {
                     ThinkingDots()
                 } else {
-                    Text(visibleText)
+                    TimelineView(.animation(paused: !isFading(at: .now))) { context in
+                        Text(Self.attributed(text, revealed: revealed, reveals: reveals,
+                                             now: reduceMotion ? .distantFuture : context.date))
+                    }
+                    .id(settle)
                 }
             }
             .font(.system(.body, design: .rounded).weight(.medium))
@@ -283,17 +321,44 @@ struct DialogueBox: View {
                 .offset(x: 18, y: -14)
         }
         .padding(.top, 14)
+        // After the newest words finish fading, draw once more at full opacity.
+        .task(id: reveals.count) {
+            try? await Task.sleep(for: .seconds(Self.fade + 0.05))
+            if !Task.isCancelled { settle &+= 1 }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(thinking ? "\(speaker) is thinking" : "\(speaker) says: \(text)")
     }
 
-    private var visibleText: AttributedString {
-        let count = min(max(revealed, 0), text.count)
-        var shown = AttributedString(String(text.prefix(count)))
-        var hidden = AttributedString(String(text.dropFirst(count)))
-        hidden.foregroundColor = .clear
-        shown.append(hidden)
-        return shown
+    private func isFading(at now: Date) -> Bool {
+        guard !reduceMotion, let last = reveals.last else { return false }
+        return now.timeIntervalSince(last.at) < Self.fade
+    }
+
+    /// Revealed words at full opacity (fading in for their first moments), the rest laid out but clear.
+    nonisolated static func attributed(_ text: String, revealed: Int, reveals: [Reveal], now: Date) -> AttributedString {
+        let characters = Array(text)
+        let count = min(max(revealed, 0), characters.count)
+        var result = AttributedString()
+        var start = 0
+        // Text revealed before any timestamp (or with none) shows solid.
+        let runs = reveals.isEmpty ? [Reveal(end: count, at: .distantPast)] : reveals
+        for run in runs where run.end > start {
+            let end = min(run.end, count)
+            guard end > start else { continue }
+            var piece = AttributedString(String(characters[start..<end]))
+            let progress = min(1, max(0, now.timeIntervalSince(run.at) / fade))
+            if progress < 1 { piece.foregroundColor = Theme.primaryText.opacity(progress) }
+            result.append(piece)
+            start = end
+        }
+        if start < count { result.append(AttributedString(String(characters[start..<count]))) }
+        if count < characters.count {
+            var hidden = AttributedString(String(characters[count...]))
+            hidden.foregroundColor = .clear
+            result.append(hidden)
+        }
+        return result
     }
 }
 

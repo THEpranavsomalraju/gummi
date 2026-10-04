@@ -210,7 +210,7 @@ struct ChatModelTests {
     @Test func thinksUntilTheReplyStartsThenTalksWhileItTypes() async throws {
         let service = ScriptedChat([])
         let chat = model(service)
-        chat.charactersPerSecond = 400
+        chat.wordsPerSecond = 200
         #expect(chat.send("Can I eat a cookie now?"))
         #expect(chat.isThinking)
         #expect(!chat.send("and another?"))

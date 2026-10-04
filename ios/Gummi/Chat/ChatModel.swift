@@ -15,7 +15,10 @@ nonisolated struct ToolChip: Identifiable, Equatable, Sendable {
     var serverLabel: String? = nil
 
     var label: String {
-        if let serverLabel, !serverLabel.isEmpty { return serverLabel }
+        // The chip draws its own checkmark, so a trailing "✓" in the backend's done label is dropped.
+        if let serverLabel, !serverLabel.isEmpty {
+            return serverLabel.replacingOccurrences(of: "✓", with: "").trimmingCharacters(in: .whitespaces)
+        }
         switch name {
         case "self_check": return finished ? "Double-checked my answer" : "Double-checking my answer…"
         default: return fallbackLabel
@@ -66,12 +69,20 @@ nonisolated struct ChatCardItem: Identifiable, Equatable, Sendable {
     var simulatedOn: String?
 }
 
+/// A run of words that appeared together: text up to `end` characters, revealed at `at` (each run fades in).
+nonisolated struct Reveal: Equatable, Sendable {
+    let end: Int
+    let at: Date
+}
+
 nonisolated struct ChatTurn: Identifiable, Equatable, Sendable {
     let id = UUID()
     let role: ChatRole
     /// Everything received so far. Gummi's text types out up to `revealed` characters.
     var text: String
     var revealed: Int
+    /// When each word appeared, so the dialogue box can fade it in.
+    var reveals: [Reveal] = []
     var tools: [ToolChip] = []
     var cards: [ChatCardItem] = []
     var failure: ChatFailure?
@@ -100,7 +111,8 @@ final class ChatModel {
     @ObservationIgnored var service: (any ChatService)?
     /// Whose day a chat meal is simulated on, when acting as a participant.
     @ObservationIgnored var actingAsName: () -> String? = { nil }
-    @ObservationIgnored var charactersPerSecond: Double = 45
+    /// Words revealed per second (D-157 revised: a quick word fade instead of letter-by-letter typing).
+    @ObservationIgnored var wordsPerSecond: Double = 22
     @ObservationIgnored private(set) var streamTask: Task<Void, Never>?
     @ObservationIgnored private var typewriter: Task<Void, Never>?
 
@@ -139,6 +151,7 @@ final class ChatModel {
     func skipTyping() {
         for index in turns.indices where turns[index].isTyping {
             turns[index].revealed = turns[index].text.count
+            turns[index].reveals.append(Reveal(end: turns[index].text.count, at: .now))
         }
     }
 
@@ -248,6 +261,7 @@ final class ChatModel {
         streamTask = nil
         guard let index = turns.firstIndex(where: { $0.id == turnId }) else { return }
         turns[index].finished = true
+        startTypewriter()
         for chip in turns[index].tools.indices { turns[index].tools[chip].finished = true }
         if !ended, turns[index].failure == nil { turns[index].failure = .dropped }
         if ended, turns[index].failure == nil, turns[index].text.isEmpty { turns[index].failure = .empty }
@@ -258,18 +272,48 @@ final class ChatModel {
         }
     }
 
-    /// Reveals text a character or a few at a time, faster when a lot is waiting.
+    /// Reveals the reply a word at a time (two or three when a lot is waiting); the box fades each one in.
     private func startTypewriter() {
         guard typewriter == nil else { return }
         typewriter = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self, let index = self.turns.firstIndex(where: \.isTyping) else { break }
-                let backlog = self.turns[index].text.count - self.turns[index].revealed
-                self.turns[index].revealed += min(backlog, backlog > 160 ? 3 : backlog > 80 ? 2 : 1)
-                let interval = 1 / max(self.charactersPerSecond, 1)
-                do { try await Task.sleep(for: .seconds(interval)) } catch { break }
+                let turn = self.turns[index]
+                let backlogWords = turn.text.dropFirst(turn.revealed).split(separator: " ").count
+                var end = Self.wordEnd(in: turn.text, from: turn.revealed, words: backlogWords > 40 ? 3 : backlogWords > 20 ? 2 : 1)
+                // Tokens can split a word; wait for the rest of it unless the reply is complete.
+                if !turn.finished, end == turn.text.count, turn.text.last?.isWhitespace == false {
+                    let chars = Array(turn.text)
+                    var boundary = end
+                    while boundary > turn.revealed, !chars[boundary - 1].isWhitespace { boundary -= 1 }
+                    end = boundary
+                }
+                guard end > turn.revealed else {
+                    do { try await Task.sleep(for: .milliseconds(30)) } catch { break }
+                    continue
+                }
+                self.turns[index].revealed = end
+                self.turns[index].reveals.append(Reveal(end: end, at: .now))
+                do { try await Task.sleep(for: .seconds(1 / max(self.wordsPerSecond, 1))) } catch { break }
             }
             self?.typewriter = nil
         }
+    }
+
+    /// The character offset after `words` more words (and their trailing spaces) from `start`.
+    nonisolated static func wordEnd(in text: String, from start: Int, words: Int) -> Int {
+        let characters = Array(text)
+        var index = start, seen = 0
+        while index < characters.count, characters[index].isWhitespace { index += 1 }
+        while index < characters.count {
+            if characters[index].isWhitespace {
+                seen += 1
+                while index < characters.count, characters[index].isWhitespace { index += 1 }
+                if seen == words { return index }
+            } else {
+                index += 1
+            }
+        }
+        return characters.count
     }
 }

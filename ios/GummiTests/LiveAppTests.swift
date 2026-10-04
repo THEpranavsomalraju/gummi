@@ -95,3 +95,30 @@ struct LiveAppTests {
         model.stop()
     }
 }
+
+@Suite("Chat word fade and chips")
+struct ChatFadeTests {
+    @Test func revealsGoWordByWord() {
+        let text = "Go for it! You'd likely peak near 128."
+        #expect(ChatModel.wordEnd(in: text, from: 0, words: 1) == 3)
+        #expect(ChatModel.wordEnd(in: text, from: 3, words: 2) == 11)
+        #expect(ChatModel.wordEnd(in: text, from: 30, words: 5) == text.count)
+    }
+
+    @Test func newWordsFadeInAndTheRestStaysClear() {
+        let now = Date(timeIntervalSince1970: 1_000)
+        let text = "Go for it!"
+        let reveals = [Reveal(end: 3, at: now.addingTimeInterval(-1)), Reveal(end: 7, at: now.addingTimeInterval(-DialogueBox.fade / 2))]
+        let runs = Array(DialogueBox.attributed(text, revealed: 7, reveals: reveals, now: now).runs)
+        #expect(runs.count == 3)
+        #expect(runs[0].foregroundColor == nil)       // settled: solid
+        #expect(runs[1].foregroundColor != nil)       // "for " half faded in
+        #expect(runs[2].foregroundColor == .clear)    // "it!" not yet revealed, but laid out
+        let settled = DialogueBox.attributed(text, revealed: text.count, reveals: reveals, now: now.addingTimeInterval(5))
+        #expect(String(settled.characters) == text)
+    }
+
+    @Test func doneLabelsLoseTheirTextCheckmark() {
+        #expect(ToolChip(id: 0, name: "get_state", finished: true, serverLabel: "Crunched the numbers ✓").label == "Crunched the numbers")
+    }
+}
