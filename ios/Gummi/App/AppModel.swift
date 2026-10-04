@@ -52,6 +52,8 @@ final class AppModel {
     /// Today scrolls to this card (set by tapping a banner).
     var focusedCardId: String?
     var chatRequest: ChatRequest?
+    /// One conversation per app session; "New chat" clears it.
+    let chat = ChatModel()
     var showsFollowPicker = false
 
     @ObservationIgnored private var bannerQueue: [Banner] = []
@@ -74,6 +76,7 @@ final class AppModel {
         self.makeService = makeService ?? { mode in try AppModel.liveOrMockService(mode, defaults: defaults) }
         let configured = (try? AppConfig.load()) != nil
         mode = defaults.string(forKey: Self.modeKey).flatMap(AppMode.init(rawValue:)) ?? (configured ? .live : .mock)
+        chat.actingAsName = { [weak self] in self?.displayName(for: self?.state?.actingAs) }
     }
 
     var isRunning: Bool { eventsTask != nil }
@@ -92,6 +95,7 @@ final class AppModel {
             return
         }
         self.service = service
+        chat.service = service
         lastError = nil
         connection = .connecting
         eventsTask = Task { [weak self] in
@@ -128,6 +132,8 @@ final class AppModel {
         defaults.set(newMode.rawValue, forKey: Self.modeKey)
         mode = newMode
         service = nil
+        chat.newChat()
+        chat.service = nil
         state = nil
         cards = []
         latestGrade = nil

@@ -5,9 +5,16 @@ nonisolated enum AppMode: String, CaseIterable, Sendable {
     case mock, live
 }
 
+/// What chat needs from a backend (CONTRACT section 6, plus PATCH /meals for portion edits).
+nonisolated protocol ChatService: Sendable {
+    /// One chat turn as server-sent events. Cancel the consuming task to stop it.
+    func chat(_ message: String, conversationId: String?) -> AsyncThrowingStream<ChatEvent, Error>
+    func updateMeal(id: String, items: [MealItem]) async throws -> Meal
+}
+
 /// Everything the app needs from a backend. The live and mock versions emit identical events,
 /// so nothing downstream knows which one is running.
-nonisolated protocol GummiService: Sendable {
+nonisolated protocol GummiService: ChatService {
     var mode: AppMode { get }
     func health() async throws -> Health
     func snapshot() async throws -> GummiState
@@ -46,4 +53,8 @@ nonisolated final class LiveGummiService: GummiService {
     func resumeStream() async throws -> StreamStatus { try await api.resumeStream() }
     func setStreamSpeed(_ speed: Double) async throws -> StreamStatus { try await api.setStreamSpeed(speed) }
     func events() -> AsyncStream<ServiceEvent> { live.events() }
+    func chat(_ message: String, conversationId: String?) -> AsyncThrowingStream<ChatEvent, Error> {
+        api.chat(message: message, conversationId: conversationId)
+    }
+    func updateMeal(id: String, items: [MealItem]) async throws -> Meal { try await api.updateMeal(id: id, items: items) }
 }

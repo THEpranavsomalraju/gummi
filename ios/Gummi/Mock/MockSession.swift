@@ -241,6 +241,16 @@ nonisolated struct MockSession: Sendable {
                                   body: raised.message, mood: .high, attachments: CardAttachments(alert: raised))))]
     }
 
+    /// A meal Gummi saved from chat. Like the backend (D-59) it sits on the participant's day and is never graded.
+    mutating func addChatMeal(_ meal: Meal, likelyPeak: Double?) -> StoryCard {
+        let body = likelyPeak.map {
+            "Added to your food log. I think this likely peaks near \(Int($0.rounded())) mg/dL. It's simulated on \(Self.displayName)'s day, so I won't grade it."
+        } ?? "Saved to your food log."
+        let name = meal.items.first?.name ?? "Meal"
+        return card("c_\(meal.mealId)", .mealLogged, at: minute, title: "\(name.prefix(1).uppercased() + name.dropFirst()) logged",
+                    body: body, mood: .calm, attachments: CardAttachments(meal: meal))
+    }
+
     private func dueCard(for meal: MockDay.DayMeal) -> StoryCard {
         makeCard("c_due_\(meal.index + 1)", .mealDue, at: Double(meal.minute), title: "\(meal.label) time for \(Self.displayName)",
              body: meal.text, mood: .calm,

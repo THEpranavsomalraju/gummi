@@ -68,6 +68,44 @@ nonisolated final class APIClient: Sendable {
     func fleet() async throws -> Fleet { try await send("GET", "fleet") }
     func dexcomStatus() async throws -> DexcomStatus { try await send("GET", "dexcom/status") }
 
+    /// POST /chat as server-sent events (CONTRACT section 6). The stream finishes when the server closes it
+    /// (after `done`, or after a `rate_limited` error) and throws on HTTP errors or a dropped connection.
+    /// 60 s of silence counts as dropped: `ask_data` can think for 20 s or more without sending anything.
+    func chat(message: String, conversationId: String?) -> AsyncThrowingStream<ChatEvent, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    let body = try JSONCoding.encoder().encode(ChatBody(message: message, conversationId: conversationId))
+                    var (bytes, status) = try await openChat(body, forceRefresh: false)
+                    if status == 401 {
+                        bytes.task.cancel()
+                        (bytes, status) = try await openChat(body, forceRefresh: true)
+                    }
+                    guard status == 200 else {
+                        var data = Data()
+                        for try await byte in bytes where data.count < 4096 { data.append(byte) }
+                        throw APIError.from(status: status, body: data)
+                    }
+                    var parser = SSEParser()
+                    let decoder = JSONCoding.decoder()
+                    for try await byte in bytes {
+                        guard let message = parser.push(byte) else { continue }
+                        // A malformed event is skipped rather than ending the turn.
+                        if let event = try? ChatEvent.decode(event: message.event, data: Data(message.data.utf8), using: decoder) {
+                            continuation.yield(event)
+                        }
+                    }
+                    continuation.finish()
+                } catch let error as URLError {
+                    continuation.finish(throwing: APIError.transport(error.localizedDescription))
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     // MARK: Plumbing
 
     /// An authorized request for `path` under the base URL. LiveClient uses it for GET /live.
@@ -88,6 +126,14 @@ nonisolated final class APIClient: Sendable {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
         return request
+    }
+
+    private func openChat(_ body: Data, forceRefresh: Bool) async throws -> (URLSession.AsyncBytes, Int) {
+        var request = try await authorizedRequest("POST", "chat", body: body, forceRefresh: forceRefresh)
+        request.timeoutInterval = 60
+        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        let (bytes, response) = try await session.bytes(for: request)
+        return (bytes, (response as? HTTPURLResponse)?.statusCode ?? 0)
     }
 
     private func send<T: Decodable & Sendable>(_ method: String, _ path: String, query: [String: String] = [:],

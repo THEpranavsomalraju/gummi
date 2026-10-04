@@ -34,6 +34,10 @@ struct AppModelTests {
         func pauseStream() async throws -> StreamStatus { initial.stream }
         func resumeStream() async throws -> StreamStatus { initial.stream }
         func setStreamSpeed(_ speed: Double) async throws -> StreamStatus { initial.stream }
+        func chat(_ message: String, conversationId: String?) -> AsyncThrowingStream<ChatEvent, Error> {
+            AsyncThrowingStream { $0.finish() }
+        }
+        func updateMeal(id: String, items: [MealItem]) async throws -> Meal { try Fixtures.decode(Meal.self, "meal") }
         func events() -> AsyncStream<ServiceEvent> {
             AsyncStream { continuation in lock.withLock { self.continuation = continuation } }
         }

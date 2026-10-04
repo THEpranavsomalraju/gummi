@@ -28,6 +28,22 @@ nonisolated final class MockGummiService: GummiService {
     /// `speed` is the contract's replay multiplier (60 means one replay minute per wall second).
     func setStreamSpeed(_ speed: Double) async throws -> StreamStatus { await engine.setSpeed(speed / 60) }
 
+    /// MockChat's scripted reply, played back with the backend's pacing.
+    func chat(_ message: String, conversationId: String?) -> AsyncThrowingStream<ChatEvent, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                for step in await engine.chatReply(message, conversationId: conversationId) {
+                    do { try await Task.sleep(for: step.delay) } catch { break }
+                    continuation.yield(step.event)
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    func updateMeal(id: String, items: [MealItem]) async throws -> Meal { try await engine.updateMeal(id, items: items) }
+
     func events() -> AsyncStream<ServiceEvent> {
         AsyncStream { continuation in
             let id = UUID()
@@ -46,6 +62,8 @@ actor MockEngine {
     private var lastStatePush = Date.distantPast
     private var subscribers: [UUID: AsyncStream<ServiceEvent>.Continuation] = [:]
     private var ticker: Task<Void, Never>?
+    private var chatTurns = 0
+    private var chatMeals: [String: Meal] = [:]
 
     init(session: MockSession, minutesPerSecond: Double) {
         self.session = session
@@ -126,6 +144,29 @@ actor MockEngine {
         events.forEach { broadcast(.live($0)) }
         pushState()
         return meal
+    }
+
+    func chatReply(_ message: String, conversationId: String?) -> [MockChat.Step] {
+        chatTurns += 1
+        let reply = MockChat.reply(to: message, state: snapshot(), latestGrade: session.grades.last, turn: chatTurns,
+                                   conversationId: conversationId ?? "conv_mock_\(chatTurns)")
+        if let meal = reply.savedMeal {
+            chatMeals[meal.mealId] = meal
+            broadcast(.live(.card(session.addChatMeal(meal, likelyPeak: reply.likelyPeak))))
+            pushState()
+        }
+        return reply.steps
+    }
+
+    /// PATCH /meals for a chat meal: the phone sends scaled macros, so the totals are just their sum.
+    func updateMeal(_ id: String, items: [MealItem]) throws -> Meal {
+        guard let meal = chatMeals[id] else { throw APIError.http(status: 404, code: "not_found", message: "meal \(id) not found") }
+        guard !items.isEmpty else { throw APIError.http(status: 422, code: "invalid", message: "items must not be empty") }
+        let updated = Meal(mealId: meal.mealId, eatenAt: meal.eatenAt, source: meal.source, items: items,
+                           totals: MealTotals(items: items), isStandardBreakfast: false, predictionId: meal.predictionId)
+        chatMeals[id] = updated
+        pushState()
+        return updated
     }
 
     func restart() -> StreamStatus {
