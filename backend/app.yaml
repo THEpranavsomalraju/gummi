@@ -8,3 +8,7 @@ env:
     value: /Volumes/workspace/gummi_ml/artifacts/gummi_model_v1_next
   - name: GUMMI_LANDING_DIR
     value: /Volumes/workspace/gummi_data/landing/events_live
+  - name: GUMMI_DEXCOM_CLIENT_ID
+    valueFrom: dexcom-client-id
+  - name: GUMMI_DEXCOM_CLIENT_SECRET
+    valueFrom: dexcom-client-secret
