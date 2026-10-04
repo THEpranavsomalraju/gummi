@@ -10,8 +10,18 @@ struct GummiApp: App {
 
     var body: some Scene {
         WindowGroup {
-            DebugView()
-                .environment(model)
+            Group {
+                #if DEBUG
+                if UserDefaults.standard.string(forKey: "gummi.screen") == "playground" {
+                    NavigationStack { PuppetPlaygroundView() }
+                } else {
+                    RootView()
+                }
+                #else
+                RootView()
+                #endif
+            }
+            .environment(model)
         }
         .onChange(of: scenePhase) { _, phase in
             guard !isHostingTests else { return }
