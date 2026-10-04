@@ -118,6 +118,8 @@ struct ChatBubbleButton: View {
                 .frame(width: 58, height: 42)
                 .padding(.bottom, 8)
                 .glassSurface(in: SpeechBubble())
+                .padding(14)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Chat with Gummi")

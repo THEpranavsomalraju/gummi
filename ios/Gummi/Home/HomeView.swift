@@ -24,13 +24,14 @@ struct HomeView: View {
                     PuppetView(input: puppetInput(chatting: chatting), controller: puppet, greets: true,
                                cue: model.puppetCue, visibleHeight: Self.puppetVisibleHeight)
                     GeometryReader { band in
-                        let showsBubble = puppet.showsChatHint && !chatting
+                        // Always tappable: it only dims while Gummi moves, so a tap never falls through to him.
+                        let settled = puppet.showsChatHint
                         ChatBubbleButton { model.askGummi() }
                             .position(x: band.size.width / 2 + band.size.height * 0.33, y: band.size.height * 0.16)
-                            .opacity(showsBubble ? 1 : 0)
-                            .scaleEffect(showsBubble ? 1 : 0.85)
-                            .allowsHitTesting(showsBubble)
-                            .animation(.easeInOut(duration: 0.35), value: showsBubble)
+                            .opacity(chatting ? 0 : settled ? 1 : 0.55)
+                            .scaleEffect(settled ? 1 : 0.92)
+                            .allowsHitTesting(!chatting)
+                            .animation(.easeInOut(duration: 0.35), value: settled)
                     }
                 }
                 .frame(height: chatting ? stageHeight(geometry) : nil)
