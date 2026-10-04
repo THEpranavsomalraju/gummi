@@ -28,6 +28,8 @@ async def engine_loop() -> None:
     has a chart before anyone presses start), then tick once per second and push State to every connected phone."""
     broadcaster.bind(asyncio.get_running_loop())
     await asyncio.to_thread(engine.load)
+    from .agent.llm import warm
+    asyncio.get_running_loop().run_in_executor(None, warm)     # first chat turn skips connection setup
     if engine.ready and clock.anchor_replay is None:
         start_r = parse_start(config.DEFAULT_START)
         clock.anchor_replay, clock.anchor_wall = start_r, time.time()
