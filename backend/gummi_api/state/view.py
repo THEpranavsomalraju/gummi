@@ -116,8 +116,10 @@ def fleet() -> dict:
     entries = []
     for pid in config.PARTICIPANTS:
         s = engine.subjects.get(pid)
-        acc = gold.by_user.get(pid, {})
         graded = list(s.grades) if s else []
+        acc = gold.by_user.get(pid, {})
+        if (acc.get("grades") or 0) < 0.5 * len(graded):
+            acc = {}
         last = graded[-1] if graded else None
         conf = list(zip(s.conf_t, s.conf_v)) if s else []
         spark = [{"t": iso(t), "glucose_mg_dl": g, "kind": "confirmed"} for t, g in conf[-36::3]]
@@ -130,7 +132,8 @@ def fleet() -> dict:
             "last_value_mae_mg_dl": acc.get("last_value_mae_mg_dl", _mean(g["last_value_mae_mg_dl"] for g in graded)),
             "last_grade": last})
     all_g = [g for s in list(engine.subjects.values()) for g in list(s.grades)]
-    roll = gold.rollup or {}
+    # Gold numbers only once the pipeline has caught up with this replay session (stale or test rows never show)
+    roll = gold.rollup if gold.rollup and (gold.rollup.get("grades") or 0) >= 0.5 * len(all_g) else {}
     return {"entries": entries,
             "fleet_gummi_mae_mg_dl": roll.get("gummi_mae_mg_dl", _mean(g["gummi_mae_mg_dl"] for g in all_g)),
             "fleet_cgm_only_mae_mg_dl": roll.get("cgm_only_mae_mg_dl", _mean(g["cgm_only_mae_mg_dl"] for g in all_g)),

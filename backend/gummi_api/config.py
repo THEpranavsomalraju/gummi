@@ -28,7 +28,7 @@ MODEL_VOLUME_DIR = os.environ.get("GUMMI_MODEL_DIR", f"/Volumes/{CATALOG}/gummi_
 CACHE_DIR = Path(os.environ.get("GUMMI_CACHE_DIR", BACKEND / ".cache"))
 REPLAY_SOURCE = os.environ.get("GUMMI_REPLAY_SOURCE", "sql")    # "sql" (Delta via the warehouse) or a folder of CSVs
 
-# Real replay events land in events/ (the gummi_stream pipeline reads it). Mock events go to a sibling folder so
+# Real replay events land in the folder the gummi_stream pipeline reads (app.yaml sets events_live/ since the reset). Mock events go to a sibling folder so
 # synthetic data never reaches the stream tables (D-50).
 LANDING_ROOT = f"/Volumes/{CATALOG}/gummi_data/landing"
 LANDING_DIR = os.environ.get("GUMMI_LANDING_DIR", f"{LANDING_ROOT}/mock_events" if MODE == "mock" else f"{LANDING_ROOT}/events")
