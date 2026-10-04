@@ -1,4 +1,3 @@
-import RealityKit
 import SwiftUI
 
 /// Gummi, ready to drop into any screen.
@@ -14,10 +13,16 @@ struct PuppetView: View {
     @State private var controller: KoalaController
     @State private var look: SIMD2<Float>?
     @State private var pressing = false
+    @State private var touch: (start: CGPoint, moved: Bool)?
+    @State private var pressTimer: Task<Void, Never>?
     @State private var lastTap = Date.distantPast
     @State private var taps = 0
     @State private var releases = 0
+    @State private var releasedAt = Date.distantPast
     @State private var proudSpins = 0
+
+    /// `-gummi.renderer realityView` uses the 60 fps RealityView path instead of the 120 fps canvas.
+    private static let usesRealityView = UserDefaults.standard.string(forKey: "gummi.renderer") == "realityView"
 
     init(input: PuppetInput, controller: KoalaController? = nil, showsFPS: Bool = false,
          translucentShell: Bool = false, greets: Bool = false) {
@@ -30,36 +35,20 @@ struct PuppetView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            RealityView { content in
-                content.camera = .virtual
-                guard let rig = await controller.prepare() else { return }
-                content.add(rig.scene)
-                let controller = controller
-                controller.subscription = content.subscribe(to: SceneEvents.Update.self) { event in
-                    let dt = event.deltaTime
-                    MainActor.assumeIsolated { controller.tick(dt) }
+            Group {
+                if Self.usesRealityView {
+                    KoalaRealityView(controller: controller)
+                } else {
+                    KoalaCanvas(controller: controller)
                 }
             }
-            .gesture(SpatialTapGesture().targetedToAnyEntity().onEnded { value in
-                tap(value.entity.name == "head" ? .head : .belly)
-            })
-            .simultaneousGesture(LongPressGesture(minimumDuration: 0.3).targetedToAnyEntity().onEnded { _ in
-                pressing = true
+            .gesture(SpatialTapGesture().onEnded { value in
+                if let region = controller.rig?.hitRegion(at: value.location, in: geometry.size) { tap(region) }
             })
             .simultaneousGesture(
                 DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        let size = geometry.size
-                        look = SIMD2(Float(value.location.x / max(size.width, 1) * 2 - 1),
-                                     Float(1 - value.location.y / max(size.height, 1) * 2))
-                    }
-                    .onEnded { _ in
-                        look = nil
-                        if pressing {
-                            pressing = false
-                            releases += 1
-                        }
-                    }
+                    .onChanged { value in touchMoved(to: value.location, in: geometry.size) }
+                    .onEnded { _ in touchEnded() }
             )
         }
         .overlay(alignment: .topLeading) {
@@ -101,8 +90,41 @@ struct PuppetView: View {
         controller.input = merged
     }
 
+    /// Eyes follow the finger. A finger held still on Gummi for 0.3 s squishes him.
+    private func touchMoved(to location: CGPoint, in size: CGSize) {
+        look = SIMD2(Float(location.x / max(size.width, 1) * 2 - 1), Float(1 - location.y / max(size.height, 1) * 2))
+        if let current = touch {
+            if !current.moved, hypot(location.x - current.start.x, location.y - current.start.y) > 12 {
+                touch?.moved = true
+                pressTimer?.cancel()
+            }
+            return
+        }
+        touch = (location, false)
+        guard controller.rig?.hitRegion(at: location, in: size) != nil else { return }
+        pressTimer = Task {
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled, touch?.moved == false else { return }
+            pressing = true
+        }
+    }
+
+    private func touchEnded() {
+        pressTimer?.cancel()
+        pressTimer = nil
+        touch = nil
+        look = nil
+        if pressing {
+            pressing = false
+            releases += 1
+            releasedAt = .now
+        }
+    }
+
     /// A second tap within 0.35 s makes him dance; the first tap still reacts right away.
     private func tap(_ region: TapRegion) {
+        // Letting go of a squish is not a tap.
+        guard !pressing, Date.now.timeIntervalSince(releasedAt) > 0.2 else { return }
         let now = Date.now
         if now.timeIntervalSince(lastTap) < 0.35 {
             controller.react(.dance(nil))

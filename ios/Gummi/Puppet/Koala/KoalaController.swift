@@ -15,6 +15,8 @@ final class KoalaController: PuppetRenderer {
         didSet { animator.input = input }
     }
 
+    private static let logsFPS = UserDefaults.standard.bool(forKey: "gummi.logFPS")
+
     /// Updated once a second, for the debug FPS counter.
     private(set) var framesPerSecond: Double = 0
     /// Counts dance beats, so the view can tap a haptic on each one.
@@ -38,15 +40,24 @@ final class KoalaController: PuppetRenderer {
         animator.react(reaction)
     }
 
+    @ObservationIgnored private var workTime: CFTimeInterval = 0
+
     func tick(_ dt: Double) {
         guard let rig else { return }
+        let started = CACurrentMediaTime()
         rig.apply(animator.step(dt: dt), dt: Float(min(dt, 1.0 / 20)))
+        workTime += CACurrentMediaTime() - started
         if animator.danceBeats != danceBeats { danceBeats = animator.danceBeats }
         frames += 1
         let now = CACurrentMediaTime()
         if now - windowStart >= 1 {
             framesPerSecond = Double(frames) / (now - windowStart)
+            // `-gummi.logFPS YES` prints the update rate and Gummi's own work per frame, read from the device console.
+            if Self.logsFPS {
+                print("gummi.fps \(Int(framesPerSecond.rounded())) work \(String(format: "%.2f", workTime / Double(max(frames, 1)) * 1000)) ms")
+            }
             frames = 0
+            workTime = 0
             windowStart = now
         }
     }

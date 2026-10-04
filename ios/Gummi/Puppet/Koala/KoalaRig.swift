@@ -35,6 +35,7 @@ final class KoalaRig {
     private let head: JellyBody
     private let headPiece: KoalaPiece
     private let hitRoot = Entity()
+    private var hitBoxes: [(entity: Entity, region: TapRegion, halfExtent: SIMD3<Float>)] = []
     private var features: [Feature] = []
     private var mouths: [MouthShape: Entity] = [:]
     private var currentMouth: MouthShape = .smile
@@ -191,15 +192,51 @@ final class KoalaRig {
     private func addHitTargets() {
         puppetRoot.addChild(hitRoot)
         // The head box covers the ears; the belly box covers the arms and legs too.
-        for (name, center, size) in [("head", SIMD3<Float>(0, 0.33, 0.006), SIMD3<Float>(0.32, 0.22, 0.2)),
-                                     ("belly", [0, 0.13, 0.01], [0.38, 0.26, 0.2])] {
+        for (region, center, size) in [(TapRegion.head, SIMD3<Float>(0, 0.33, 0.006), SIMD3<Float>(0.32, 0.22, 0.2)),
+                                       (.belly, [0, 0.13, 0.01], [0.38, 0.27, 0.2])] {
             let target = Entity()
-            target.name = name
             target.position = center
-            target.components.set(CollisionComponent(shapes: [.generateBox(size: size)]))
-            target.components.set(InputTargetComponent())
             hitRoot.addChild(target)
+            hitBoxes.append((target, region, size / 2))
         }
+    }
+
+    /// Which part of Gummi is under a point in the view, by casting a ray from the camera through it.
+    func hitRegion(at point: CGPoint, in size: CGSize) -> TapRegion? {
+        guard size.width > 0, size.height > 0 else { return nil }
+        let tanHalf = tan(camera.camera.fieldOfViewInDegrees * .pi / 360)
+        let aspect = Float(size.width / size.height)
+        let x = (Float(point.x / size.width) * 2 - 1) * tanHalf * aspect
+        let y = (1 - Float(point.y / size.height) * 2) * tanHalf
+        let cameraMatrix = camera.transformMatrix(relativeTo: nil)
+        let origin = SIMD3(cameraMatrix.columns.3.x, cameraMatrix.columns.3.y, cameraMatrix.columns.3.z)
+        let direction4 = cameraMatrix * SIMD4(simd_normalize(SIMD3(x, y, -1)), 0)
+        let direction = SIMD3(direction4.x, direction4.y, direction4.z)
+
+        var best: (region: TapRegion, distance: Float)?
+        for (entity, region, halfExtent) in hitBoxes {
+            let inverse = entity.transformMatrix(relativeTo: nil).inverse
+            let o = inverse * SIMD4(origin, 1), d = inverse * SIMD4(direction, 0)
+            guard let t = Self.rayBox(origin: SIMD3(o.x, o.y, o.z), direction: SIMD3(d.x, d.y, d.z), halfExtent: halfExtent) else { continue }
+            if best == nil || t < best!.distance { best = (region, t) }
+        }
+        return best?.region
+    }
+
+    /// Slab test: distance along the ray to an axis-aligned box centered at the origin, or nil on a miss.
+    static func rayBox(origin: SIMD3<Float>, direction: SIMD3<Float>, halfExtent: SIMD3<Float>) -> Float? {
+        var near = -Float.infinity, far = Float.infinity
+        for axis in 0..<3 {
+            if abs(direction[axis]) < 1e-6 {
+                if abs(origin[axis]) > halfExtent[axis] { return nil }
+                continue
+            }
+            let t1 = (-halfExtent[axis] - origin[axis]) / direction[axis]
+            let t2 = (halfExtent[axis] - origin[axis]) / direction[axis]
+            near = max(near, min(t1, t2))
+            far = min(far, max(t1, t2))
+        }
+        return near <= far && far >= 0 ? max(near, 0) : nil
     }
 
     // MARK: Camera, lights, environment
