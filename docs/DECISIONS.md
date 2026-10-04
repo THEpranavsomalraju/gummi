@@ -82,6 +82,10 @@ Agents append rows in their own ID range: Data D-38 to D-49, Backend D-50 to D-5
 | D-60 | App palette | PENDING | Eucalyptus green for accents and highlights (Mahil). Main color still to pick. The app follows the phone's light or dark setting. Colors come from named semantic tokens backed by system colors (placeholders: system background, white and black), with no hard-coded hex in views, so the final palette is a one-place swap. | iOS Lead | 2026-10-03 |
 | D-61 | First launch with no follow | DECIDED | The app auto-follows p_012 (D-15) on first launch, since u_mahil has no CGM. The Follow picker changes it. | Mahil | 2026-10-03 |
 | D-62 | Demo controls default start | DECIDED | /stream/start defaults to speed 60, delay 60, start_at "day6T05:00", so the 05:54 standardized breakfast comes due on screen. | Mahil | 2026-10-03 |
+| D-63 | Placeholder app icon | ASSUMED | A white koala-head silhouette on eucalyptus green, one 1024 px universal PNG drawn with CoreGraphics. Replaced by an Icon Composer icon once the palette (D-60) and puppet look settle. | iOS Lead (Mahil approved the approach) | 2026-10-03 |
+| D-64 | Swift settings | ASSUMED | Swift 6 language mode, main-actor default isolation, approachable concurrency (Xcode 26 new-project defaults). Swift 6.3 toolchain. | iOS Lead (Mahil approved) | 2026-10-03 |
+| D-65 | Devices and orientation | ASSUMED | iPhone only, portrait only. | iOS Lead (Mahil approved) | 2026-10-03 |
+| D-66 | iOS project layout and config | ASSUMED | ios/project.yml is the source of truth; Gummi.xcodeproj and build/ are git-ignored and regenerated with `xcodegen generate`. Code under ios/Gummi/{App,Core,Networking,Spike,Resources}. Config/Gummi.xcconfig (committed) documents the GUMMI_* keys with empty defaults and does `#include?` of the git-ignored Secrets.xcconfig.local, so there is no separate example file and a fresh clone still builds. Values reach the app through Info.plist. HealthKit entitlement without healthkit.access, because free Personal Teams reject the Verifiable Health Records capability. | iOS Lead (Mahil approved) | 2026-10-03 |
 
 ## Status board
 
@@ -89,4 +93,4 @@ Agents append rows in their own ID range: Data D-38 to D-49, Backend D-50 to D-5
 |---|---|---|---|
 | Backend Lead | 1: every route deployed in mock mode, 14 contract tests pass, smoke test passes through the proxy with the phone token, App writes to landing | 2026-10-03 | Nikhil: Pranav's own UC grants on gummi_data and gummi_ml; v1.1 model |
 | Data Lead | 3 (Phases 0 to 2 done; v1.1 model shipped; IMU50 check running) | 2026-10-03 | Nikhil: approve judge-facing numbers |
-| iOS Lead | 0 | 2026-10-03: onboarding items 1 to 3 and 5 verified, D-10 recorded, D-25 changed to 3D, onboarding COMPLETE, D-32 to D-37 confirmed | Phone credentials from Backend (not blocking, MockAPI) |
+| iOS Lead | 0 (Phase 0B done) | 2026-10-03: app builds with XcodeGen, runs on the Simulator (iOS 26.4 and 18.6) and on the iPhone 17 Pro; HealthKit steps read correctly; app-side token plus /health 200. Free install expires 2026-10-11 01:42 UTC. | nothing |
