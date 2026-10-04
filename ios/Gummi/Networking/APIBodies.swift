@@ -71,8 +71,8 @@ nonisolated struct FollowBody: Encodable, Sendable {
 nonisolated struct StreamStartBody: Encodable, Sendable {
     var speed: Double = 60
     var delayMinutes: Int = 60
-    /// D-62: start before the 05:54 standardized breakfast.
-    var startAt: String = "day6T05:00"
+    /// D-62: start before the 05:56 standardized breakfast (demo day 4, D-15).
+    var startAt: String = "day4T05:00"
 }
 
 nonisolated struct StreamSpeedBody: Encodable, Sendable { let speed: Double }

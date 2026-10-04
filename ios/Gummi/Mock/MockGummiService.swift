@@ -1,7 +1,7 @@
 import Foundation
 
 /// MockAPI: runs MockSession on a replay clock and pushes the same events the backend would.
-/// Default pace: 6 replay minutes per wall second, so one replay hour takes 10 seconds and 05:00 to 21:00 about 2.7 minutes.
+/// Default pace: 6 replay minutes per wall second, so one replay hour takes 10 seconds and 05:00 to 22:30 about 2.9 minutes.
 nonisolated final class MockGummiService: GummiService {
     let mode = AppMode.mock
     private let engine: MockEngine
@@ -10,7 +10,7 @@ nonisolated final class MockGummiService: GummiService {
         engine = MockEngine(session: MockSession(day: day), minutesPerSecond: minutesPerSecond)
     }
 
-    func health() async throws -> Health { Health(status: "ok", mode: .mock, version: "mock-p012-day6") }
+    func health() async throws -> Health { Health(status: "ok", mode: .mock, version: "mock-p012-day4") }
     func snapshot() async throws -> GummiState { await engine.snapshot() }
     func feed() async throws -> [StoryCard] { await engine.cards() }
     func fleet() async throws -> Fleet { await engine.fleet() }

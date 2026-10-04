@@ -49,8 +49,8 @@ nonisolated struct MockDay: Sendable {
             }
             return try String(contentsOf: url, encoding: .utf8)
         }
-        return try MockDay(cgmCSV: text("p012_day6_cgm"), mealsCSV: text("p012_day6_meals"),
-                           foodLogCSV: text("p012_day6_food_log"))
+        return try MockDay(cgmCSV: text("p012_day4_cgm"), mealsCSV: text("p012_day4_meals"),
+                           foodLogCSV: text("p012_day4_food_log"))
     }
 
     init(cgmCSV: String, mealsCSV: String, foodLogCSV: String) throws {

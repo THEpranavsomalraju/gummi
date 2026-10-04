@@ -15,10 +15,10 @@ struct NotificationPlannerTests {
 
     @Test func replayTimesBecomeWallTimesThroughTheAnchorAndSpeed() throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
-        let state = try state(minute: 330, wallNow: now)   // 05:30, breakfast due at 05:54, speed 60
+        let state = try state(minute: 330, wallNow: now)   // 05:30, breakfast due at 05:56, speed 60
         let plan = NotificationPlanner.plan(state: state, displayName: "Participant 12", now: now)
         let due = try #require(plan.first { $0.id == "due_d_1" })
-        #expect(abs(due.fireAt.timeIntervalSince(now) - 24) < 1.5)   // 24 replay minutes at 60x is 24 s
+        #expect(abs(due.fireAt.timeIntervalSince(now) - 26) < 1.5)   // 26 replay minutes at 60x is 26 s
         #expect(due.title == "Breakfast time for Participant 12")
         let recap = try #require(plan.first { $0.id.hasPrefix("recap_") })
         #expect(abs(recap.fireAt.timeIntervalSince(now) - (20 * 60 - 330)) < 1.5)
@@ -31,7 +31,7 @@ struct NotificationPlannerTests {
         let state = try state(minute: 330, minutesPerSecond: 6, wallNow: now)   // 360x
         let plan = NotificationPlanner.plan(state: state, displayName: nil, now: now)
         let due = try #require(plan.first { $0.id == "due_d_1" })
-        #expect(abs(due.fireAt.timeIntervalSince(now) - 4) < 1)
+        #expect(abs(due.fireAt.timeIntervalSince(now) - 26.0 / 6) < 1)
     }
 
     @Test func mealStoriesFireWhenDelayedDataCoversTheWindow() throws {

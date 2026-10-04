@@ -83,7 +83,7 @@ struct APIClientTests {
                 #expect(body?["user_id"] is NSNull)
                 return (200, (try? Fixtures.data("state_null")) ?? Data())
             case "/api/v1/stream/start":
-                #expect(body?["start_at"] as? String == "day6T05:00")
+                #expect(body?["start_at"] as? String == "day4T05:00")
                 #expect(body?["delay_minutes"] as? Int == 60)
                 return (200, (try? Fixtures.data("live_stream_status")) ?? Data())
             default:
