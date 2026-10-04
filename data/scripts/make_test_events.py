@@ -146,7 +146,8 @@ def main() -> int:
     lo = Path(args.local_out)
     rc = pd.read_csv(lo / "replay_cgm.csv", dtype={"participant_id": str})
     rm = pd.read_csv(lo / "replay_meals.csv", dtype={"participant_id": str})
-    model = GlucoseModel.load(lo / "gummi_model_v1")
+    from gummi_model import config as C
+    model = GlucoseModel.load(lo / C.VERSION)
     first = args.participants[0]
     for pid in args.participants:
         if pid not in set(rc.participant_id):

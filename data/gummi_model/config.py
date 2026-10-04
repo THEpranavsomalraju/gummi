@@ -1,5 +1,5 @@
 """gummi_model constants. Values marked TUNE are starting points, tuned with participant-grouped CV."""
-VERSION = "gummi_model_v1"
+VERSION = "gummi_model_v1_2"   # v1.1 interface + big-meal term (D-70); each final gets its own name and folder
 
 STEP_MIN = 5                  # CGM cadence (Dexcom G6)
 HISTORY = 24                  # readings of history (2 h), same as the published baseline
