@@ -252,7 +252,11 @@ final class AppModel {
 
     // MARK: Demo controls (shared stream: everyone following, and the projector, see the change)
 
-    func startStream() async { await streamControl("Starting…") { _ = try await $0.startStream() } }
+    /// Starts (or restarts) the shared replay at a study day and time, at `speed` (60 is one replay minute per second).
+    func startStream(day: Int = 4, hour: Int = 5, minute: Int = 0, speed: Double = 60) async {
+        let startAt = StreamStart.at(day: day, hour: hour, minute: minute)
+        await streamControl("Starting day \(day)…") { _ = try await $0.startStream(startAt: startAt, speed: speed) }
+    }
     func stopStream() async { await streamControl("Stopping…") { _ = try await $0.stopStream() } }
     func setStreamSpeed(_ speed: Double) async {
         await streamControl("Changing speed…") { _ = try await $0.setStreamSpeed(speed) }

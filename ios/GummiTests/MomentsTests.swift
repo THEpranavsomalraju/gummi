@@ -99,7 +99,7 @@ struct WalkTests {
         func fleet() async throws -> Fleet { try Fixtures.decode(Fleet.self, "live_fleet") }
         func follow(_ userId: String?) async throws -> GummiState { state }
         func logDueMeal(dueId: String) async throws -> Meal { try Fixtures.decode(Meal.self, "meal") }
-        func startStream() async throws -> StreamStatus { state.stream }
+        func startStream(startAt: String, speed: Double) async throws -> StreamStatus { state.stream }
         func stopStream() async throws -> StreamStatus { state.stream }
         func pauseStream() async throws -> StreamStatus { state.stream }
         func resumeStream() async throws -> StreamStatus { state.stream }

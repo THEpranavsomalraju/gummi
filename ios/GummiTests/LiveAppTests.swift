@@ -146,3 +146,24 @@ struct ChatGapTests {
         #expect(ChatSheet.prompts.count == 4)
     }
 }
+
+@Suite("Replay a day")
+struct ReplayDayTests {
+    @Test func startAtStrings() {
+        #expect(StreamStart.at(day: 4, hour: 5, minute: 0) == "day4T05:00")
+        #expect(StreamStart.at(day: 7, hour: 18, minute: 0) == "day7T18:00")
+        #expect(StreamStart.at(day: 4, hour: 9, minute: 5) == "day4T09:05")
+        #expect(StreamStart.minuteOfDay("day4T18:00") == 1080)
+        #expect(StreamStart.minuteOfDay("nonsense") == 300)
+    }
+
+    @Test func mockRestartsAtTheChosenTimeWithTheDaySoFar() async throws {
+        let mock = MockGummiService(day: try MockDay.load())
+        let status = try await mock.startStream(startAt: "day4T18:00", speed: 30)
+        #expect(status.replayClock == "day4T18:00")
+        #expect(status.speed == 30)
+        let state = try await mock.snapshot()
+        #expect(!state.confirmed.isEmpty && state.actingAs == "p_012")
+        #expect(try await mock.feed().contains { $0.type == .mealStory })
+    }
+}

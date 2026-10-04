@@ -87,4 +87,18 @@ nonisolated struct StreamStartBody: Encodable, Sendable {
     var startAt: String = "day4T05:00"
 }
 
+/// "day4T05:00" for /stream/start (the backend's start_at format).
+nonisolated enum StreamStart {
+    static func at(day: Int, hour: Int, minute: Int) -> String {
+        String(format: "day%dT%02d:%02d", max(1, day), min(max(hour, 0), 23), min(max(minute, 0), 59))
+    }
+
+    /// Minutes into the day for a start_at string, or 300 (05:00) if it doesn't parse.
+    static func minuteOfDay(_ startAt: String) -> Double {
+        let parts = startAt.split(separator: "T").last?.split(separator: ":").compactMap { Double($0) } ?? []
+        guard parts.count == 2 else { return 300 }
+        return parts[0] * 60 + parts[1]
+    }
+}
+
 nonisolated struct StreamSpeedBody: Encodable, Sendable { let speed: Double }

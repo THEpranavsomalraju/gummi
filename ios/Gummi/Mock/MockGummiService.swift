@@ -21,7 +21,10 @@ nonisolated final class MockGummiService: GummiService {
         return await engine.follow(userId)
     }
     func logDueMeal(dueId: String) async throws -> Meal { try await engine.logDue(dueId) }
-    func startStream() async throws -> StreamStatus { await engine.restart() }
+    /// Demo data has p_012's day 4 only, so the time of day is honored and the day number isn't.
+    func startStream(startAt: String, speed: Double) async throws -> StreamStatus {
+        await engine.restart(atMinute: StreamStart.minuteOfDay(startAt), minutesPerSecond: speed / 60)
+    }
     func stopStream() async throws -> StreamStatus { await engine.setPaused(true) }
     func pauseStream() async throws -> StreamStatus { await engine.setPaused(true) }
     func resumeStream() async throws -> StreamStatus { await engine.setPaused(false) }
@@ -259,8 +262,9 @@ actor MockEngine {
         return meal
     }
 
-    func restart() -> StreamStatus {
-        session.reset()
+    func restart(atMinute minute: Double? = nil, minutesPerSecond: Double? = nil) -> StreamStatus {
+        session.reset(toMinute: minute ?? MockSession.startMinute)
+        if let minutesPerSecond { self.minutesPerSecond = max(0.1, minutesPerSecond) }
         paused = false
         resumeAt = nil
         pushState()

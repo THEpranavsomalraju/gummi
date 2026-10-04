@@ -29,7 +29,7 @@ struct AppModelTests {
             return try Fixtures.decode(GummiState.self, "state_full")
         }
         func logDueMeal(dueId: String) async throws -> Meal { try Fixtures.decode(Meal.self, "meal") }
-        func startStream() async throws -> StreamStatus { initial.stream }
+        func startStream(startAt: String, speed: Double) async throws -> StreamStatus { initial.stream }
         func stopStream() async throws -> StreamStatus { initial.stream }
         func pauseStream() async throws -> StreamStatus { initial.stream }
         func resumeStream() async throws -> StreamStatus { initial.stream }

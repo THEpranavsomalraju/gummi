@@ -23,7 +23,8 @@ nonisolated protocol GummiService: ChatService {
     func fleet() async throws -> Fleet
     func follow(_ userId: String?) async throws -> GummiState
     func logDueMeal(dueId: String) async throws -> Meal
-    func startStream() async throws -> StreamStatus
+    /// POST /stream/start at a study day and time, like "day4T18:00" (restarts the shared replay).
+    func startStream(startAt: String, speed: Double) async throws -> StreamStatus
     func stopStream() async throws -> StreamStatus
     func pauseStream() async throws -> StreamStatus
     func resumeStream() async throws -> StreamStatus
@@ -58,7 +59,9 @@ nonisolated final class LiveGummiService: GummiService {
     func fleet() async throws -> Fleet { try await api.fleet() }
     func follow(_ userId: String?) async throws -> GummiState { try await api.follow(userId) }
     func logDueMeal(dueId: String) async throws -> Meal { try await api.logDueMeal(dueId: dueId) }
-    func startStream() async throws -> StreamStatus { try await api.startStream() }
+    func startStream(startAt: String, speed: Double) async throws -> StreamStatus {
+        try await api.startStream(StreamStartBody(speed: speed, startAt: startAt))
+    }
     func stopStream() async throws -> StreamStatus { try await api.stopStream() }
     func pauseStream() async throws -> StreamStatus { try await api.pauseStream() }
     func resumeStream() async throws -> StreamStatus { try await api.resumeStream() }

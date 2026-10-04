@@ -20,6 +20,7 @@ struct SettingsView: View {
                     .foregroundStyle(Theme.primaryText)
                 }
                 DemoControls()
+                ReplayDayControls()
                 safetySection
                 #if DEBUG
                 developerSection
@@ -144,9 +145,7 @@ struct DemoControls: View {
                 }
             }
             if stream?.running != true {
-                Button("Start the demo day (day 4, 05:00)", systemImage: "play.fill") {
-                    Task { await model.startStream() }
-                }
+                Text("Stopped. Start a day below.").foregroundStyle(Theme.secondaryText)
             } else {
                 Button(stream?.paused == true ? "Resume" : "Pause",
                        systemImage: stream?.paused == true ? "play.fill" : "pause.fill") {
@@ -180,5 +179,70 @@ struct DemoControls: View {
         guard stream.running else { return "Stopped" }
         let clock = stream.replayClock.map { $0.replacingOccurrences(of: "T", with: " ").replacingOccurrences(of: "day", with: "Day ") } ?? "–"
         return "\(clock) · \(Int(stream.speed))×\(stream.paused ? " · paused" : "")"
+    }
+}
+
+/// Replay any study day from a chosen time: morning (before breakfast), evening (the short live segment), or custom.
+/// All participants replay the same day together, so this restarts the shared replay for everyone.
+struct ReplayDayControls: View {
+    nonisolated enum Start: String, CaseIterable, Identifiable {
+        case morning = "Morning", evening = "Evening", custom = "Custom"
+        var id: String { rawValue }
+    }
+
+    @Environment(AppModel.self) private var model
+    @State private var day = 4
+    @State private var start = Start.morning
+    @State private var custom = Calendar.current.date(from: DateComponents(hour: 9, minute: 0)) ?? .now
+    @State private var speed: Double = 60
+    @State private var confirms = false
+
+    /// Hour and minute for the chosen start.
+    private var time: (hour: Int, minute: Int) {
+        switch start {
+        case .morning: return (5, 0)
+        case .evening: return (18, 0)
+        case .custom:
+            let parts = Calendar.current.dateComponents([.hour, .minute], from: custom)
+            return (parts.hour ?? 9, parts.minute ?? 0)
+        }
+    }
+
+    private var label: String { String(format: "Replay day %d from %02d:%02d", day, time.hour, time.minute) }
+
+    var body: some View {
+        Section {
+            Stepper(value: $day, in: 1...10) {
+                LabeledContent("Study day", value: "Day \(day)")
+            }
+            Picker("Start", selection: $start) {
+                ForEach(Start.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            if start == .custom {
+                DatePicker("Start time", selection: $custom, displayedComponents: .hourAndMinute)
+            }
+            Picker("Speed", selection: $speed) {
+                ForEach(DemoControls.speeds, id: \.self) { Text("\(Int($0))×").tag($0) }
+            }
+            .pickerStyle(.segmented)
+            Button(label, systemImage: "play.circle.fill") { confirms = true }
+                .confirmationDialog(label + "?", isPresented: $confirms, titleVisibility: .visible) {
+                    Button("Restart for everyone") {
+                        Task { await model.startStream(day: day, hour: time.hour, minute: time.minute, speed: speed) }
+                    }
+                } message: {
+                    Text("Restarts the replay for everyone, including the projector. Cards and grades start fresh.")
+                }
+        } header: {
+            Text("Replay a day")
+        } footer: {
+            if model.mode == .mock {
+                Text("Demo data has Participant 12's day 4 only, so the day applies in Live; the start time works here too.")
+            } else {
+                Text("Morning starts before breakfast. Evening (18:00) is the short live segment: a walk nudge in about a minute and the 8 PM recap in two. Days past someone's data show \"No recent readings\".")
+            }
+        }
+        .disabled(model.streamAction != nil)
     }
 }

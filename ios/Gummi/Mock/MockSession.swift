@@ -79,6 +79,15 @@ nonisolated struct MockSession: Sendable {
         self = MockSession(day: day, today: dayStart.addingTimeInterval(12 * 3600))
     }
 
+    /// Starts over and plays the day silently up to `minute`, so an evening start already has the day's history.
+    mutating func reset(toMinute minute: Double) {
+        let following = following
+        reset()
+        self.following = following
+        let target = min(max(minute, Self.startMinute), Self.endMinute - 1)
+        if target > self.minute { _ = advance(to: target, wallNow: .now) }
+    }
+
     // MARK: Script
 
     /// Moves the replay clock forward and returns what the backend would push, in order.

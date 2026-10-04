@@ -41,3 +41,4 @@ Updated 2026-10-04. Read root CLAUDE.md, ios/CLAUDE.md, docs/CONTRACT.md (1.5), 
 - Home · Food · Activity · Day (D-168 to D-170, D-152 resolved). Settings is a sheet from Home's gear. Code in ios/Gummi/Food, Activity, Day; the shared PortionEditor is in Cards/. The mock serves /foodlog, /day and manual POST /meals (Mock/MockFoodAndDay.swift).
 - Open with Backend (FYI 1430): actual_peak_mg_dl in the food log, mood sleepy when stale.
 - Debug args: `-gummi.tab food|activity|day|settings`, `-gummi.mockSpeed 30` reaches the evening fast.
+- Replay a day (D-171): Settings > Replay a day picks the study day, start time, and speed, then restarts the shared replay (`AppModel.startStream(day:hour:minute:speed:)`).
