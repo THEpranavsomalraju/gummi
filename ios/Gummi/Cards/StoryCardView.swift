@@ -13,6 +13,7 @@ struct StoryCardView: View {
         VStack(alignment: .leading, spacing: 10) {
             header
             Text(card.body)
+                .contentTransition(.opacity)
                 .font(.subheadline)
                 .foregroundStyle(Theme.primaryText)
                 .lineLimit(style == .compact ? 2 : nil)
@@ -36,6 +37,13 @@ struct StoryCardView: View {
             Text(card.title)
                 .font(.headline)
                 .lineLimit(2)
+                .contentTransition(.opacity)
+            if card.generatedBy == .agent {
+                Image(systemName: "sparkles")
+                    .font(.caption)
+                    .foregroundStyle(Theme.accent)
+                    .accessibilityLabel("Written by Gummi")
+            }
             Spacer(minLength: 4)
             Text(card.createdAt, format: .dateTime.hour().minute())
                 .font(.caption)

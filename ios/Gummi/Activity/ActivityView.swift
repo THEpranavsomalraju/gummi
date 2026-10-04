@@ -1,8 +1,26 @@
 import SwiftUI
 
-/// Today: the day's story cards, newest first, grouped by time of day. Tapping a banner scrolls here.
+/// Which cards Activity shows.
+nonisolated enum ActivityFilter: String, CaseIterable, Sendable, Identifiable {
+    case all = "All", meals = "Meals", walks = "Walks", grades = "Grades"
+
+    var id: String { rawValue }
+
+    func matches(_ type: CardType) -> Bool {
+        switch self {
+        case .all: true
+        case .meals: [.mealDue, .mealLogged, .mealStory, .prediction].contains(type)
+        case .walks: [.walkSuggested, .walkSummary].contains(type)
+        case .grades: [.mealStory, .grade].contains(type)
+        }
+    }
+}
+
+/// Activity: everything Gummi posted or nudged, newest first, grouped by time of day, with filter chips.
+/// Tapping a banner or a notification lands here; tapping a meal card opens that meal in Food.
 struct ActivityView: View {
     @Environment(AppModel.self) private var model
+    @State private var filter = ActivityFilter.all
 
     private struct Section: Identifiable {
         let id: String
@@ -14,7 +32,7 @@ struct ActivityView: View {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = Theme.timeZone
         var result: [Section] = []
-        for card in model.cards {
+        for card in model.cards where filter.matches(card.type) {
             let hour = calendar.component(.hour, from: card.createdAt)
             let title = switch hour {
             case 5..<12: "Morning"
@@ -36,6 +54,7 @@ struct ActivityView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
+                        filterChips
                         if let name = model.displayName(for: model.state?.actingAs) {
                             Text("Acting as \(name)")
                                 .font(.subheadline)
@@ -48,6 +67,8 @@ struct ActivityView: View {
                             ForEach(section.cards) { card in
                                 StoryCardView(card: card, style: .full)
                                     .id(card.cardId)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { openMeal(card) }
                                     .transition(.move(edge: .top).combined(with: .opacity))
                             }
                         }
@@ -76,5 +97,36 @@ struct ActivityView: View {
             }
             .background(Theme.background)
         }
+    }
+
+    private var filterChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(ActivityFilter.allCases) { option in
+                    Button {
+                        withAnimation(.snappy) { filter = option }
+                    } label: {
+                        Text(option.rawValue)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(filter == option ? Color.white : Theme.primaryText)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
+                            .background {
+                                if filter == option { Capsule().fill(Theme.accent) }
+                            }
+                            .glassSurface(in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(filter == option ? .isSelected : [])
+                }
+            }
+        }
+    }
+
+    /// meal_logged and meal_story cards open their meal in Food.
+    private func openMeal(_ card: StoryCard) {
+        guard card.type == .mealLogged || card.type == .mealStory, let mealId = card.attachments?.meal?.mealId else { return }
+        model.focusedMealId = mealId
+        model.selectedTab = .food
     }
 }

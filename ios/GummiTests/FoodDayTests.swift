@@ -57,3 +57,32 @@ struct FoodLogTests {
         #expect(after.entries.contains { $0.origin == .you && FoodResult.of($0) != .none(nil) })
     }
 }
+
+@Suite("Activity")
+struct ActivityTests {
+    private func model() -> AppModel {
+        AppModel(defaults: UserDefaults(suiteName: "gummi.tests.\(UUID().uuidString)")!,
+                 makeService: { _ in throw APIError.notConfigured("unused") })
+    }
+
+    @Test func filtersMatchCardTypes() {
+        #expect(ActivityFilter.meals.matches(.mealDue) && ActivityFilter.meals.matches(.mealStory))
+        #expect(!ActivityFilter.meals.matches(.walkSummary))
+        #expect(ActivityFilter.walks.matches(.walkSuggested) && !ActivityFilter.walks.matches(.eveningRecap))
+        #expect(ActivityFilter.grades.matches(.mealStory) && !ActivityFilter.grades.matches(.mealLogged))
+        #expect(ActivityFilter.allCases.allSatisfy { $0 != .all || $0.matches(.morningBriefing) })
+    }
+
+    @Test func newCardsBadgeActivityUntilOpened() throws {
+        let model = model()
+        model.apply(.card(try Fixtures.decode(StoryCard.self, "card_meal_due")))
+        model.apply(.card(try Fixtures.decode(StoryCard.self, "card_morning_briefing")))
+        // An upgrade of a card already held doesn't count again.
+        model.apply(.card(try Fixtures.decode(StoryCard.self, "card_meal_due_resolved")))
+        #expect(model.activityUnseen == 2)
+        model.selectedTab = .activity
+        #expect(model.activityUnseen == 0)
+        model.apply(.card(try Fixtures.decode(StoryCard.self, "card_meal_logged")))
+        #expect(model.activityUnseen == 0)
+    }
+}
