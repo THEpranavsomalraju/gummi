@@ -3,4 +3,6 @@ env:
   - name: GUMMI_CATALOG
     value: workspace
   - name: GUMMI_MODE
-    value: mock
+    value: live
+  - name: GUMMI_LANDING_DIR
+    value: /Volumes/workspace/gummi_data/landing/events_live

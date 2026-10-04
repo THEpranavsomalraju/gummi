@@ -1,21 +1,23 @@
-"""Meals, meal_due logging, simulate, vitals, walk events (CONTRACT section 4). Mock engine until gummi_model lands."""
+"""Meals, meal_due logging, simulate, vitals, walk events (CONTRACT section 4), backed by the replay engine."""
+import time
 from datetime import timedelta
 
+import pandas as pd
 from fastapi import APIRouter, Depends
 
-from .. import config
 from ..auth import user_id
+from ..engine.engine import MACROS, engine
 from ..errors import ApiError
 from ..live.broadcaster import broadcaster
-from ..mock import data as mock
 from ..nutrition.estimate import item, totals
+from ..state import cards
 from ..state.hot_store import store
-from ..util import iso, new_id, parse, utcnow
-from .core import counters, current_state
+from ..stream.landing_writer import landing
+from ..stream.producer import clock
+from ..util import iso, iso_utc, new_id, parse, r1, utcnow
+from .core import push_state
 
 router = APIRouter()
-DUE_MEALS = {"d_1": "Two waffles with syrup and a black coffee", "d_2": "Turkey sandwich and an apple",
-             "d_3": "Greek yogurt with honey", "d_4": "Chicken stir fry with rice"}
 
 
 def _items(raw: list[dict]) -> list[dict]:
@@ -31,134 +33,138 @@ def _items(raw: list[dict]) -> list[dict]:
     return out
 
 
-def _predict(uid: str, about: str, at, items: list[dict], meal_id: str | None) -> dict:
-    s = current_state(uid)
-    last = s["confirmed"][-1]["glucose_mg_dl"]
-    carbs = totals(items)["carbs_g"]
-    curve = mock.forecast(store.get(uid).following or uid, at, bump=carbs * 0.9, bump_in_min=0)[:24]
-    peak = max(p["glucose_mg_dl"] for p in curve)
-    p = mock.prediction(about, at, peak, last, curve, meal_id=meal_id)
-    store.get(uid).predictions[p["prediction_id"]] = p
-    counters["predictions"] += 1
-    return p
+def _acting(uid: str):
+    pid = store.get(uid).following
+    return engine.subjects.get(pid) if pid else None
 
 
-def _about(items: list[dict]) -> str:
-    return ", ".join(f"{i['name']}" + (f" x{i['quantity']:g}" if i["quantity"] != 1 else "") for i in items)
-
-
-def create_meal(uid: str, items: list[dict], eaten_at, source: str, standard_breakfast: bool = False) -> dict:
-    meal_id = new_id("m")
-    pred = _predict(uid, _about(items), eaten_at, items, meal_id)
-    meal = {"meal_id": meal_id, "eaten_at": iso(eaten_at), "source": source, "items": items,
-            "totals": totals(items), "is_standard_breakfast": standard_breakfast, "prediction_id": pred["prediction_id"]}
+def create_meal(uid: str, items: list[dict], source: str) -> dict:
+    """A teammate's own meal. While acting as a replay participant it is kept for the teammate only and never feeds the
+    replay (D-53): the participant's real meals come from the study log, so grading a made-up meal against real
+    glucose would be dishonest. Chat turns such meals into simulations instead."""
     u = store.get(uid)
+    meal = {"meal_id": new_id("m"), "eaten_at": iso(utcnow()), "source": source, "items": items,
+            "totals": totals(items), "is_standard_breakfast": False, "prediction_id": None}
     u.meals.append(meal)
-    c = mock.card("meal_logged", utcnow(), f"{_about(items).capitalize()} logged",
-                  f"I expect a peak near {pred['predicted_peak_mg_dl']:.0f}. That's an estimate, and I'll grade it "
-                  f"in two hours.", "rising", attachments={"meal": meal, "prediction": pred})
-    u.cards.append(c)
+    landing.enqueue({"source": "app", "user_id": uid, "kind": "meal", "t": iso_utc(utcnow()),
+                     "released_at": iso_utc(utcnow()), "payload": meal})
+    c = cards.card("meal_logged", utcnow(), f"{items[0]['name'].capitalize()} logged",
+                   "Saved to your day. Follow a participant to see predictions on real glucose data.", "calm",
+                   attachments={"meal": meal})
+    u.add_card(c)
     broadcaster.publish(uid, "card", c)
-    broadcaster.publish(uid, "state", current_state(uid))
+    push_state(uid)
     return meal
 
 
-def _find(uid: str, meal_id: str) -> dict:
+def _find(uid: str, meal_id: str):
+    s = _acting(uid)
+    for m in (s.meals if s else []):
+        if m["meal_id"] == meal_id:
+            return s, m
     for m in store.get(uid).meals:
         if m["meal_id"] == meal_id:
-            return m
+            return None, m
     raise ApiError(404, "not_found", f"meal {meal_id} not found")
 
 
 @router.post("/meals")
 async def post_meal(body: dict, uid: str = Depends(user_id)):
-    eaten_at = parse(body["eaten_at"]) if body.get("eaten_at") else utcnow()
     source = body.get("source", "manual")
     if source not in ("chat", "manual"):
         raise ApiError(422, "invalid", "source must be chat or manual")
-    return create_meal(uid, _items(body.get("items", [])), eaten_at, source)
+    return create_meal(uid, _items(body.get("items", [])), source)
 
 
 @router.patch("/meals/{meal_id}")
 async def patch_meal(meal_id: str, body: dict, uid: str = Depends(user_id)):
-    meal = _find(uid, meal_id)
+    s, meal = _find(uid, meal_id)
     meal["items"] = _items(body.get("items", []))
     meal["totals"] = totals(meal["items"])
-    store.get(uid).predictions.pop(meal["prediction_id"], None)
-    meal["prediction_id"] = _predict(uid, _about(meal["items"]), parse(meal["eaten_at"]), meal["items"],
-                                     meal_id)["prediction_id"]
-    broadcaster.publish(uid, "state", current_state(uid))
+    if s is not None:
+        # portions corrected: update the model input and recompute the prediction (CONTRACT section 4)
+        for row in s.meal_inputs:
+            if row["meal_id"] == meal_id:
+                row.update({k: meal["totals"][k] for k in MACROS})
+        old = s.predictions.pop(meal["prediction_id"], None) if meal["prediction_id"] else None
+        if old is None or old["status"] == "pending":
+            eaten_r = (pd.Timestamp(meal["eaten_at"]) - pd.Timestamp(clock.replay_to_wall(0))).total_seconds() / 60
+            meal["prediction_id"] = engine._meal_prediction(s, meal, eaten_r)["prediction_id"]
+        s.version += 1
+    push_state(uid)
     return meal
 
 
 @router.delete("/meals/{meal_id}")
 async def delete_meal(meal_id: str, uid: str = Depends(user_id)):
-    meal = _find(uid, meal_id)
-    u = store.get(uid)
-    u.meals.remove(meal)
-    u.predictions.pop(meal["prediction_id"], None)
-    broadcaster.publish(uid, "state", current_state(uid))
+    s, meal = _find(uid, meal_id)
+    if s is not None:
+        s.meals.remove(meal)
+        s.meal_inputs = [r for r in s.meal_inputs if r["meal_id"] != meal_id]
+        if meal["prediction_id"]:
+            s.predictions.pop(meal["prediction_id"], None)
+        s.version += 1
+    else:
+        store.get(uid).meals.remove(meal)
+    push_state(uid)
     return {"deleted": True}
 
 
 @router.get("/meals")
 async def get_meals(uid: str = Depends(user_id), date: str | None = None):
-    return {"meals": store.get(uid).meals}
+    s = _acting(uid)
+    meals = (s.meals if s else store.get(uid).meals)
+    if date:
+        meals = [m for m in meals if m["eaten_at"][:10] == date]
+    return {"meals": meals[-100:]}
 
 
 @router.post("/meals/due/{due_id}/log")
 async def log_due(due_id: str, uid: str = Depends(user_id)):
-    text = DUE_MEALS.get(due_id)
-    if text is None:
-        raise ApiError(404, "not_found", f"due meal {due_id} not found")
-    u = store.get(uid)
-    if due_id in u.dismissed_due:
+    try:
+        meal = engine.log_due(due_id, "replay_due")
+    except RuntimeError:
         raise ApiError(409, "due_already_logged", f"{due_id} was logged already")
-    u.dismissed_due.add(due_id)
-    resolve_due_card(uid, due_id)
-    names = [n.strip() for n in text.replace(" with ", " and ").split(" and ")]
-    return create_meal(uid, _items([{"name": n} for n in names]), utcnow(), "replay_due")
+    if meal is None:
+        raise ApiError(404, "not_found", f"due meal {due_id} not found")
+    push_state(uid)
+    return meal
 
 
-def resolve_due_card(uid: str, due_id: str) -> None:
-    """CONTRACT 1.3 upsert: re-send the meal_due card under its card_id with no actions and "Logged." appended."""
-    subject = store.get(uid).following or uid
-    for c in mock.day_cards(subject, utcnow()) + store.get(uid).cards:
-        if c["type"] == "meal_due" and any(a.get("due_id") == due_id for a in c["actions"]):
-            resolved = {**c, "actions": [], "body": c["body"].rstrip(".") + ". Logged."}
-            store.get(uid).cards.append(resolved)
-            broadcaster.publish(uid, "card", resolved)
-            return
+def run_simulation(uid: str, items: list[dict], eat_at=None) -> dict:
+    s = _acting(uid)
+    if s is None or len(s.conf_t) < 3 or clock.now() is None:
+        raise ApiError(409, "no_cgm_data", "Follow a participant first: simulations need glucose data")
+    now = clock.replay_to_wall(clock.now())
+    eat = parse(eat_at) if eat_at else now
+    sim = s.model.simulate(engine.ctx(s), now, [{k: i[k] for k in MACROS} for i in items], eat_at=eat)
+    name = items[0]["name"] if len(items) == 1 else "that"
+    pred_id = new_id("pr")
+    curve = sim["with_food_curve"]
+    s.predictions[pred_id] = {
+        "prediction_id": pred_id, "kind": "meal", "made_at": iso(now), "about": f"simulated {name}", "meal_id": None,
+        "window_start": iso(eat), "window_end": iso(eat + timedelta(hours=2)), "predicted_peak_mg_dl": sim["peak_mg_dl"],
+        "predicted_curve": curve, "cgm_only_peak_mg_dl": None, "last_value_peak_mg_dl": r1(s.conf_v[-1]),
+        "status": "graded", "_cgm_only_curve": []}   # hypothetical food: never graded against real glucose
+    return {"items": items, "eat_at": sim["eat_at"], "baseline_curve": sim["baseline_curve"],
+            "with_food_curve": curve, "peak_mg_dl": sim["peak_mg_dl"], "peak_at": sim["peak_at"],
+            "verdict": sim["verdict"], "summary": f"With the {name} you'd likely peak near {sim['peak_mg_dl']:.0f}.",
+            "alternatives": sim["alternatives"], "method": sim["method"], "prediction_id": pred_id}
 
 
 @router.post("/simulate")
 async def simulate(body: dict, uid: str = Depends(user_id)):
-    items = _items(body.get("items", []))
-    eat_at = parse(body["eat_at"]) if body.get("eat_at") else utcnow()
-    subject = store.get(uid).following or uid
-    carbs = totals(items)["carbs_g"]
-    base = mock.forecast(subject, eat_at, bump=0)
-    full = mock.forecast(subject, eat_at, bump=carbs * 0.9, bump_in_min=0)
-    peak_pt = max(full, key=lambda p: p["glucose_mg_dl"])
-    peak = peak_pt["glucose_mg_dl"]
-    half = max(base, key=lambda p: p["glucose_mg_dl"])["glucose_mg_dl"] + (peak - max(p["glucose_mg_dl"] for p in base)) / 2
-    high = store.get(uid).profile["high_line_mg_dl"]
-    verdict = "go" if peak < high else "go_with_tweak" if half < high or peak - 14 < high else "wait"
-    pred = _predict(uid, _about(items), eat_at, items, None)
-    name = items[0]["name"] if len(items) == 1 else "that"
-    return {"items": items, "eat_at": iso(eat_at), "baseline_curve": base, "with_food_curve": full,
-            "peak_mg_dl": peak, "peak_at": peak_pt["t"], "verdict": verdict,
-            "summary": f"With the {name} you'd likely peak near {peak:.0f}.",
-            "alternatives": [{"label": "Half portion", "peak_mg_dl": round(half, 1)},
-                             {"label": "Walk 10 minutes after", "peak_mg_dl": round(peak - 14, 1),
-                              "effect_source": "literature"}],
-            "method": "model", "prediction_id": pred["prediction_id"]}
+    return run_simulation(uid, _items(body.get("items", [])), body.get("eat_at"))
 
 
 @router.post("/vitals")
 async def vitals(body: dict, uid: str = Depends(user_id)):
     samples = [s for s in body.get("samples", []) if s.get("type") == "steps" and s.get("value") is not None]
     store.get(uid).steps += int(sum(s["value"] for s in samples))
+    for smp in samples:
+        landing.enqueue({"source": "iphone", "user_id": uid, "kind": "steps", "t": smp.get("end") or iso_utc(utcnow()),
+                         "released_at": iso_utc(utcnow()),
+                         "payload": {"value": smp["value"], "start": smp.get("start"), "end": smp.get("end")}})
     return {"accepted": len(samples)}
 
 
@@ -168,24 +174,41 @@ async def events(body: dict, uid: str = Depends(user_id)):
     at = parse(body["at"]) if body.get("at") else utcnow()
     kind = body.get("type")
     if kind == "walk_started":
-        u.walk_started_at = at
+        u.walk_started_at, u.walk_started_r = at, clock.now()
     elif kind == "walk_completed":
         started = parse(body["started_at"]) if body.get("started_at") else u.walk_started_at or at - timedelta(minutes=10)
         minutes = max(1, round((at - started).total_seconds() / 60))
         steps = int(body.get("steps") or minutes * 105)
         cadence = int(body.get("cadence_spm") or round(steps / minutes))
+        s = _acting(uid)
+        try:
+            from gummi_activity import intensity_from_cadence
+            intensity = intensity_from_cadence(cadence)["intensity"]
+        except Exception:  # noqa: BLE001
+            intensity = "moderate" if cadence >= 100 else "light"
+        eff = s.model.walk_effect(engine.ctx(s), minutes, intensity) if s else {}
         walk = {"started_at": iso(started), "ended_at": iso(at), "minutes": minutes, "steps": steps,
-                "cadence_spm": cadence, "intensity": "moderate" if cadence >= 100 else "light",
-                "forecast_peak_drop_mg_dl": 14.0 if minutes >= 10 else round(1.4 * minutes, 1),
-                "effect_source": "literature"}
+                "cadence_spm": cadence, "intensity": intensity,
+                "forecast_peak_drop_mg_dl": r1(eff.get("forecast_peak_drop_mg_dl", 0.0)),
+                "effect_source": eff.get("effect_source", "literature")}
         u.walks.append(walk)
-        u.walk_started_at, u.alert = None, None
-        c = mock.card("walk_summary", utcnow(), "Nice walk", f"{minutes} minutes, {steps:,} steps, "
-                      f"{walk['intensity']} pace. Effect source: literature.", "happy", attachments={"walk": walk})
-        u.cards.append(c)
+        if s is not None and u.walk_started_r is not None:
+            # D-28: the walk overlays the followed participant at the replay time it started, for its real length
+            u.overlay_walks.append({"started_at": iso_utc(clock.replay_to_wall(u.walk_started_r)), "minutes": minutes})
+            s.version += 1
+        u.walk_started_at, u.walk_started_r, u.alert = None, None, None
+        u.happy_until = time.time() + 20 * 60
+        landing.enqueue({"source": "iphone", "user_id": uid, "kind": "walk", "t": iso_utc(at),
+                         "released_at": iso_utc(utcnow()), "payload": walk})
+        note = "" if s is None else " Your real walk is shown over the replayed day; its effect on replayed glucose isn't graded."
+        c = cards.card("walk_summary", utcnow(), "Nice walk",
+                       f"{minutes} minutes, {steps:,} steps, {intensity} pace. Modeled effect: about "
+                       f"{walk['forecast_peak_drop_mg_dl']:.0f} mg/dL lower peak ({walk['effect_source']}).{note}",
+                       "happy", attachments={"walk": walk})
+        u.add_card(c)
         broadcaster.publish(uid, "card", c)
         broadcaster.publish(uid, "mood", {"mood": "happy"})
-        broadcaster.publish(uid, "state", current_state(uid))
+        push_state(uid)
     else:
         raise ApiError(422, "invalid", "type must be walk_started or walk_completed")
     return {"ok": True}
@@ -194,12 +217,6 @@ async def events(body: dict, uid: str = Depends(user_id)):
 @router.get("/walks/latest")
 async def latest_walk(uid: str = Depends(user_id)):
     u = store.get(uid)
-    if u.walks:
-        return u.walks[-1]
-    now = utcnow()
-    return {"started_at": iso(now - timedelta(hours=3, minutes=11)), "ended_at": iso(now - timedelta(hours=3)),
-            "minutes": 11, "steps": 1180, "cadence_spm": 107, "intensity": "moderate",
-            "forecast_peak_drop_mg_dl": 14.0, "effect_source": "literature"}
-
-
-__all__ = ["router", "create_meal", "config"]
+    if not u.walks:
+        raise ApiError(404, "not_found", "no walks yet")
+    return u.walks[-1]

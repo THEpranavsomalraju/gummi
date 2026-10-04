@@ -1,6 +1,7 @@
 """Per-user server-sent events fan-out (CONTRACT section 5). Publishing never blocks: a slow phone drops old events."""
 import asyncio
 import json
+import threading
 from collections import defaultdict
 
 from .. import config
@@ -14,6 +15,11 @@ def sse(event: str, data) -> str:
 class Broadcaster:
     def __init__(self):
         self._subs: dict[str, set[asyncio.Queue]] = defaultdict(set)
+        self.loop: asyncio.AbstractEventLoop | None = None
+        self._loop_thread: int | None = None
+
+    def bind(self, loop: asyncio.AbstractEventLoop) -> None:
+        self.loop, self._loop_thread = loop, threading.get_ident()
 
     def users(self) -> list[str]:
         return [u for u, qs in self._subs.items() if qs]
@@ -22,7 +28,14 @@ class Broadcaster:
         return sum(len(qs) for qs in self._subs.values())
 
     def publish(self, user_id: str, event: str, data) -> None:
+        """Safe from any thread: the engine tick runs in a worker thread, queues belong to the event loop."""
         msg = sse(event, data)
+        if self.loop is not None and threading.get_ident() != self._loop_thread:
+            self.loop.call_soon_threadsafe(self._put, user_id, msg)
+        else:
+            self._put(user_id, msg)
+
+    def _put(self, user_id: str, msg: str) -> None:
         for q in list(self._subs.get(user_id, ())):
             if q.full():
                 try:

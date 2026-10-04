@@ -1,4 +1,4 @@
-"""POST /chat as server-sent events (CONTRACT section 6). Phase 1 mock: scripted replies with real tool and card events.
+"""POST /chat as server-sent events (CONTRACT section 6). Scripted replies with real tool and card events until the LLM agent lands.
 
 The routing mirrors the agent rules: past or present eating gets logged, food questions get simulated, anything else
 gets Gummi's estimate. Phase 2 swaps the script for the D-04 LLM with tools and MLflow tracing.
@@ -12,9 +12,10 @@ from fastapi.responses import StreamingResponse
 from ..auth import user_id
 from ..live.broadcaster import sse
 from ..state.hot_store import store
-from ..util import display_name_for, new_id, utcnow
+from ..util import display_name_for, new_id
 from .core import counters, current_state
-from .meals import _items, create_meal, simulate
+from ..errors import ApiError
+from .meals import _items, create_meal, run_simulation
 
 router = APIRouter()
 ATE = re.compile(r"\b(i\s+(just\s+)?(had|ate)|i'm eating|i am eating|just had|for (breakfast|lunch|dinner))\b", re.I)
@@ -58,7 +59,12 @@ async def chat(body: dict, uid: str = Depends(user_id)):
         acting = store.get(uid).following
         if ASK.search(message) or (ATE.search(message) and acting):
             yield sse("tool", {"name": "simulate_food", "status": "start"})
-            sim = await simulate({"items": parse_foods(message), "eat_at": None}, uid)
+            try:
+                sim = run_simulation(uid, _items(parse_foods(message)))
+            except ApiError as e:
+                yield sse("tool", {"name": "simulate_food", "status": "end"})
+                yield sse("error", {"code": e.code, "message": e.message})
+                return
             yield sse("tool", {"name": "simulate_food", "status": "end"})
             yield sse("card", {"card_type": "simulation", "payload": sim})
             text = sim["summary"] + " " + {"go": "That stays under your line.",
@@ -69,20 +75,22 @@ async def chat(body: dict, uid: str = Depends(user_id)):
             mood = "calm" if sim["verdict"] == "go" else "rising"
         elif ATE.search(message):
             yield sse("tool", {"name": "log_meal", "status": "start"})
-            meal = create_meal(uid, _items(parse_foods(message)), utcnow(), "chat")
-            pred = store.get(uid).predictions[meal["prediction_id"]]
+            meal = create_meal(uid, _items(parse_foods(message)), "chat")
             yield sse("tool", {"name": "log_meal", "status": "end"})
             yield sse("card", {"card_type": "meal_saved", "payload": meal})
-            text = (f"Logged it. I expect a peak near {pred['predicted_peak_mg_dl']:.0f}, likely within the hour. "
-                    f"You can edit the portions on the card, and I'll grade my guess in two hours.")
-            mood = "rising"
+            text = ("Logged it. You can edit the portions on the card. Follow a participant to see how meals move "
+                    "real glucose and how my predictions grade.")
+            mood = "calm"
         else:
             yield sse("tool", {"name": "get_state", "status": "start"})
             view = current_state(uid)["gummi_view"]
             yield sse("tool", {"name": "get_state", "status": "end"})
-            yield sse("card", {"card_type": "gummi_view", "payload": view})
-            text = (f"Gummi's estimate right now is about {view['glucose_mg_dl']:.0f}, {view['trend'].replace('_', ' ')}. "
-                    f"It's an estimate, not a reading. Check your Dexcom app for current readings.")
+            if view:
+                yield sse("card", {"card_type": "gummi_view", "payload": view})
+                text = (f"Gummi's estimate right now is about {view['glucose_mg_dl']:.0f}, {view['trend'].replace('_', ' ')}. "
+                        f"It's an estimate, not a reading. Check your Dexcom app for current readings.")
+            else:
+                text = "I don't have glucose data for you yet. Follow a participant to see Gummi's estimate."
             mood = "calm"
         async for tok in _tokens(text):
             yield tok
