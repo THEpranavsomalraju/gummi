@@ -151,26 +151,74 @@ def predict_ridge(params, X: np.ndarray) -> np.ndarray:
     return ((X - mu) / sd) @ beta + y_mu
 
 
-def design_for(s: Samples, feature_set: str, k_index: int, hr_fill: np.ndarray | None = None) -> np.ndarray:
+def ramp_weight(k_index: int) -> float:
+    """Weight of the ramped meal columns (config.MEAL_COL_RAMP_MIN) at a horizon: 1 up to the first value,
+    0 from the second, linear in between. 1 when nothing is ramped."""
+    if not C.MEAL_COL_RAMP_MIN:
+        return 1.0
+    ramps = {tuple(v) for c, v in C.MEAL_COL_RAMP_MIN.items() if c in C.MEAL_COLS}
+    if not ramps:
+        return 1.0
+    assert len(ramps) == 1, "ramped meal columns must share one ramp"
+    full_until, zero_from = ramps.pop()
+    h = (k_index + 1) * C.STEP_MIN
+    if h <= full_until:
+        return 1.0
+    if h >= zero_from:
+        return 0.0
+    return (zero_from - h) / (zero_from - full_until)
+
+
+def design_for(s: Samples, feature_set: str, k_index: int, hr_fill: np.ndarray | None = None,
+               zero_ramped: bool = False) -> np.ndarray:
     meal = s.meal if feature_set in ("cgm_meals", "cgm_meals_hr") else None
     hr = None
     if feature_set == "cgm_meals_hr":
         hr = s.hr.copy()
         if hr_fill is not None:
             hr = np.where(np.isnan(hr), hr_fill[None, :], hr)
+    if meal is not None and zero_ramped:
+        off = [j for j, c in enumerate(C.MEAL_COLS) if c in C.MEAL_COL_RAMP_MIN]
+        if off:
+            mk = np.array(meal[:, k_index, :], dtype=float)
+            for j in off:
+                mk[:, 2 * j] = 0.0
+                mk[:, 2 * j + 1] = 0.0
+            blocks = [s.base, mk] + ([hr] if hr is not None else [])
+            return np.column_stack(blocks).astype(float)
     return design(s.base, meal, hr, k_index).astype(float)
 
 
+def _raw_space(params):
+    """Ridge params as (mean 0, scale 1, coefficients on raw features, intercept): blends of models stay linear."""
+    mu, sd, beta, y_mu = params
+    coef = beta / sd
+    return np.zeros_like(mu), np.ones_like(sd), coef, float(y_mu - (mu * coef).sum())
+
+
 def fit_horizons(s: Samples, feature_set: str, k_indices, alpha: float = C.RIDGE_ALPHA):
-    """Fit one ridge per horizon index. Returns {k_index: params}, plus the HR fill values used."""
+    """Fit one ridge per horizon index. Returns {k_index: params}, plus the HR fill values used.
+
+    Ramped meal columns (config.MEAL_COL_RAMP_MIN): where their weight w is below 1, a second ridge is fitted with
+    those columns zeroed, and the saved model is w * full + (1 - w) * without them, folded into one linear model.
+    At w = 0 that is exactly the model without the columns, and the forecast curve has no step at the ramp."""
     hr_fill = None
     if feature_set == "cgm_meals_hr":
         hr_fill = np.nanmean(s.hr, axis=0)
     models = {}
     for ki in k_indices:
         ok = ~np.isnan(s.y[:, ki])
-        X = design_for(s, feature_set, ki, hr_fill)[ok]
-        models[ki] = fit_ridge(X, s.y[ok, ki], alpha)
+        w = ramp_weight(ki) if feature_set != "cgm" else 1.0
+        if w >= 1.0:
+            models[ki] = fit_ridge(design_for(s, feature_set, ki, hr_fill)[ok], s.y[ok, ki], alpha)
+            continue
+        without = fit_ridge(design_for(s, feature_set, ki, hr_fill, zero_ramped=True)[ok], s.y[ok, ki], alpha)
+        if w <= 0.0:
+            models[ki] = without
+            continue
+        full = fit_ridge(design_for(s, feature_set, ki, hr_fill)[ok], s.y[ok, ki], alpha)
+        a, b = _raw_space(full), _raw_space(without)
+        models[ki] = (a[0], a[1], w * a[2] + (1 - w) * b[2], w * a[3] + (1 - w) * b[3])
     return models, hr_fill
 
 
@@ -242,6 +290,8 @@ def export_artifact(out_dir: str | Path, models: dict, bands: np.ndarray, featur
         "kernel_shape": C.KERNEL_SHAPE,
         "kernel_peak_min": C.KERNEL_PEAK_MIN,
         "meal_cols": C.MEAL_COLS,
+        "meal_col_ramp_min": C.MEAL_COL_RAMP_MIN,
+        "big_meal_carbs_g": C.BIG_MEAL_CARBS_G,
         "morning_end_hour": C.MORNING_END_HOUR,
         "band_quantiles": list(C.BAND_Q),
         "exported_at": datetime.now(timezone.utc).isoformat(),
@@ -293,6 +343,8 @@ def export_bundle(out_dir: str | Path, components: dict, feature_set: str, fold_
         "kernel_shape": C.KERNEL_SHAPE,
         "kernel_peak_min": C.KERNEL_PEAK_MIN,
         "meal_cols": C.MEAL_COLS,
+        "meal_col_ramp_min": C.MEAL_COL_RAMP_MIN,
+        "big_meal_carbs_g": C.BIG_MEAL_CARBS_G,
         "morning_end_hour": C.MORNING_END_HOUR,
         "band_quantiles": list(C.BAND_Q),
         "fold_map": {str(k): int(v) for k, v in fold_map.items()},

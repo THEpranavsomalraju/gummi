@@ -26,15 +26,16 @@ without participant 012, so "Gummi has never seen this person" is true on stage,
 fleet participant. Teammates and the sandbox get the full model. The earlier `gummi_model_v1_holdout_*` exports and
 `scripts/export_holdout_models.py` are retired.
 
-## What the demo day looks like with the v1.1 three-way grades (DRAFT)
+## What the demo day looks like with the three-way grades (DRAFT, model with the big-meal term, D-70)
 
 p_012 day 6 replayed through `model.for_user("p_012")` (fold 2, never trained on 012), meals graded 2 hours after
 eating with readings that arrived an hour later (`scripts/make_test_events.py --participants 012 --hours 19`):
 
-- Gummi beats CGM-only on 4 of 9 meals: the standardized breakfast (05:54), the 16:35 diet coke, and both evening
-  meals (19:02 toast 130 vs actual 161, CGM-only 115; 19:24 candy 145 vs 161, CGM-only 113). So the proud mood
-  fires about 4 times that day.
-- On the other 5 (07:40, 08:51, 10:30, 12:41 and the 17:45 dinner) CGM-only is closer: Gummi expects a rise that this
-  person does not show. Gummi still beats last value on most of them.
-- Across the day's 25 grades: Gummi 10.2 mg/dL, CGM-only 9.0, last value 13.3. Say it plainly if asked: on this
-  day the CGM-only method is slightly closer on average, and Gummi's edge is on the big meals.
+- Gummi beats CGM-only on 4 of 9 meals: the standardized breakfast at 05:54 ("I predicted 153. It was 174."
+  CGM-only said 120), the 16:35 diet coke, and both evening meals (19:02 toast: 142 against an actual 161; 19:24
+  candy: "I predicted 164. It was 161."). So the proud mood fires about 4 times that day.
+- The breakfast forecast now crosses 140, so the walk nudge can fire after breakfast.
+- On the other 5 meals (07:40, 08:51, 10:30, 12:41 and the 17:45 dinner), CGM-only is closer: Gummi expects a rise
+  this person does not show. Gummi still beats last value on most of them.
+- Across the day's 25 grades: Gummi 10.9 mg/dL, CGM-only 9.0, last value 13.3. If asked, say it plainly: on this
+  day CGM-only is slightly closer on average, and Gummi's edge is on the big meals.

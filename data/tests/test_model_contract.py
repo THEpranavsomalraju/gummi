@@ -229,7 +229,10 @@ def test_fit_personal_recovers_scale_and_shrinks():
         c = np.linspace(0, 30, 24)
         terms.append((c, 1.6 * c + 4.0 + rng.normal(0, 1, 24)))
     f, o = fit_personal(terms, with_offset=True)
-    assert 1.45 < f < 1.6 and 2.5 < o < 4.0          # true 1.6 and 4.0, pulled a little toward 1 and 0
+    from gummi_model import config as C
+    n = len(terms)                                    # true 1.6 and 4.0, pulled toward 1 and 0 by the pseudo-counts
+    assert abs(f - (1.6 * n + C.CARB_FACTOR_SHRINK) / (n + C.CARB_FACTOR_SHRINK)) < 0.05
+    assert abs(o - 4.0 * n / (n + C.OFFSET_SHRINK_N)) < 0.5 and 1.0 < f < 1.6 and 0.0 < o < 4.0
     f1, o1 = fit_personal(terms[:1], with_offset=True)
     assert abs(f1 - 1.0) < abs(f - 1.0) and abs(o1) < abs(o)   # one meal of evidence moves it less
     assert fit_personal([], with_offset=True) == (1.0, 0.0)
