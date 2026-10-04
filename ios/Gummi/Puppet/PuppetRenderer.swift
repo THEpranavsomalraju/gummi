@@ -22,6 +22,10 @@ nonisolated enum PuppetReaction: Sendable, Equatable {
     case wave
     /// A specific dance, or nil for a random one (never the same twice in a row).
     case dance(Dance?)
+    /// A proud spin with sparkly eyes (a grade where Gummi beat CGM-only).
+    case cheer
+    /// A small nod (a grade where he didn't).
+    case nod
 }
 
 /// The contract between the app and a puppet renderer (ios/CLAUDE.md, D-25).

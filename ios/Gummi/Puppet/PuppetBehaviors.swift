@@ -36,7 +36,7 @@ nonisolated enum ClipKind: String, CaseIterable, Sendable {
     // Idle behaviors, picked every few seconds by mood.
     case lookAround, stretch, scratchHead, earTwitch, curiousTilt, doubleHop, wave, yawn, fanBurst, hugSelf, toeTap, headBob
     // Reactions.
-    case headTap, bellyTap, squishRelease
+    case headTap, bellyTap, squishRelease, cheer, nod
     // Dances.
     case jellyBop, robot, runningMan, twist, discoPoint, sprinkler, cabbagePatch
 
@@ -59,6 +59,8 @@ nonisolated enum ClipKind: String, CaseIterable, Sendable {
         case .headTap: 0.9
         case .bellyTap: 1.0
         case .squishRelease: 0.8
+        case .cheer: 1.6
+        case .nod: 1.0
         case .jellyBop: 12 * Self.beat
         case .robot, .runningMan, .twist, .discoPoint, .sprinkler, .cabbagePatch: 16 * Self.beat
         }
@@ -75,7 +77,7 @@ nonisolated enum ClipKind: String, CaseIterable, Sendable {
 
     var isIdle: Bool {
         switch self {
-        case .headTap, .bellyTap, .squishRelease: false
+        case .headTap, .bellyTap, .squishRelease, .cheer, .nod: false
         default: !isDance
         }
     }
@@ -255,6 +257,19 @@ nonisolated extension ClipKind {
             out.eyes = .happy
             out.mouth = .grin
             out.blush = 0.6
+        case .cheer:
+            out.target[.leftArmPitch] = -2.5 * e
+            out.target[.rightArmPitch] = -2.5 * e
+            out.target[.leftArmRoll] = -0.5 * e
+            out.target[.rightArmRoll] = 0.5 * e
+            out.target[.headPitch] = -0.2 * e
+            out.eyes = .sparkle
+            out.mouth = .grin
+            out.blush = 1
+            out.browRaise = 0.7
+        case .nod:
+            out.mouth = .smile
+            out.browRaise = 0.2
         case .jellyBop, .robot, .runningMan, .twist, .discoPoint, .sprinkler, .cabbagePatch:
             out = danceFrame(at: s)
         }
@@ -282,6 +297,10 @@ nonisolated extension ClipKind {
         case .squishRelease:
             return [ClipImpulse(at: 0, kicks: [(.squash, 2.2), (.rootY, 0.45), (.leftArmRoll, -4), (.rightArmRoll, 4),
                                                (.leftEar, 6), (.rightEar, -6), (.headPitch, -2)])]
+        case .cheer:
+            return [ClipImpulse(at: 0.05, kicks: [(.rootY, 0.5), (.squash, 1.2), (.leftEar, 5), (.rightEar, -5)])]
+        case .nod:
+            return [0.0, 0.45].map { ClipImpulse(at: $0, kicks: [(.headPitch, 2.6)]) }
         case .jellyBop:
             return beatTimes.enumerated().map { beat, t in
                 switch beat {

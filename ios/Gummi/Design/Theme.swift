@@ -10,6 +10,18 @@ nonisolated enum Theme {
     static let secondaryText = Color.secondary
     /// Eucalyptus green, from the AccentColor asset (light and dark variants).
     static let accent = Color.accentColor
+    /// Cards and grouped content on the plain background (light gray in light mode, dark gray in dark).
+    static let cardSurface = Color(uiColor: .secondarySystemBackground)
+    /// Confirmed Dexcom readings, Gummi's estimate, and the forecast share the accent; line style tells them apart.
+    static let confirmedLine = Color.accentColor
+    static let estimateLine = Color.accentColor.opacity(0.85)
+    static let band = Color.accentColor.opacity(0.14)
+    static let rangeLine = Color.secondary.opacity(0.6)
+    /// Profile timezone (America/New_York by default); replay times are mapped onto today in it.
+    static let timeZone = TimeZone(identifier: "America/New_York") ?? .current
+
+    static func color(_ mood: Mood) -> Color { Color(uiColor: moodColor(mood)) }
+
     /// Gummi's jelly body color, from the GummiJelly asset.
     static let jelly = UIColor(named: "GummiJelly") ?? .systemGreen
 

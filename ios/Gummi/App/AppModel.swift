@@ -2,6 +2,32 @@ import Foundation
 import Observation
 import SwiftUI
 
+nonisolated enum AppTab: Hashable, Sendable {
+    case home, today, settings
+}
+
+/// An in-app banner for a new card or alert while the app is in the foreground.
+nonisolated struct Banner: Identifiable, Equatable, Sendable {
+    let id: String
+    let title: String
+    let message: String
+    let symbol: String
+    /// The card to scroll to in Today when the banner is tapped.
+    let cardId: String?
+}
+
+/// Something the app asks Gummi to do, like cheering when you open a winning grade.
+nonisolated struct PuppetCue: Equatable, Sendable {
+    let id = UUID()
+    let reaction: PuppetReaction
+}
+
+/// Opens the chat sheet, optionally with a question filled in.
+nonisolated struct ChatRequest: Identifiable, Equatable, Sendable {
+    let id = UUID()
+    var prompt: String?
+}
+
 /// The one model every screen reads. It holds the latest State plus the card feed and applies
 /// live events with animation, so the UI updates without any refresh.
 @Observable
@@ -18,6 +44,19 @@ final class AppModel {
     private(set) var connection: ConnectionStatus = .idle
     private(set) var lastUpdated: Date?
     private(set) var lastError: String?
+    /// Replay participants for the Follow picker (GET /fleet).
+    private(set) var fleet: Fleet?
+    private(set) var banner: Banner?
+    private(set) var puppetCue: PuppetCue?
+    var selectedTab: AppTab = .home
+    /// Today scrolls to this card (set by tapping a banner).
+    var focusedCardId: String?
+    var chatRequest: ChatRequest?
+    var showsFollowPicker = false
+
+    @ObservationIgnored private var bannerQueue: [Banner] = []
+    /// Card types and alerts that get an in-app banner (ios/CLAUDE.md Phase 3).
+    nonisolated static let bannerCardTypes: Set<CardType> = [.walkSuggested, .mealDue, .mealStory, .eveningRecap]
 
     @ObservationIgnored private var service: (any GummiService)?
     @ObservationIgnored private var eventsTask: Task<Void, Never>?
@@ -151,10 +190,18 @@ final class AppModel {
                 if let top = newState.topCard { upsert(top) }
                 if newState.following == nil { cards = [] }
             case .card(let card):
+                let isNew = !cards.contains { $0.cardId == card.cardId }
                 upsert(card)
+                if isNew, card.type.isKnown, Self.bannerCardTypes.contains(card.type) {
+                    enqueue(Banner(id: card.cardId, title: card.title, message: card.body, symbol: card.type.symbol, cardId: card.cardId))
+                }
             case .grade(let grade):
                 latestGrade = grade
             case .alert(let newAlert):
+                if alert?.alertId != newAlert.alertId, newAlert.type == .highForecast || newAlert.type == .lowForecast {
+                    enqueue(Banner(id: newAlert.alertId, title: newAlert.type == .highForecast ? "Heading high" : "Heading low",
+                                   message: newAlert.message, symbol: "exclamationmark.triangle", cardId: nil))
+                }
                 alert = newAlert
             case .mood(let newMood):
                 if newMood.isKnown { mood = newMood }
@@ -163,6 +210,61 @@ final class AppModel {
             }
             lastUpdated = .now
         }
+    }
+
+    // MARK: Banners, cues, and sheets
+
+    private func enqueue(_ new: Banner) {
+        guard banner?.id != new.id, !bannerQueue.contains(where: { $0.id == new.id }) else { return }
+        if banner == nil { banner = new } else { bannerQueue.append(new) }
+    }
+
+    func dismissBanner() {
+        withAnimation(.snappy) { banner = bannerQueue.isEmpty ? nil : bannerQueue.removeFirst() }
+    }
+
+    /// Tapping a banner opens Today at its card.
+    func openBanner() {
+        focusedCardId = banner?.cardId
+        selectedTab = .today
+        dismissBanner()
+    }
+
+    func cue(_ reaction: PuppetReaction) {
+        puppetCue = PuppetCue(reaction: reaction)
+    }
+
+    func askGummi(_ prompt: String? = nil) {
+        chatRequest = ChatRequest(prompt: prompt)
+    }
+
+    // MARK: Following
+
+    func loadFleet() async {
+        guard let service else { return }
+        do { fleet = try await service.fleet() } catch { lastError = "\(error)" }
+    }
+
+    /// Acts as a replay participant (or nobody). Cards belong to whoever is followed, so the feed reloads.
+    func follow(_ userId: String?) async {
+        guard let service else { return }
+        do {
+            let newState = try await service.follow(userId)
+            withAnimation(.snappy) { cards = [] }
+            apply(.state(newState))
+            let feed = try await service.feed()
+            withAnimation(.snappy) { feed.forEach(upsert) }
+        } catch {
+            lastError = "\(error)"
+        }
+    }
+
+    /// "Participant 12" for "p_012", from the fleet when it's loaded.
+    func displayName(for userId: String?) -> String? {
+        guard let userId else { return nil }
+        if let entry = fleet?.entries.first(where: { $0.userId == userId }) { return entry.displayName }
+        if userId.hasPrefix("p_"), let number = Int(userId.dropFirst(2)) { return "Participant \(number)" }
+        return userId
     }
 
     private func upsert(_ card: StoryCard) {

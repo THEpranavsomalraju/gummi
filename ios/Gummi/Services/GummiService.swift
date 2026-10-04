@@ -12,6 +12,7 @@ nonisolated protocol GummiService: Sendable {
     func health() async throws -> Health
     func snapshot() async throws -> GummiState
     func feed() async throws -> [StoryCard]
+    func fleet() async throws -> Fleet
     func follow(_ userId: String?) async throws -> GummiState
     func logDueMeal(dueId: String) async throws -> Meal
     func startStream() async throws -> StreamStatus
@@ -36,6 +37,7 @@ nonisolated final class LiveGummiService: GummiService {
     func health() async throws -> Health { try await api.health() }
     func snapshot() async throws -> GummiState { try await api.state() }
     func feed() async throws -> [StoryCard] { try await api.feed() }
+    func fleet() async throws -> Fleet { try await api.fleet() }
     func follow(_ userId: String?) async throws -> GummiState { try await api.follow(userId) }
     func logDueMeal(dueId: String) async throws -> Meal { try await api.logDueMeal(dueId: dueId) }
     func startStream() async throws -> StreamStatus { try await api.startStream() }

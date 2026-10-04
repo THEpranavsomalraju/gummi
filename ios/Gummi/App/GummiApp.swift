@@ -22,6 +22,19 @@ struct GummiApp: App {
                 #endif
             }
             .environment(model)
+            #if DEBUG
+            // Screenshot helpers: -gummi.tab today, -gummi.sheet follow|chat.
+            .task {
+                let defaults = UserDefaults.standard
+                if defaults.string(forKey: "gummi.tab") == "today" { model.selectedTab = .today }
+                try? await Task.sleep(for: .seconds(2))
+                switch defaults.string(forKey: "gummi.sheet") {
+                case "follow": model.showsFollowPicker = true
+                case "chat": model.askGummi("Why did I peak at 174?")
+                default: break
+                }
+            }
+            #endif
         }
         .onChange(of: scenePhase) { _, phase in
             guard !isHostingTests else { return }

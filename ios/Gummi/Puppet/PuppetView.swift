@@ -9,6 +9,8 @@ struct PuppetView: View {
     var translucentShell = false
     /// Wave hello when the view appears (Home).
     var greets = false
+    /// A reaction the app asks for (cheer or nod when a grade opens).
+    var cue: PuppetCue?
 
     @State private var controller: KoalaController
     @State private var look: SIMD2<Float>?
@@ -25,13 +27,19 @@ struct PuppetView: View {
     private static let usesRealityView = UserDefaults.standard.string(forKey: "gummi.renderer") == "realityView"
 
     init(input: PuppetInput, controller: KoalaController? = nil, showsFPS: Bool = false,
-         translucentShell: Bool = false, greets: Bool = false) {
+         translucentShell: Bool = false, greets: Bool = false, cue: PuppetCue? = nil, visibleHeight: Float = 1.05) {
         self.input = input
         self.showsFPS = showsFPS
         self.translucentShell = translucentShell
         self.greets = greets
-        _controller = State(initialValue: controller ?? KoalaController())
+        self.cue = cue
+        let controller = controller ?? KoalaController()
+        controller.visibleHeight = visibleHeight
+        _controller = State(initialValue: controller)
     }
+
+    /// The controller, so a parent can read `showsChatHint`.
+    var puppet: KoalaController { controller }
 
     var body: some View {
         GeometryReader { geometry in
@@ -66,6 +74,9 @@ struct PuppetView: View {
             if greets { controller.react(.wave) }
         }
         .onChange(of: input) { sync() }
+        .onChange(of: cue) { _, cue in
+            if let cue { controller.react(cue.reaction) }
+        }
         .onChange(of: look) { sync() }
         .onChange(of: pressing) { sync() }
         .onChange(of: translucentShell, initial: true) { controller.translucentShell = translucentShell }

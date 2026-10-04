@@ -21,6 +21,13 @@ final class KoalaController: PuppetRenderer {
     private(set) var framesPerSecond: Double = 0
     /// Counts dance beats, so the view can tap a haptic on each one.
     private(set) var danceBeats = 0
+    /// False while Gummi moves a lot or is being touched; true again after he settles for a moment.
+    private(set) var showsChatHint = true
+    @ObservationIgnored private var lastBusy: CFTimeInterval = 0
+    /// How many meters of the world the view shows top to bottom (smaller means a bigger Gummi).
+    @ObservationIgnored var visibleHeight: Float = 1.05 {
+        didSet { rig?.visibleHeight = visibleHeight }
+    }
 
     var translucentShell = false {
         didSet { rig?.setTranslucent(translucentShell) }
@@ -33,6 +40,7 @@ final class KoalaController: PuppetRenderer {
         let built = await building?.value
         rig = built
         built?.setTranslucent(translucentShell)
+        built?.visibleHeight = visibleHeight
         return built
     }
 
@@ -48,8 +56,14 @@ final class KoalaController: PuppetRenderer {
         rig.apply(animator.step(dt: dt), dt: Float(min(dt, 1.0 / 20)))
         workTime += CACurrentMediaTime() - started
         if animator.danceBeats != danceBeats { danceBeats = animator.danceBeats }
-        frames += 1
         let now = CACurrentMediaTime()
+        if animator.isBusy {
+            lastBusy = now
+            if showsChatHint { showsChatHint = false }
+        } else if !showsChatHint, now - lastBusy > 1.2 {
+            showsChatHint = true
+        }
+        frames += 1
         if now - windowStart >= 1 {
             framesPerSecond = Double(frames) / (now - windowStart)
             // `-gummi.logFPS YES` prints the update rate and Gummi's own work per frame, read from the device console.

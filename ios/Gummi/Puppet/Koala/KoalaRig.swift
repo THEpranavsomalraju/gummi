@@ -29,6 +29,8 @@ final class KoalaRig {
     private let rimLight = PointLight()
 
     static let lookTarget = SIMD3<Float>(0, 0.2, 0.03)
+    /// Meters of the world visible top to bottom; the camera backs off to show exactly this much.
+    var visibleHeight: Float = 1.05
 
     static func build() async -> KoalaRig? {
         let sims = await KoalaMeshCache.shared.value
@@ -76,7 +78,7 @@ final class KoalaRig {
 
         // The camera leans a few degrees toward the finger.
         let azimuth = 0.28 + pose.eyeLook.x * 0.06, elevation = 0.12 + pose.eyeLook.y * 0.04
-        let distance: Float = 1.95
+        let distance = visibleHeight / (2 * tan(camera.camera.fieldOfViewInDegrees * .pi / 360))
         camera.position = Self.lookTarget + SIMD3(sin(azimuth) * cos(elevation), sin(elevation), cos(azimuth) * cos(elevation)) * distance
         camera.look(at: Self.lookTarget, from: camera.position, relativeTo: nil)
     }

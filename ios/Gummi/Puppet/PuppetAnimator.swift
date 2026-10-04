@@ -70,7 +70,18 @@ nonisolated struct PuppetAnimator: Sendable {
         case .tap(.belly): self.reaction = start(.bellyTap)
         case .wave: self.reaction = start(.wave)
         case .dance(let dance): startDance(dance)
+        case .cheer:
+            self.reaction = start(.cheer)
+            spinStartedAt = time
+        case .nod: self.reaction = start(.nod)
         }
+    }
+
+    /// True while Gummi is moving a lot or someone is touching him (the chat bubble steps aside).
+    var isBusy: Bool {
+        if reaction != nil || spinStartedAt != nil || input.pressing || input.look != nil { return true }
+        guard let kind = motion?.kind else { return false }
+        return kind.isDance || [.doubleHop, .stretch, .wave, .fanBurst, .headBob].contains(kind)
     }
 
     /// Starts an idle behavior now (tests and the playground).

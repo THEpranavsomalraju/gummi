@@ -13,6 +13,7 @@ nonisolated final class MockGummiService: GummiService {
     func health() async throws -> Health { Health(status: "ok", mode: .mock, version: "mock-p012-day6") }
     func snapshot() async throws -> GummiState { await engine.snapshot() }
     func feed() async throws -> [StoryCard] { await engine.cards() }
+    func fleet() async throws -> Fleet { await engine.fleet() }
     func follow(_ userId: String?) async throws -> GummiState {
         guard userId == nil || userId == MockSession.participant else {
             throw APIError.http(status: 404, code: "not_found", message: "Mock mode only replays \(MockSession.participant)")
@@ -79,6 +80,40 @@ actor MockEngine {
     }
 
     func cards() -> [StoryCard] { session.following == nil ? [] : session.cards }
+
+    /// The Follow picker's list: p_012 from the scripted day, the other 14 replay participants with steady
+    /// placeholder numbers (mock only, never shown as results).
+    func fleet() -> Fleet {
+        let state = snapshot()
+        let graded = session.grades.filter(\.walkEffectGraded)
+        let moods: [Mood] = [.calm, .rising, .calm, .high, .dipping, .calm, .happy, .calm, .low, .rising, .calm, .sleepy, .calm, .proud]
+        var entries: [FleetEntry] = []
+        for number in 1...16 where number != 15 {
+            let id = String(format: "p_%03d", number)
+            if id == MockSession.participant {
+                func mean(_ values: [Double]) -> Double? { values.isEmpty ? nil : (values.reduce(0, +) / Double(values.count) * 10).rounded() / 10 }
+                entries.append(FleetEntry(userId: id, displayName: "Participant \(number)", mood: state.mood,
+                                          dataThrough: state.confirmed.last?.t, sparkline: Array(state.confirmed.suffix(24)),
+                                          grades: session.grades.count, gummiMaeMgDl: mean(graded.map(\.gummiMaeMgDl)),
+                                          cgmOnlyMaeMgDl: mean(graded.compactMap(\.cgmOnlyMaeMgDl)),
+                                          lastValueMaeMgDl: mean(graded.map(\.lastValueMaeMgDl)), lastGrade: session.grades.last))
+            } else {
+                var rng = SplitMix64(seed: UInt64(number))
+                func value(_ range: ClosedRange<Double>) -> Double { (Double.random(in: range, using: &rng) * 10).rounded() / 10 }
+                entries.append(FleetEntry(userId: id, displayName: "Participant \(number)", mood: moods[number % moods.count],
+                                          dataThrough: nil, sparkline: [], grades: Int.random(in: 10...30, using: &rng),
+                                          gummiMaeMgDl: value(7...12), cgmOnlyMaeMgDl: value(8...13), lastValueMaeMgDl: value(11...16),
+                                          lastGrade: nil))
+            }
+        }
+        func fleetMean(_ values: [Double?]) -> Double? {
+            let known = values.compactMap { $0 }
+            return known.isEmpty ? nil : (known.reduce(0, +) / Double(known.count) * 10).rounded() / 10
+        }
+        return Fleet(entries: entries, fleetGummiMaeMgDl: fleetMean(entries.map(\.gummiMaeMgDl)),
+                     fleetCgmOnlyMaeMgDl: fleetMean(entries.map(\.cgmOnlyMaeMgDl)),
+                     fleetLastValueMaeMgDl: fleetMean(entries.map(\.lastValueMaeMgDl)), stream: state.stream)
+    }
 
     func follow(_ userId: String?) -> GummiState {
         session.following = userId
