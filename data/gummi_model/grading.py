@@ -106,7 +106,7 @@ def grade(prediction: dict, confirmed_df: pd.DataFrame, overlay_walks=None, min_
                           f"{cgm_txt}last value said {last_value:.0f}.")
     else:
         cgm_txt = f"CGM-only was within {int(np.ceil(cgm_only_mae))}, " if cgm_only_mae is not None else ""
-        out["message"] = (f"Gummi was within {int(np.ceil(gummi_mae))} mg/dL. "
+        out["message"] = (f"I was within {int(np.ceil(gummi_mae))} mg/dL. "
                           f"{cgm_txt}last value within {int(np.ceil(last_value_mae))}.")
     if not walk_graded:
         out["message"] += " Walk effect not graded (replayed data)."

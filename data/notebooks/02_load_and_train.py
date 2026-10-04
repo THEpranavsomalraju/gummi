@@ -5,7 +5,7 @@
 # MAGIC bronze, silver and replay tables, runs the same code as `data/scripts/run_local_pipeline.py`
 # MAGIC (published-baseline reproduction, participant-grouped evaluation, meal and HR ablations, meal-prediction
 # MAGIC evaluation), writes `gummi_ml` tables, logs everything to MLflow, registers `<catalog>.gummi_ml.gummi_model`,
-# MAGIC and copies the artifact to `/Volumes/<catalog>/gummi_ml/artifacts/gummi_model_v1/` for the App (D-05).
+# MAGIC and copies the artifact to `/Volumes/<catalog>/gummi_ml/artifacts/<config.VERSION>/` for the App (D-05).
 # MAGIC Expected runtime: 5 to 10 minutes on serverless. Numbers stay DRAFT until the human approves them.
 
 # COMMAND ----------
@@ -98,7 +98,8 @@ example_req = json.dumps({"method": "forecast", "user_id": "p_012", "now": "2026
                           "cgm": [{"t": f"2026-10-04T0{h}:{m:02d}:00+00:00", "glucose_mg_dl": 100 + m / 5}
                                   for h in (6, 7) for m in range(0, 60, 5)],
                           "meals": [{"eaten_at": "2026-10-04T07:30:00+00:00", "carbs_g": 50}]})
-with mlflow.start_run(run_name="gummi_model_v1") as run:
+from gummi_model import config as C
+with mlflow.start_run(run_name=C.VERSION) as run:
     mlflow.log_params({"feature_set": res["feature_set"], "simulate_method": res["simulate_method"],
                        "excluded": ",".join(exclude), "participants": len(res["silver_cgm_5min"].participant_id.unique())})
     for _, r in er[er.window == "all"].iterrows():
@@ -118,7 +119,7 @@ with mlflow.start_run(run_name="gummi_model_v1") as run:
     )
     print("MLflow run", run.info.run_id)
 
-dest = f"/Volumes/{catalog}/gummi_ml/artifacts/gummi_model_v1"
+dest = f"/Volumes/{catalog}/gummi_ml/artifacts/{C.VERSION}"   # a new version gets its own folder; older ones stay
 shutil.rmtree(dest, ignore_errors=True)
 shutil.copytree(art, dest)
 print("artifact for the App:", dest, os.listdir(dest))
