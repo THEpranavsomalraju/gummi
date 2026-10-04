@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Today: the day's story cards, newest first, grouped by time of day. Tapping a banner scrolls here.
-struct TodayView: View {
+struct ActivityView: View {
     @Environment(AppModel.self) private var model
 
     private struct Section: Identifiable {
@@ -68,7 +68,7 @@ struct TodayView: View {
                     model.focusedCardId = nil
                 }
             }
-            .navigationTitle("Today")
+            .navigationTitle("Activity")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Start a walk", systemImage: "figure.walk") { model.startWalk() }

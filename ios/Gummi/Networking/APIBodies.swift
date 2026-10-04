@@ -16,6 +16,18 @@ nonisolated struct NewMealBody: Encodable, Sendable {
     var source: MealSource = .manual
 }
 
+/// POST /meals from the Log food sheet: names and portions only, so the backend looks up the macros itself
+/// (one of its seed foods, or its own estimate). Sending zero macros would be saved as zero.
+nonisolated struct LogFoodBody: Encodable, Sendable {
+    nonisolated struct Food: Encodable, Sendable {
+        let name: String
+        let quantity: Double
+        let unit: String?
+    }
+    let items: [Food]
+    var source = "manual"
+}
+
 nonisolated struct MealItemsBody: Encodable, Sendable { let items: [MealItem] }
 
 /// `eat_at` is sent as null for "now", matching the contract example.

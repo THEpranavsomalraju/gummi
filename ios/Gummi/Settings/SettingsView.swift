@@ -3,6 +3,7 @@ import SwiftUI
 /// Connection, Dexcom (status only), who you're following, the demo controls, safety, and debug tools.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
@@ -11,6 +12,7 @@ struct SettingsView: View {
                 dexcomSection
                 Section("Following") {
                     Button {
+                        dismiss()
                         model.showsFollowPicker = true
                     } label: {
                         LabeledContent("Acting as", value: model.displayName(for: model.state?.actingAs) ?? "Nobody")
@@ -24,6 +26,10 @@ struct SettingsView: View {
                 #endif
             }
             .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            }
         }
     }
 

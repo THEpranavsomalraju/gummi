@@ -110,6 +110,9 @@ struct WalkTests {
         func sendWalkEvent(_ body: WalkEventBody) async throws { recorder.add(body) }
         func latestWalk() async throws -> WalkSummary { try Fixtures.decode(WalkSummary.self, "walk_summary") }
         func uploadSteps(_ samples: [StepSample]) async throws -> Int { samples.count }
+        func foodLog(date: String?) async throws -> FoodLog { try Fixtures.decode(FoodLog.self, "foodlog") }
+        func day(date: String?) async throws -> DaySummary { try Fixtures.decode(DaySummary.self, "day_full") }
+        func logFood(_ body: LogFoodBody) async throws -> Meal { try Fixtures.decode(Meal.self, "meal") }
     }
 
     nonisolated final class Clock: @unchecked Sendable {

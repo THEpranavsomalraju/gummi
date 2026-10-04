@@ -41,6 +41,9 @@ struct AppModelTests {
         func sendWalkEvent(_ body: WalkEventBody) async throws {}
         func latestWalk() async throws -> WalkSummary { try Fixtures.decode(WalkSummary.self, "walk_summary") }
         func uploadSteps(_ samples: [StepSample]) async throws -> Int { samples.count }
+        func foodLog(date: String?) async throws -> FoodLog { try Fixtures.decode(FoodLog.self, "foodlog") }
+        func day(date: String?) async throws -> DaySummary { try Fixtures.decode(DaySummary.self, "day_full") }
+        func logFood(_ body: LogFoodBody) async throws -> Meal { try Fixtures.decode(Meal.self, "meal") }
         func events() -> AsyncStream<ServiceEvent> {
             AsyncStream { continuation in lock.withLock { self.continuation = continuation } }
         }
@@ -102,7 +105,7 @@ struct AppModelTests {
         model.dismissBanner()
         #expect(model.banner?.cardId == "c_ws_1")
         model.openBanner()
-        #expect(model.selectedTab == .today)
+        #expect(model.selectedTab == .activity)
         #expect(model.focusedCardId == "c_ws_1")
         #expect(model.banner == nil)
     }

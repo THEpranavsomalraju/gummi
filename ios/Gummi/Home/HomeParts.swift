@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// "Acting as Participant 12" (opens the Follow picker), with Paused, Stopped, and Mock badges.
+/// "Acting as Participant 12" (opens the Follow picker), a Paused or Stopped badge, the Dexcom dot, and the gear for Settings.
 struct HomeHeader: View {
     @Environment(AppModel.self) private var model
 
@@ -19,6 +19,7 @@ struct HomeHeader: View {
                     Image(systemName: "chevron.down").font(.caption2.bold())
                 }
                 .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
                 .glassSurface(in: Capsule())
@@ -33,11 +34,42 @@ struct HomeHeader: View {
                     Badge(text: "Paused", symbol: "pause.fill")
                 }
             }
-            if model.mode == .mock {
-                Badge(text: "Mock", symbol: "theatermasks")
+            DexcomDot()
+            Button {
+                model.showsSettings = true
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(width: 36, height: 36)
+                    .glassSurface(in: Circle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Settings")
         }
         .frame(maxWidth: .infinity)
+        .padding(.horizontal)
+    }
+}
+
+/// "Dexcom ✓" when the sandbox is connected, "Dexcom –" when not, or "Mock" in demo-data mode.
+struct DexcomDot: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let connected = model.state?.dexcom.connected == true
+        let text = model.mode == .mock ? "Mock" : connected ? "Dexcom ✓" : "Dexcom –"
+        HStack(spacing: 4) {
+            Circle()
+                .fill(model.mode == .mock ? Theme.secondaryText : connected ? Color.green : Color.orange)
+                .frame(width: 7, height: 7)
+            Text(text)
+        }
+        .font(.caption.weight(.semibold))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .glassSurface(in: Capsule())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(model.mode == .mock ? "Demo data" : connected ? "Dexcom connected" : "Dexcom not connected")
     }
 }
 

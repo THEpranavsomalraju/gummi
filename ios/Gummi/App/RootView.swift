@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Tabs: Home, Today, Settings (PROJECT_OVERVIEW section 4), plus in-app banners, the Follow picker, and chat.
+/// Tabs: Home, Food, Activity, Day (Pranav's layout, 2026-10-04), plus in-app banners, the Follow picker, chat,
+/// walks, and Settings (a sheet from Home's gear).
 struct RootView: View {
     @Environment(AppModel.self) private var model
 
@@ -8,8 +9,10 @@ struct RootView: View {
         @Bindable var model = model
         TabView(selection: $model.selectedTab) {
             Tab("Home", systemImage: "house", value: AppTab.home) { HomeView() }
-            Tab("Today", systemImage: "list.bullet.rectangle", value: AppTab.today) { TodayView() }
-            Tab("Settings", systemImage: "gearshape", value: AppTab.settings) { SettingsView() }
+            Tab("Food", systemImage: "fork.knife", value: AppTab.food) { FoodLogView() }
+            Tab("Activity", systemImage: "bell", value: AppTab.activity) { ActivityView() }
+                .badge(model.activityUnseen)
+            Tab("Day", systemImage: "chart.bar.doc.horizontal", value: AppTab.day) { DayView() }
         }
         .overlay(alignment: .top) {
             if let banner = model.banner {
@@ -20,12 +23,13 @@ struct RootView: View {
         }
         .animation(.snappy, value: model.banner)
         .sheet(isPresented: $model.showsFollowPicker) { FollowPickerView() }
+        .sheet(isPresented: $model.showsSettings) { SettingsView() }
         .sheet(item: $model.chatRequest) { request in ChatSheet(request: request) }
         .fullScreenCover(item: $model.walkRequest) { request in WalkView(request: request, service: model.activeService) }
     }
 }
 
-/// A glass banner for a new card or alert. Tap to open it in Today, swipe up to dismiss; it leaves on its own after 4 s.
+/// A glass banner for a new card or alert. Tap to open it in Activity, swipe up to dismiss; it leaves on its own after 4 s.
 struct BannerView: View {
     let banner: Banner
     let onTap: () -> Void
@@ -61,6 +65,6 @@ struct BannerView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
-        .accessibilityHint("Opens it in Today")
+        .accessibilityHint("Opens it in Activity")
     }
 }

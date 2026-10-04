@@ -15,6 +15,8 @@ struct ContractDecodingTests {
     /// Fixture name to contract type. Everything here must decode.
     nonisolated static let fixtureTypes: [String: Check] = [
         "live_state": check(GummiState.self), "state_full": check(GummiState.self), "state_null": check(GummiState.self),
+        "foodlog": check(FoodLog.self), "day_full": check(DaySummary.self), "day_stale": check(DaySummary.self),
+        "day_empty": check(DaySummary.self),
         "live_stream_status": check(StreamStatus.self), "stream_status_stopped": check(StreamStatus.self),
         "live_fleet": check(Fleet.self), "live_profile": check(Profile.self), "live_dexcom_status": check(DexcomStatus.self),
         "live_health": check(Health.self), "live_error_not_found": check(APIErrorBody.self),

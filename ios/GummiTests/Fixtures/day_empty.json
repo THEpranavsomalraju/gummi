@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-04",
+  "participant": null,
+  "data_status": "none",
+  "glucose": null,
+  "hourly": [],
+  "meals": {
+    "count": 0,
+    "carbs_g": 0.0,
+    "biggest": null
+  },
+  "activity": {
+    "steps": 0,
+    "walks": 0,
+    "walk_minutes": 0
+  },
+  "predictions": {
+    "made": 0,
+    "graded": 0,
+    "gummi_mae_mg_dl": null,
+    "cgm_only_mae_mg_dl": null,
+    "last_value_mae_mg_dl": null,
+    "beat_cgm_only_pct": null
+  },
+  "best_call": null,
+  "biggest_spike": null,
+  "highlights": [],
+  "recap": null
+}

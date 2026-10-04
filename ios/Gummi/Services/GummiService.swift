@@ -34,6 +34,10 @@ nonisolated protocol GummiService: ChatService {
     func latestWalk() async throws -> WalkSummary
     /// POST /vitals. The backend adds every sample, so never send a window twice.
     func uploadSteps(_ samples: [StepSample]) async throws -> Int
+    func foodLog(date: String?) async throws -> FoodLog
+    func day(date: String?) async throws -> DaySummary
+    /// POST /meals from the Log food sheet.
+    func logFood(_ body: LogFoodBody) async throws -> Meal
     /// Live events plus connection status. Cancel the consuming task to disconnect.
     func events() -> AsyncStream<ServiceEvent>
 }
@@ -67,6 +71,9 @@ nonisolated final class LiveGummiService: GummiService {
     func sendWalkEvent(_ body: WalkEventBody) async throws { try await api.sendWalkEvent(body) }
     func latestWalk() async throws -> WalkSummary { try await api.latestWalk() }
     func uploadSteps(_ samples: [StepSample]) async throws -> Int { try await api.uploadSteps(samples) }
+    func foodLog(date: String?) async throws -> FoodLog { try await api.foodLog(date: date) }
+    func day(date: String?) async throws -> DaySummary { try await api.day(date: date) }
+    func logFood(_ body: LogFoodBody) async throws -> Meal { try await api.logFood(body) }
 }
 
 nonisolated extension GummiService {

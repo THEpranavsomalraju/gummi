@@ -3,7 +3,7 @@ import Observation
 import SwiftUI
 
 nonisolated enum AppTab: Hashable, Sendable {
-    case home, today, settings
+    case home, food, activity, day
 }
 
 /// An in-app banner for a new card or alert while the app is in the foreground.
@@ -79,7 +79,20 @@ final class AppModel {
     private(set) var fleet: Fleet?
     private(set) var banner: Banner?
     private(set) var puppetCue: PuppetCue?
-    var selectedTab: AppTab = .home
+    var selectedTab: AppTab = .home {
+        didSet { if selectedTab == .activity { activityUnseen = 0 } }
+    }
+    var showsSettings = false
+    /// New cards since Activity was last open (the tab badge).
+    private(set) var activityUnseen = 0
+    /// GET /foodlog for `foodDate` (nil is the backend's today).
+    private(set) var foodLog: FoodLog?
+    var foodDate: String?
+    /// GET /day for `dayDate`.
+    private(set) var day: DaySummary?
+    var dayDate: String?
+    /// The meal Food should open (a meal card tapped in Activity).
+    var focusedMealId: String?
     /// Today scrolls to this card (set by tapping a banner).
     var focusedCardId: String?
     var chatRequest: ChatRequest?
@@ -92,6 +105,8 @@ final class AppModel {
     private(set) var gradeMoment: GradeMoment?
 
     @ObservationIgnored private var bannerQueue: [Banner] = []
+    @ObservationIgnored private var foodRefresh: Task<Void, Never>?
+    @ObservationIgnored private var dayRefresh: Task<Void, Never>?
     /// Every prediction seen while pending, so a grade can show what Gummi predicted.
     @ObservationIgnored private var predictions: [String: Prediction] = [:]
     @ObservationIgnored private let stepsUploader: StepsUploader?
@@ -202,6 +217,8 @@ final class AppModel {
         chat.newChat()
         chat.service = nil
         state = nil
+        foodLog = nil
+        day = nil
         serverProblem = nil
         cards = []
         latestGrade = nil
@@ -283,10 +300,15 @@ final class AppModel {
             case .card(let card):
                 let isNew = !cards.contains { $0.cardId == card.cardId }
                 upsert(card)
+                if isNew, card.type.isKnown, selectedTab != .activity { activityUnseen += 1 }
+                if [.mealDue, .mealLogged, .mealStory].contains(card.type) { scheduleFoodRefresh() }
+                if [.mealStory, .mealLogged, .eveningRecap, .walkSummary].contains(card.type) { scheduleDayRefresh() }
                 if isNew, card.type.isKnown, Self.bannerCardTypes.contains(card.type) {
                     enqueue(Banner(id: card.cardId, title: card.title, message: card.body, symbol: card.type.symbol, cardId: card.cardId))
                 }
             case .grade(let grade):
+                scheduleDayRefresh()
+                scheduleFoodRefresh()
                 let isNew = latestGrade?.gradeId != grade.gradeId
                 latestGrade = grade
                 if isNew {
@@ -323,7 +345,7 @@ final class AppModel {
     /// Tapping a banner opens Today at its card.
     func openBanner() {
         focusedCardId = banner?.cardId
-        selectedTab = .today
+        selectedTab = .activity
         dismissBanner()
     }
 
@@ -343,6 +365,61 @@ final class AppModel {
         }
         #endif
         return ConnectionNotice.from(connection, problem: serverProblem, lastUpdated: lastUpdated, now: now)
+    }
+
+    // MARK: Food and Day
+
+    func loadFoodLog() async {
+        guard let service else { return }
+        do { foodLog = try await service.foodLog(date: foodDate) } catch { lastError = "\(error)" }
+    }
+
+    func loadDay() async {
+        guard let service else { return }
+        do { day = try await service.day(date: dayDate) } catch { lastError = "\(error)" }
+    }
+
+    /// A burst of live events triggers one fetch, half a second after the last.
+    private func scheduleFoodRefresh() {
+        foodRefresh?.cancel()
+        foodRefresh = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            await self?.loadFoodLog()
+        }
+    }
+
+    private func scheduleDayRefresh() {
+        dayRefresh?.cancel()
+        dayRefresh = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            await self?.loadDay()
+        }
+    }
+
+    func logFood(name: String, quantity: Double, unit: String?) async -> Bool {
+        guard let service else { return false }
+        do {
+            _ = try await service.logFood(LogFoodBody(items: [.init(name: name, quantity: quantity, unit: unit)]))
+            await loadFoodLog()
+            return true
+        } catch {
+            lastError = "\(error)"
+            return false
+        }
+    }
+
+    func savePortions(mealId: String, items: [MealItem]) async -> Bool {
+        guard let service else { return false }
+        do {
+            _ = try await service.updateMeal(id: mealId, items: items)
+            await loadFoodLog()
+            return true
+        } catch {
+            lastError = "\(error)"
+            return false
+        }
     }
 
     func startWalk(minutes: Int = 10) {
@@ -391,6 +468,8 @@ final class AppModel {
             let newState = try await service.follow(userId)
             withAnimation(.snappy) { cards = [] }
             apply(.state(newState))
+            await loadFoodLog()
+            await loadDay()
             let feed = try await service.feed()
             withAnimation(.snappy) { feed.forEach(upsert) }
         } catch {
@@ -421,6 +500,8 @@ final class AppModel {
             apply(.state(try await service.snapshot()))
             let feed = try await service.feed()
             withAnimation(.snappy) { feed.forEach(upsert) }
+            foodLog = try? await service.foodLog(date: foodDate)
+            day = try? await service.day(date: dayDate)
         } catch {
             lastError = "\(error)"
             serverProblem = error as? APIError

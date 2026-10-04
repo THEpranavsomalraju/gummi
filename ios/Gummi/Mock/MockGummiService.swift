@@ -51,6 +51,9 @@ nonisolated final class MockGummiService: GummiService {
         return walk
     }
     func uploadSteps(_ samples: [StepSample]) async throws -> Int { samples.count }
+    func foodLog(date: String?) async throws -> FoodLog { await engine.foodLog(date: date) }
+    func day(date: String?) async throws -> DaySummary { await engine.day(date: date) }
+    func logFood(_ body: LogFoodBody) async throws -> Meal { try await engine.logFood(body) }
 
     func events() -> AsyncStream<ServiceEvent> {
         AsyncStream { continuation in
@@ -73,6 +76,7 @@ actor MockEngine {
     private var chatTurns = 0
     private var chatMeals: [String: SavedMeal] = [:]
     private(set) var latestWalk: WalkSummary?
+    private var manualMeals: [SavedMeal] = []
 
     init(session: MockSession, minutesPerSecond: Double) {
         self.session = session
@@ -196,6 +200,54 @@ actor MockEngine {
         broadcast(.live(.card(session.addPhoneWalk(walk, wallNow: .now))))
         broadcast(.live(.mood(.happy)))
         pushState()
+    }
+
+    /// Your entries and Gummi's, simulated on the participant's day while acting as them (D-59).
+    private func extraEntries() -> [FoodLogEntry] {
+        let mine = manualMeals.map { ($0, FoodOrigin.you) } + chatMeals.values.map { ($0, FoodOrigin.gummi) }
+        return mine.map { saved, origin in
+            FoodLogEntry(meal: saved.meal, origin: origin, graded: false,
+                         prediction: saved.likelyPeakMgDl.map {
+                             FoodLogPrediction(predictedPeakMgDl: $0, cgmOnlyPeakMgDl: nil, lastValuePeakMgDl: nil, status: .pending)
+                         },
+                         grade: nil, note: saved.simulated == true ? "Simulated on the participant's day; not graded" : nil)
+        }
+    }
+
+    func foodLog(date: String?) -> FoodLog {
+        guard date == nil || date == session.dateString else { return FoodLog(date: date, entries: []) }
+        return session.foodLog(extra: extraEntries())
+    }
+
+    func day(date: String?) -> DaySummary {
+        guard date == nil || date == session.dateString else { return MockSession.emptyDay(date: date ?? session.dateString) }
+        let today = snapshot().today
+        return session.daySummary(steps: today.steps, walks: today.walks)
+    }
+
+    /// POST /meals from the Log food sheet: macros from the seed foods (20 g carbs for anything unknown).
+    func logFood(_ body: LogFoodBody) throws -> Meal {
+        guard !body.items.isEmpty else { throw APIError.http(status: 422, code: "invalid", message: "items must not be empty") }
+        let items = body.items.map { food -> MealItem in
+            if let seed = MockChat.food(in: food.name) {
+                var item = seed.item(quantity: food.quantity)
+                item.name = food.name
+                if let unit = food.unit { item.unit = unit }
+                return item
+            }
+            return MealItem(name: food.name, quantity: 1, unit: food.unit ?? "", carbsG: 20, sugarG: 8, fiberG: 1, proteinG: 3,
+                            fatG: 5, calories: 140, nutritionSource: .llmEstimate, editable: true).scaled(toQuantity: food.quantity)
+        }
+        chatTurns += 1
+        let state = snapshot()
+        let meal = Meal(mealId: "m_manual_\(chatTurns)", eatenAt: state.replayNow ?? .now, source: .manual, items: items,
+                        totals: MealTotals(items: items), isStandardBreakfast: false, predictionId: nil)
+        let acting = state.actingAs != nil
+        let likely = acting ? MockChat.simulate(items, state: state, turn: chatTurns)?.peakMgDl : nil
+        manualMeals.append(SavedMeal(meal, simulated: acting, likelyPeakMgDl: likely))
+        broadcast(.live(.card(session.addChatMeal(meal, likelyPeak: likely))))
+        pushState()
+        return meal
     }
 
     func restart() -> StreamStatus {

@@ -1,0 +1,29 @@
+event: mood
+data: {"mood":"thinking"}
+
+event: tool
+data: {"name":"get_state","status":"start","label":"Peeking at your numbers…"}
+
+: working
+
+event: tool
+data: {"name":"get_state","status":"end","label":"Got your numbers ✓"}
+
+event: tool
+data: {"name":"self_check","status":"start","label":"Double-checking myself…"}
+
+event: tool
+data: {"name":"self_check","status":"end","label":"Checked ✓"}
+
+event: token
+data: {"text":"Your estimate is likely "}
+
+event: token
+data: {"text":"around 104, steady."}
+
+event: mood
+data: {"mood":"calm"}
+
+event: done
+data: {"conversation_id":"conv_9","trace_id":"tr-9"}
+

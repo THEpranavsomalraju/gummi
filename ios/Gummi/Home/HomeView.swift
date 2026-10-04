@@ -43,6 +43,18 @@ struct HomeView: View {
                 .frame(maxHeight: chatting ? nil : .infinity)
                 if chatting {
                     Spacer(minLength: 0)
+                } else if let state = model.state, state.following == nil || state.dataStatus == DataStatus.none {
+                    // Nobody to coach yet (data_status "none"): a friendly way in.
+                    ContentUnavailableView {
+                        Label("Nobody followed yet", systemImage: "person.crop.circle.badge.plus")
+                    } description: {
+                        Text("Follow a study participant to see their glucose and Gummi's coaching.")
+                    } actions: {
+                        Button("Follow someone") { model.showsFollowPicker = true }
+                            .buttonStyle(.borderedProminent)
+                            .tint(Theme.accent)
+                    }
+                    .frame(height: height * 0.21)
                 } else if let state = model.state {
                     GlucoseChart(state: state)
                         .frame(height: height * 0.21)

@@ -31,6 +31,7 @@ nonisolated final class APIClient: Sendable {
         try await send("GET", "meals", query: date.map { ["date": $0] } ?? [:], as: MealsResponse.self).meals
     }
     func logMeal(_ body: NewMealBody) async throws -> Meal { try await send("POST", "meals", body: body) }
+    func logFood(_ body: LogFoodBody) async throws -> Meal { try await send("POST", "meals", body: body) }
     func updateMeal(id: String, items: [MealItem]) async throws -> SavedMeal {
         try await send("PATCH", "meals/\(id)", body: MealItemsBody(items: items))
     }
@@ -67,6 +68,14 @@ nonisolated final class APIClient: Sendable {
     func streamStatus() async throws -> StreamStatus { try await send("GET", "stream/status") }
     func fleet() async throws -> Fleet { try await send("GET", "fleet") }
     func dexcomStatus() async throws -> DexcomStatus { try await send("GET", "dexcom/status") }
+    /// GET /foodlog?date= (1.5). A nil date means the backend's today (the replay day while acting as someone).
+    func foodLog(date: String? = nil) async throws -> FoodLog {
+        try await send("GET", "foodlog", query: date.map { ["date": $0] } ?? [:])
+    }
+    /// GET /day?date= (1.6).
+    func day(date: String? = nil) async throws -> DaySummary {
+        try await send("GET", "day", query: date.map { ["date": $0] } ?? [:])
+    }
 
     /// POST /chat as server-sent events (CONTRACT section 6). The stream finishes when the server closes it
     /// (after `done`, or after a `rate_limited` error) and throws on HTTP errors or a dropped connection.
