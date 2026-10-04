@@ -70,7 +70,7 @@ def test_follow_and_replay_day(client):
     assert client.post("/api/v1/follow", json={"user_id": "p_015"}, headers=H).status_code == 404   # D-37
 
     st = M.StreamStatus.model_validate(ok(client.post("/api/v1/stream/start", json={"speed": 60})))
-    assert st.running and st.replay_clock == "day6T05:00" and st.participants == 15     # D-62 default start
+    assert st.running and st.replay_clock == "day4T05:00" and st.participants == 15     # D-15 default start
     s = M.State.model_validate(ok(client.get("/api/v1/state", headers=H)))
     assert s.replay_now and s.upcoming_due, "acting as p_012 with breakfast due within 6 h"
     due = s.upcoming_due[0]

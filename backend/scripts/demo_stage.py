@@ -4,9 +4,11 @@
     .venv/bin/python scripts/demo_stage.py go                    # on stage: resume; the meal story lands about 15 s later
     .venv/bin/python scripts/demo_stage.py verify                # rehearsal: stage, go, and check every beat landed
 
-Stage leaves the replay paused at day 6, 8:42 AM for p_012: breakfast (5:54) is logged and predicted, and its 2-hour
-grade is due once the 7:54 reading arrives an hour later. Resuming at 60x lands the Meal Story card, the grade and
-the proud mood about 12 replay minutes (12 s) later.
+Stage leaves the replay paused at day 4, 10:10 PM for p_012 (D-15). The 7:22 PM snack (dark chocolate chip, corn
+cheese puffs) is logged and predicted, and its 2-hour grade is due once the 9:22 PM reading arrives an hour later.
+Resuming at 60x lands the Meal Story ("I predicted 178 ... It was 186. CGM-only said 135, last value said 146"), the
+grade and the proud mood about 12 replay minutes (12 s) later. The brownie walk nudge and the evening recap happen
+during staging, so they're already in Activity.
 """
 import json
 import subprocess
@@ -21,7 +23,7 @@ WORKSPACE = "https://dbc-0f92eb43-532a.cloud.databricks.com"
 APP = "https://gummi-7474657192035402.aws.databricksapps.com/api/v1"
 DEMO_USERS = ["u_mahil", "u_pranav"]
 PID = "p_012"
-STAGE_FROM, STAGE_TO = "day6T05:45", "day6T08:42"
+STAGE_FROM, STAGE_TO = "day4T18:00", "day4T22:10"
 
 
 def client(uid: str = "u_pranav") -> httpx.Client:
@@ -102,12 +104,13 @@ def stage(redeploy: bool) -> None:
 
 def go() -> float:
     c = client()
+    seen = {x["card_id"] for x in client("u_mahil").get("/feed").json()["cards"] if x["type"] == "meal_story"}
     c.post("/stream/resume")
     t0 = time.time()
     print("▸ Resumed at 60x. Waiting for the Meal Story...", flush=True)
     while time.time() - t0 < 90:
         cards = client("u_mahil").get("/feed").json()["cards"]
-        story = next((x for x in cards if x["type"] == "meal_story"), None)
+        story = next((x for x in cards if x["type"] == "meal_story" and x["card_id"] not in seen), None)
         if story:
             print(f"  landed after {time.time() - t0:.0f}s: [{story['generated_by']}] {story['title']}: {story['body']}")
             return time.time() - t0
