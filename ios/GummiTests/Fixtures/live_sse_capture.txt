@@ -1,0 +1,14 @@
+: connected
+
+event: state
+data: {"user_id":"u_mahil","following":null,"acting_as":null,"dexcom":{"connected":false,"environment":"sandbox","data_through":null,"delay_minutes":60,"last_sync":null,"last_error":null,"source":"replay","ingest_mode":"status_only"},"gummi_view":null,"confirmed":[],"estimate":[],"forecast":[],"mood":"calm","alert":null,"top_card":null,"pending_predictions":[],"today":{"time_in_range_pct":0.0,"peak_mg_dl":0.0,"meals":0,"steps":0,"walks":0,"gummi_mae_mg_dl":null,"cgm_only_mae_mg_dl":null,"last_value_mae_mg_dl":null},"profile":{"high_line_mg_dl":140.0,"low_line_mg_dl":70.0},"upcoming_due":[],"replay_now":null,"stream":{"running":true,"paused":false,"speed":60.0,"delay_minutes":60,"participants":15,"replay_clock":"day6T23:48","replay_anchor":{"replay_time":"2026-10-03T07:00:00-04:00","wall_time":"2026-10-03T21:50:36-04:00"},"events_released":3076,"events_per_second":3.03,"pipeline_lag_seconds":14.4},"model_version":"gummi_model_v1","server_time":"2026-10-03T22:07:25-04:00"}
+
+event: state
+data: {"user_id":"u_mahil","following":null,"acting_as":null,"dexcom":{"connected":false,"environment":"sandbox","data_through":null,"delay_minutes":60,"last_sync":null,"last_error":null,"source":"replay","ingest_mode":"status_only"},"gummi_view":null,"confirmed":[],"estimate":[],"forecast":[],"mood":"calm","alert":null,"top_card":null,"pending_predictions":[],"today":{"time_in_range_pct":0.0,"peak_mg_dl":0.0,"meals":0,"steps":0,"walks":0,"gummi_mae_mg_dl":null,"cgm_only_mae_mg_dl":null,"last_value_mae_mg_dl":null},"profile":{"high_line_mg_dl":140.0,"low_line_mg_dl":70.0},"upcoming_due":[],"replay_now":null,"stream":{"running":true,"paused":false,"speed":60.0,"delay_minutes":60,"participants":15,"replay_clock":"day6T23:49","replay_anchor":{"replay_time":"2026-10-03T07:00:00-04:00","wall_time":"2026-10-03T21:50:36-04:00"},"events_released":3079,"events_per_second":3.03,"pipeline_lag_seconds":14.4},"model_version":"gummi_model_v1","server_time":"2026-10-03T22:07:25-04:00"}
+
+event: ping
+data: {"t":"2026-10-03T22:07:26-04:00"}
+
+event: ping
+data: {"t":"2026-10-03T22:07:27-04:00"}
+

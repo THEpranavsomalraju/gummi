@@ -1,0 +1,215 @@
+{
+  "cards": [
+    {
+      "card_id": "c_story_1",
+      "type": "meal_story",
+      "created_at": "2026-10-03T07:55:00-04:00",
+      "title": "Your breakfast, two hours later",
+      "body": "Peak 174 at 6:37. I predicted 165.",
+      "mood": "proud",
+      "attachments": {
+        "grade": {
+          "grade_id": "g_1",
+          "prediction_id": "pr_1",
+          "kind": "meal",
+          "graded_at": "2026-10-03T07:55:00-04:00",
+          "points": 24,
+          "gummi_mae_mg_dl": 9.1,
+          "cgm_only_mae_mg_dl": 16.4,
+          "last_value_mae_mg_dl": 31.2,
+          "gummi_peak_error_mg_dl": 9.0,
+          "within_band_pct": 79.2,
+          "walk_effect_graded": false,
+          "gummi_beats_cgm_only": true,
+          "gummi_beats_last_value": true,
+          "message": "I predicted 165 for the Frosted Flake. It was 174. CGM-only said 139, last value said 121. Walk effect not graded (replayed data)."
+        },
+        "meal": {
+          "meal_id": "m_1",
+          "eaten_at": "2026-10-03T05:54:00-04:00",
+          "source": "replay_due",
+          "items": [
+            {
+              "name": "Milk",
+              "quantity": 4.0,
+              "unit": "ounce",
+              "carbs_g": 4.5,
+              "sugar_g": 4.0,
+              "fiber_g": 0.0,
+              "protein_g": 6.0,
+              "fat_g": 2.5,
+              "calories": 60.0,
+              "nutrition_source": "dataset",
+              "editable": true
+            },
+            {
+              "name": "Frosted Flake",
+              "quantity": 1.5,
+              "unit": "cup",
+              "carbs_g": 52.0,
+              "sugar_g": 20.0,
+              "fiber_g": 1.0,
+              "protein_g": 2.0,
+              "fat_g": 0.0,
+              "calories": 220.0,
+              "nutrition_source": "dataset",
+              "editable": true
+            }
+          ],
+          "totals": {
+            "carbs_g": 56.5,
+            "sugar_g": 24.0,
+            "fiber_g": 1.0,
+            "protein_g": 8.0,
+            "fat_g": 2.5,
+            "calories": 280.0
+          },
+          "is_standard_breakfast": true,
+          "prediction_id": "pr_1"
+        },
+        "curve": [
+          {
+            "t": "2026-10-03T06:00:00-04:00",
+            "glucose_mg_dl": 128.0,
+            "kind": "confirmed"
+          },
+          {
+            "t": "2026-10-03T06:37:00-04:00",
+            "glucose_mg_dl": 174.0,
+            "kind": "confirmed"
+          },
+          {
+            "t": "2026-10-03T07:30:00-04:00",
+            "glucose_mg_dl": 131.0,
+            "kind": "confirmed"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "label": "Ask Gummi why",
+          "kind": "open_chat",
+          "prompt": "Why did I peak at 174?"
+        }
+      ],
+      "trace_id": "tr_2",
+      "generated_by": "agent"
+    },
+    {
+      "card_id": "c_logged_1",
+      "type": "meal_logged",
+      "created_at": "2026-10-03T05:58:00-04:00",
+      "title": "Breakfast logged",
+      "body": "I expect a peak near 165 around 6:30.",
+      "mood": "rising",
+      "attachments": {
+        "meal": {
+          "meal_id": "m_1",
+          "eaten_at": "2026-10-03T05:54:00-04:00",
+          "source": "replay_due",
+          "items": [
+            {
+              "name": "Milk",
+              "quantity": 4.0,
+              "unit": "ounce",
+              "carbs_g": 4.5,
+              "sugar_g": 4.0,
+              "fiber_g": 0.0,
+              "protein_g": 6.0,
+              "fat_g": 2.5,
+              "calories": 60.0,
+              "nutrition_source": "dataset",
+              "editable": true
+            },
+            {
+              "name": "Frosted Flake",
+              "quantity": 1.5,
+              "unit": "cup",
+              "carbs_g": 52.0,
+              "sugar_g": 20.0,
+              "fiber_g": 1.0,
+              "protein_g": 2.0,
+              "fat_g": 0.0,
+              "calories": 220.0,
+              "nutrition_source": "dataset",
+              "editable": true
+            }
+          ],
+          "totals": {
+            "carbs_g": 56.5,
+            "sugar_g": 24.0,
+            "fiber_g": 1.0,
+            "protein_g": 8.0,
+            "fat_g": 2.5,
+            "calories": 280.0
+          },
+          "is_standard_breakfast": true,
+          "prediction_id": "pr_1"
+        },
+        "prediction": {
+          "prediction_id": "pr_1",
+          "kind": "meal",
+          "made_at": "2026-10-03T05:58:00-04:00",
+          "about": "Milk and Frosted Flake",
+          "meal_id": "m_1",
+          "window_start": "2026-10-03T05:54:00-04:00",
+          "window_end": "2026-10-03T07:54:00-04:00",
+          "predicted_peak_mg_dl": 165.0,
+          "predicted_curve": [
+            {
+              "t": "2026-10-03T06:00:00-04:00",
+              "glucose_mg_dl": 128.0,
+              "band_low_mg_dl": 105.0,
+              "band_high_mg_dl": 151.0,
+              "kind": "forecast"
+            },
+            {
+              "t": "2026-10-03T06:30:00-04:00",
+              "glucose_mg_dl": 165.0,
+              "band_low_mg_dl": 137.0,
+              "band_high_mg_dl": 192.0,
+              "kind": "forecast"
+            },
+            {
+              "t": "2026-10-03T07:00:00-04:00",
+              "glucose_mg_dl": 160.0,
+              "band_low_mg_dl": 132.0,
+              "band_high_mg_dl": 189.0,
+              "kind": "forecast"
+            }
+          ],
+          "cgm_only_peak_mg_dl": 139.0,
+          "last_value_peak_mg_dl": 121.0,
+          "status": "pending"
+        }
+      },
+      "actions": [],
+      "trace_id": "tr_1",
+      "generated_by": "agent"
+    },
+    {
+      "card_id": "c_due_1",
+      "type": "meal_due",
+      "created_at": "2026-10-03T05:54:00-04:00",
+      "title": "Breakfast time for Participant 12",
+      "body": "Milk and Frosted Flake. Logged.",
+      "mood": "calm",
+      "attachments": null,
+      "actions": [],
+      "trace_id": null,
+      "generated_by": "template"
+    },
+    {
+      "card_id": "c_brief_1",
+      "type": "morning_briefing",
+      "created_at": "2026-10-03T06:00:00-04:00",
+      "title": "Good morning",
+      "body": "Yesterday you spent 91% in range.",
+      "mood": "calm",
+      "attachments": null,
+      "actions": [],
+      "trace_id": "tr_0",
+      "generated_by": "agent"
+    }
+  ]
+}

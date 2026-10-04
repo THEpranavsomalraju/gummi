@@ -1,0 +1,15 @@
+{
+  "running": false,
+  "paused": false,
+  "speed": 60.0,
+  "delay_minutes": 60,
+  "participants": 15,
+  "replay_clock": null,
+  "replay_anchor": {
+    "replay_time": null,
+    "wall_time": null
+  },
+  "events_released": 0,
+  "events_per_second": 0.0,
+  "pipeline_lag_seconds": null
+}

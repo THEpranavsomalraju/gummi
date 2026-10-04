@@ -52,3 +52,19 @@ targets:
       path: Gummi/Gummi.entitlements
       properties:
         com.apple.developer.healthkit: true
+    scheme:
+      testTargets:
+        - GummiTests
+
+  GummiTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: GummiTests
+    dependencies:
+      - target: Gummi
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mahilmanoharan.gummi.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"

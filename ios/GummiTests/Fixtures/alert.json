@@ -1,0 +1,12 @@
+{
+  "alert_id": "a_1",
+  "type": "walk_suggested",
+  "message": "Your forecast crosses 140 in about 25 minutes. A 10-minute walk now likely helps.",
+  "created_at": "2026-10-03T06:15:00-04:00",
+  "expires_at": "2026-10-03T06:45:00-04:00",
+  "action": {
+    "label": "Start walk",
+    "kind": "start_walk",
+    "minutes": 10
+  }
+}
