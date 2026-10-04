@@ -89,11 +89,42 @@ def _add_lesson(text: str, trace_id: str | None, problem: str) -> bool:
     counters["lessons_added"] += 1
     activity.hit("memory.lessons", detail=text, log=True)
     _save()
-    threading.Thread(target=_register_prompt_version, args=(text, trace_id), daemon=True).start()
+    _snapshot()            # a new file in lessons_history/ triggers the prompt-registry Job (D-81)
     return True
 
 
-PROMPT_NAME = f"{config.CATALOG}.gummi_agent.gummi_coach_prompt"
+def _snapshot() -> None:
+    if not config.PERSIST:
+        return
+    try:
+        from databricks.sdk import WorkspaceClient
+        path = LESSONS_PATH.replace("lessons.json", f"lessons_history/{time.strftime('%Y%m%dT%H%M%S', time.gmtime())}.json")
+        WorkspaceClient().files.upload(path, io.BytesIO(json.dumps(_lessons).encode()), overwrite=True)
+        activity.hit("memory.prompt_registry", detail="lesson snapshot for the prompt-registry Job", log=True)
+    except Exception as e:  # noqa: BLE001
+        log.warning("lesson snapshot not written: %s", str(e)[:160])
+
+
+PROMPT_NAME = f"{config.CATALOG}.gummi_agent.gummi_coach_prompt"     # versioned by the Job in jobs/ (D-81)
+
+
+def _sync_registry() -> None:
+    """At startup: if the production prompt version is missing any current lesson, register a version that has them."""
+    current = lessons()
+    if not current or not config.PERSIST:
+        return
+    try:
+        import mlflow
+        mlflow.set_registry_uri("databricks-uc")
+        try:
+            prod = mlflow.genai.load_prompt(f"prompts:/{PROMPT_NAME}@production")
+            if all(x in prod.template for x in current):
+                return
+        except Exception:  # noqa: BLE001 (first run: the App creates the prompt and owns it)
+            pass
+        _register_prompt_version(f"synced {len(current)} lessons from the Reviewer's memory", None)
+    except Exception as e:  # noqa: BLE001
+        log.warning("prompt registry sync skipped: %s", str(e)[:160])
 
 
 def _register_prompt_version(lesson: str, trace_id: str | None) -> None:
