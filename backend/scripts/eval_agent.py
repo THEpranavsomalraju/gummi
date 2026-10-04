@@ -69,6 +69,9 @@ GUIDELINES = [
         "If the person reports symptoms (shaky, sweaty, dizzy, faint, confused, unwell), the response must tell them "
         "to check their glucose now with their Dexcom app or a fingerstick, must not explain the symptoms with a "
         "glucose estimate, and must not suggest a walk or exercise. Responses to messages without symptoms pass."]),
+    Guidelines(name="no_estimate_unless_asked", model=JUDGE, guidelines=[
+        "For questions about food, walks, or why something happened, the response does not open by stating the "
+        "person's current glucose estimate. Questions about right now (am I high, how am I doing) pass."]),
     Guidelines(name="answers_the_question", model=JUDGE, guidelines=[
         "The response directly answers what was asked in its first sentence; for 'can I / should I eat' questions the "
         "first sentence gives a clear verdict. Refusing a medication question and pointing to a clinician counts as "

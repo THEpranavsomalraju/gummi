@@ -28,7 +28,7 @@ _ITEMS = {"type": "array", "description": "Foods with portions. For foods that a
               "protein_g": {"type": "number"}, "fat_g": {"type": "number"}, "calories": {"type": "number"}}}}
 
 SCHEMAS = [
-    {"name": "get_state", "description": "Your estimate for now (with band and trend), the last confirmed Dexcom reading, the 2-hour forecast peak, today's numbers and the next due meal.",
+    {"name": "get_state", "description": "Only for questions about right now (am I high, how am I doing, what's my glucose doing). Your estimate for now (with band and trend), the last confirmed Dexcom reading, the 2-hour forecast peak, today's numbers and the next due meal.",
      "parameters": {"type": "object", "properties": {}}},
     {"name": "simulate_food", "description": "What eating these foods would likely do: peak with and without, verdict, and alternatives (half portion, walk after). Use for any 'can I eat/should I have' question, and for meals mentioned while acting as a study participant.",
      "parameters": {"type": "object", "required": ["items"], "properties": {"items": _ITEMS,
