@@ -10,7 +10,8 @@ class UserState:
     user_id: str
     profile: dict
     following: str | None = None
-    meals: list[dict] = field(default_factory=list)       # teammate's own meals while not acting as anyone
+    meals: list[dict] = field(default_factory=list)       # teammate's own food-log entries (manual or added by Gummi)
+    meal_sims: dict = field(default_factory=dict)         # meal_id -> simulation summary for entries not graded
     grades: list[dict] = field(default_factory=list)
     cards: list[dict] = field(default_factory=list)       # oldest first, unique card_id
     steps: int = 0

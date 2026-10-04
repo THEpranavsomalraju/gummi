@@ -12,8 +12,13 @@ LOW_LINE = 70.0
 DELAY_MINUTES = 60
 MODEL_VERSION = "gummi_model_v1"
 WAREHOUSE_ID = os.environ.get("GUMMI_WAREHOUSE_ID", "1b929fe5bf415d65")
-LLM_ENDPOINT = os.environ.get("GUMMI_LLM_ENDPOINT", "databricks-gpt-oss-120b")
-LLM_FALLBACK = os.environ.get("GUMMI_LLM_FALLBACK", "databricks-qwen3-next-80b-a3b-instruct")
+# Chat: gpt-oss-20b first (0.3 to 0.9 s per step, where 120b swung 4 to 13 s under shared Free Edition load), then
+# 120b, then qwen. Each endpoint has its own per-workspace rate limit, so the chain also rides out 429s (D-60x).
+LLM_ENDPOINT = os.environ.get("GUMMI_LLM_ENDPOINT", "databricks-gpt-oss-20b")
+LLM_FALLBACKS = [m for m in os.environ.get("GUMMI_LLM_FALLBACKS", "databricks-gpt-oss-120b,databricks-qwen3-next-80b-a3b-instruct").split(",") if m]
+LLM_FALLBACK = LLM_FALLBACKS[-1]
+AGENT_ENDPOINT = os.environ.get("GUMMI_AGENT_ENDPOINT", "databricks-qwen3-next-80b-a3b-instruct")   # background agents (D-56)
+JUDGE_ENDPOINT = os.environ.get("GUMMI_JUDGE_ENDPOINT", "databricks-llama-4-maverick")     # Reviewer agent (D-57)
 INSIGHTS_ENDPOINT = os.environ.get("GUMMI_INSIGHTS_ENDPOINT", "mas-becc8b0e-endpoint")
 MLFLOW_EXPERIMENT_ID = os.environ.get("GUMMI_MLFLOW_EXPERIMENT_ID", "3505481683626519")
 
@@ -35,6 +40,9 @@ LANDING_ROOT = f"/Volumes/{CATALOG}/gummi_data/landing"
 LANDING_DIR = os.environ.get("GUMMI_LANDING_DIR", f"{LANDING_ROOT}/mock_events" if MODE == "mock" else f"{LANDING_ROOT}/events")
 LANDING_ENABLED = os.environ.get("GUMMI_LANDING_ENABLED", "true").lower() == "true"
 LANDING_INTERVAL_S = 5.0
+
+# Session, lessons and Dexcom tokens persist to the volume; tests turn this off so they never touch real state
+PERSIST = os.environ.get("GUMMI_PERSIST", "true").lower() == "true"
 
 PING_SECONDS = 15.0
 STATE_PUSH_SECONDS = 1.0            # state events at most once per second (CONTRACT section 5)

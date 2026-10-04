@@ -192,6 +192,27 @@ class Meal(Strict):
     prediction_id: Optional[str]
 
 
+class FoodLogPrediction(Strict):
+    predicted_peak_mg_dl: float
+    cgm_only_peak_mg_dl: Optional[float]
+    last_value_peak_mg_dl: Optional[float]
+    status: Literal["pending", "graded"]
+
+
+class FoodLogEntry(Strict):
+    meal: Meal
+    origin: Literal["study_log", "you", "gummi"]
+    graded: bool
+    prediction: Optional[FoodLogPrediction]
+    grade: Optional[Grade]
+    note: Optional[str]
+
+
+class FoodLog(Strict):
+    date: Optional[str]
+    entries: list[FoodLogEntry]
+
+
 class Alternative(Strict):
     label: str
     peak_mg_dl: float

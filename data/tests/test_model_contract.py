@@ -152,7 +152,7 @@ def test_for_user_never_returns_a_model_trained_on_that_participant(artifact):
         m = model.for_user(f"p_{pid}")
         assert m is not model and m.fold == f
         assert pid not in m.training_participants                              # out-of-sample replay (D-26)
-        assert m.version == f"gummi_model_v1_fold{f}"
+        assert m.version == f"{C.VERSION}_fold{f}"
     assert model.fold_of("u_nikhil") is None and model.for_user("u_nikhil") is model
     assert model.fold_of("p_015") is None and model.for_user("p_015") is model   # excluded: not in any fold
     assert set(model.training_participants) == set(FOLD_MAP)
@@ -184,7 +184,7 @@ def test_update_personal_and_walk_effect(artifact):
     w = model.walk_effect(ctx, 10, "moderate")
     assert w["effect_source"] == "literature" and w["forecast_peak_drop_mg_dl"] == pytest.approx(14.4)
     assert model.walk_effect(ctx, 0, "sedentary")["forecast_peak_drop_mg_dl"] == 0.0
-    assert model.version == "gummi_model_v1"
+    assert model.version == C.VERSION
 
 
 def test_walk_never_removes_more_than_half_the_meal(artifact):

@@ -28,7 +28,7 @@ _ITEMS = {"type": "array", "description": "Foods with portions. For foods that a
               "protein_g": {"type": "number"}, "fat_g": {"type": "number"}, "calories": {"type": "number"}}}}
 
 SCHEMAS = [
-    {"name": "get_state", "description": "Gummi's estimate for now (with band and trend), the last confirmed Dexcom reading, the 2-hour forecast peak, today's numbers and the next due meal.",
+    {"name": "get_state", "description": "Your estimate for now (with band and trend), the last confirmed Dexcom reading, the 2-hour forecast peak, today's numbers and the next due meal.",
      "parameters": {"type": "object", "properties": {}}},
     {"name": "simulate_food", "description": "What eating these foods would likely do: peak with and without, verdict, and alternatives (half portion, walk after). Use for any 'can I eat/should I have' question, and for meals mentioned while acting as a study participant.",
      "parameters": {"type": "object", "required": ["items"], "properties": {"items": _ITEMS,
@@ -41,7 +41,7 @@ SCHEMAS = [
      "parameters": {"type": "object", "properties": {"hours": {"type": "number"}}}},
     {"name": "explain_spike", "description": "The biggest rise in the last N hours: peak, the meals before it with carbs, walks, and what Gummi predicted versus what happened.",
      "parameters": {"type": "object", "properties": {"hours": {"type": "number"}}}},
-    {"name": "today_summary", "description": "Today's time in range, peak, meals, steps, walks, and Gummi's accuracy next to CGM-only and last value.",
+    {"name": "today_summary", "description": "Today's time in range, peak, meals, steps, walks, and your prediction accuracy next to CGM-only and last value.",
      "parameters": {"type": "object", "properties": {}}},
     {"name": "get_gold_summary", "description": "Accuracy from the Databricks gold tables for this person over N days, plus the all-participant rollup, always with CGM-only and last value. Out-of-sample for study participants.",
      "parameters": {"type": "object", "properties": {"days": {"type": "number"}}}},
@@ -97,11 +97,13 @@ def get_state(c: Ctx, **_):
         return {"available": False, "note": "No glucose data: not following a participant."}, None
     v, conf, fc = s["gummi_view"], s["confirmed"], s["forecast"]
     peak = max(fc, key=lambda p: p["glucose_mg_dl"]) if fc else None
-    res = {"gummis_estimate_now": v["glucose_mg_dl"], "band": [v["band_low_mg_dl"], v["band_high_mg_dl"]], "trend": v["trend"],
+    res = {"my_estimate_now": v["glucose_mg_dl"], "band": [v["band_low_mg_dl"], v["band_high_mg_dl"]], "trend": v["trend"],
            "confidence": v["confidence"], "last_dexcom_reading": conf[-1]["glucose_mg_dl"] if conf else None,
            "minutes_since_reading": v["minutes_since_confirmed"],
            "forecast_peak_2h": {"mg_dl": peak["glucose_mg_dl"], "at": _hm(peak["t"])} if peak else None,
            "high_line": s["profile"]["high_line_mg_dl"], "local_time": _hm(_now()) if _now() else None,
+           "estimate_vs_range": ("above" if v["glucose_mg_dl"] >= s["profile"]["high_line_mg_dl"] else
+                                 "below" if v["glucose_mg_dl"] <= s["profile"]["low_line_mg_dl"] else "in range"),
            "today": s["today"], "next_due_meal": s["upcoming_due"][0]["body"] if s["upcoming_due"] else None,
            "acting_as": s["acting_as"]}
     return res, {"card_type": "gummi_view", "payload": v}
@@ -122,16 +124,19 @@ def simulate_food(c: Ctx, items=None, in_minutes=0, **_):
 
 
 def log_meal(c: Ctx, items=None, **_):
-    if c.subject is not None:
-        # CONTRACT section 7 simulation rule: a study participant's real meals come from the study log
-        res, card = simulate_food(c, items=items)
-        res["note"] = (f"Not logged: {store.display_name(c.pid)}'s real meals come from the study log, so this was "
-                       f"simulated instead. Say so in one short line.")
-        return res, card
     from ..routes.meals import create_meal
     meal = create_meal(c.uid, _foods(items), "chat")
-    return {"saved": True, "meal_id": meal["meal_id"], "carbs_g": meal["totals"]["carbs_g"],
-            "note": "No glucose data for this person, so no prediction."}, {"card_type": "meal_saved", "payload": meal}
+    res = {"added_to_food_log": True, "meal_id": meal["meal_id"], "carbs_g": meal["totals"]["carbs_g"]}
+    sim = c.u.meal_sims.get(meal["meal_id"])
+    if c.subject is not None and sim:
+        # D-59: on a study participant's day the entry is simulated and never graded (they didn't really eat it)
+        res.update({"likely_peak_mg_dl": sim["predicted_peak_mg_dl"], "peak_at": _hm(sim["peak_at"]),
+                    "verdict": sim["verdict"], "graded": False,
+                    "note": f"Added to the food log as a simulated entry on {store.display_name(c.pid)}'s day; "
+                            "it won't be graded. Say so in one short line."})
+    else:
+        res["note"] = "No glucose data connected for this person, so no prediction."
+    return res, {"card_type": "meal_saved", "payload": meal}
 
 
 def suggest_walk(c: Ctx, minutes=10, **_):
@@ -144,6 +149,8 @@ def suggest_walk(c: Ctx, minutes=10, **_):
     eff = s.model.walk_effect(engine.ctx(s), minutes, "moderate")
     res = {"forecast_peak": peak["glucose_mg_dl"] if peak else None, "peak_at": _hm(peak["t"]) if peak else None,
            "walk_minutes": minutes, "modeled_peak_drop_mg_dl": eff.get("forecast_peak_drop_mg_dl"),
+           "peak_after_walk": r1(peak["glucose_mg_dl"] - (eff.get("forecast_peak_drop_mg_dl") or 0)) if peak else None,
+           "peak_is_over_high_line": bool(peak and peak["glucose_mg_dl"] >= c.u.profile["high_line_mg_dl"]),
            "effect_source": eff.get("effect_source"), "high_line": c.u.profile["high_line_mg_dl"]}
     card = {"card_type": "walk_suggestion", "payload": {"minutes": int(minutes), "start": iso(_now()),
             "forecast_peak_mg_dl": res["forecast_peak"], "forecast_peak_drop_mg_dl": res["modeled_peak_drop_mg_dl"],
@@ -190,7 +197,8 @@ def explain_spike(c: Ctx, hours=6, **_):
     pred = next((p for p in reversed(list(s.predictions.values())) if p["kind"] == "meal" and p.get("meal_id")
                  and start <= pd.Timestamp(p["window_start"]) <= t_peak), None)
     return {"peak_mg_dl": v_peak, "peak_at": _hm(t_peak), "rise_mg_dl": r1(v_peak - before[-1]) if before else None,
-            "meals_before": meals, "walks": len(c.u.overlay_walks),
+            "glucose_before_mg_dl": before[-1] if before else None,
+            "total_carbs_before_peak_g": r1(sum(m["carbs_g"] for m in meals)), "meals_before": meals, "walks": len(c.u.overlay_walks),
             "gummi_predicted_peak": pred["predicted_peak_mg_dl"] if pred else None,
             "cgm_only_predicted_peak": pred["cgm_only_peak_mg_dl"] if pred else None}, None
 
@@ -203,6 +211,13 @@ def today_summary(c: Ctx, **_):
 
 def get_gold_summary(c: Ctx, days=1, **_):
     who = c.pid or c.uid
+    if not gold.rows and c.subject is not None and c.subject.grades:
+        # gold not loaded yet: the App's own grades (same grade() output the pipeline aggregates), labeled as such
+        gs = list(c.subject.grades)
+        mean = lambda k: r1(sum(g[k] for g in gs if g[k] is not None) / max(1, sum(g[k] is not None for g in gs)))  # noqa: E731
+        return {"source": "live grades in the App (gold tables not loaded yet)", "grades": len(gs),
+                "gummi_mae_mg_dl": mean("gummi_mae_mg_dl"), "cgm_only_mae_mg_dl": mean("cgm_only_mae_mg_dl"),
+                "last_value_mae_mg_dl": mean("last_value_mae_mg_dl"), "sample": "out-of-sample"}, None
     rows = [{k: r.get(k) for k in ("sample", "user_id", "window_type", "grades", "gummi_mae_mg_dl", "cgm_only_mae_mg_dl",
                                    "last_value_mae_mg_dl", "gummi_beats_cgm_only_pct")} for r in gold.summary(who)]
     return {"source": "stream_gold_accuracy (Databricks)", "refreshed_at": gold.refreshed_at, "rows": rows[:12]}, None

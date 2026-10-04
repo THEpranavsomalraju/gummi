@@ -2,9 +2,9 @@
   "generated_by": "data/scripts/make_test_events.py",
   "note": "Pipeline test fixture: a few replay hours for a few participants. These numbers test the pipeline; they are not results.",
   "model_by_user": {
-    "p_012": "gummi_model_v1_fold2",
-    "p_004": "gummi_model_v1_fold4",
-    "p_009": "gummi_model_v1_fold4"
+    "p_012": "gummi_model_v1_2_fold2",
+    "p_004": "gummi_model_v1_2_fold4",
+    "p_009": "gummi_model_v1_2_fold4"
   },
   "walk_effect_graded_false": 2,
   "replay": {

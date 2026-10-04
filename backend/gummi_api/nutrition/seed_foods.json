@@ -1,32 +1,362 @@
 {
-  "waffle": {"unit": "waffle", "carbs_g": 25.0, "sugar_g": 4.0, "fiber_g": 1.0, "protein_g": 4.0, "fat_g": 7.0, "calories": 180},
-  "pancake": {"unit": "pancake", "carbs_g": 22.0, "sugar_g": 5.0, "fiber_g": 0.8, "protein_g": 4.0, "fat_g": 5.0, "calories": 150},
-  "syrup": {"unit": "tbsp", "carbs_g": 13.0, "sugar_g": 12.0, "fiber_g": 0.0, "protein_g": 0.0, "fat_g": 0.0, "calories": 52},
-  "black coffee": {"unit": "cup", "carbs_g": 0.0, "sugar_g": 0.0, "fiber_g": 0.0, "protein_g": 0.3, "fat_g": 0.0, "calories": 2},
-  "latte": {"unit": "cup", "carbs_g": 15.0, "sugar_g": 14.0, "fiber_g": 0.0, "protein_g": 10.0, "fat_g": 7.0, "calories": 170},
-  "orange juice": {"unit": "cup", "carbs_g": 26.0, "sugar_g": 21.0, "fiber_g": 0.5, "protein_g": 1.7, "fat_g": 0.5, "calories": 112},
-  "banana": {"unit": "banana", "carbs_g": 27.0, "sugar_g": 14.0, "fiber_g": 3.1, "protein_g": 1.3, "fat_g": 0.4, "calories": 105},
-  "apple": {"unit": "apple", "carbs_g": 25.0, "sugar_g": 19.0, "fiber_g": 4.4, "protein_g": 0.5, "fat_g": 0.3, "calories": 95},
-  "oatmeal": {"unit": "cup", "carbs_g": 27.0, "sugar_g": 1.0, "fiber_g": 4.0, "protein_g": 6.0, "fat_g": 3.6, "calories": 166},
-  "greek yogurt": {"unit": "cup", "carbs_g": 9.0, "sugar_g": 7.0, "fiber_g": 0.0, "protein_g": 20.0, "fat_g": 5.0, "calories": 160},
-  "egg": {"unit": "egg", "carbs_g": 0.4, "sugar_g": 0.2, "fiber_g": 0.0, "protein_g": 6.3, "fat_g": 5.3, "calories": 78},
-  "toast": {"unit": "slice", "carbs_g": 13.0, "sugar_g": 1.5, "fiber_g": 1.0, "protein_g": 3.0, "fat_g": 1.0, "calories": 75},
-  "bagel": {"unit": "bagel", "carbs_g": 48.0, "sugar_g": 6.0, "fiber_g": 2.0, "protein_g": 10.0, "fat_g": 1.5, "calories": 250},
-  "cereal": {"unit": "cup", "carbs_g": 26.0, "sugar_g": 10.0, "fiber_g": 1.0, "protein_g": 2.0, "fat_g": 1.0, "calories": 120},
-  "pizza": {"unit": "slice", "carbs_g": 35.0, "sugar_g": 4.0, "fiber_g": 2.0, "protein_g": 12.0, "fat_g": 10.0, "calories": 285},
-  "burger": {"unit": "burger", "carbs_g": 40.0, "sugar_g": 8.0, "fiber_g": 2.0, "protein_g": 25.0, "fat_g": 22.0, "calories": 480},
-  "fries": {"unit": "medium", "carbs_g": 44.0, "sugar_g": 0.3, "fiber_g": 4.0, "protein_g": 4.0, "fat_g": 17.0, "calories": 340},
-  "turkey sandwich": {"unit": "sandwich", "carbs_g": 34.0, "sugar_g": 5.0, "fiber_g": 3.0, "protein_g": 24.0, "fat_g": 9.0, "calories": 320},
-  "burrito": {"unit": "burrito", "carbs_g": 70.0, "sugar_g": 4.0, "fiber_g": 9.0, "protein_g": 28.0, "fat_g": 22.0, "calories": 600},
-  "rice": {"unit": "cup", "carbs_g": 45.0, "sugar_g": 0.1, "fiber_g": 0.6, "protein_g": 4.3, "fat_g": 0.4, "calories": 205},
-  "pasta": {"unit": "cup", "carbs_g": 43.0, "sugar_g": 0.8, "fiber_g": 2.5, "protein_g": 8.0, "fat_g": 1.3, "calories": 220},
-  "chicken stir fry": {"unit": "plate", "carbs_g": 20.0, "sugar_g": 8.0, "fiber_g": 4.0, "protein_g": 30.0, "fat_g": 12.0, "calories": 320},
-  "salad": {"unit": "bowl", "carbs_g": 10.0, "sugar_g": 4.0, "fiber_g": 4.0, "protein_g": 3.0, "fat_g": 7.0, "calories": 110},
-  "cookie": {"unit": "cookie", "carbs_g": 22.0, "sugar_g": 12.0, "fiber_g": 0.7, "protein_g": 2.0, "fat_g": 7.0, "calories": 160},
-  "donut": {"unit": "donut", "carbs_g": 31.0, "sugar_g": 13.0, "fiber_g": 1.0, "protein_g": 4.0, "fat_g": 14.0, "calories": 260},
-  "ice cream": {"unit": "cup", "carbs_g": 32.0, "sugar_g": 28.0, "fiber_g": 1.0, "protein_g": 5.0, "fat_g": 15.0, "calories": 270},
-  "soda": {"unit": "can", "carbs_g": 39.0, "sugar_g": 39.0, "fiber_g": 0.0, "protein_g": 0.0, "fat_g": 0.0, "calories": 140},
-  "chips": {"unit": "bag", "carbs_g": 15.0, "sugar_g": 0.2, "fiber_g": 1.2, "protein_g": 2.0, "fat_g": 10.0, "calories": 160},
-  "granola bar": {"unit": "bar", "carbs_g": 29.0, "sugar_g": 12.0, "fiber_g": 1.5, "protein_g": 2.5, "fat_g": 6.0, "calories": 190},
-  "smoothie": {"unit": "cup", "carbs_g": 45.0, "sugar_g": 38.0, "fiber_g": 3.0, "protein_g": 5.0, "fat_g": 2.0, "calories": 220}
+ "waffle": {
+  "unit": "waffle",
+  "carbs_g": 25.0,
+  "sugar_g": 4.0,
+  "fiber_g": 1.0,
+  "protein_g": 4.0,
+  "fat_g": 7.0,
+  "calories": 180
+ },
+ "pancake": {
+  "unit": "pancake",
+  "carbs_g": 22.0,
+  "sugar_g": 5.0,
+  "fiber_g": 0.8,
+  "protein_g": 4.0,
+  "fat_g": 5.0,
+  "calories": 150
+ },
+ "syrup": {
+  "unit": "tbsp",
+  "carbs_g": 13.0,
+  "sugar_g": 12.0,
+  "fiber_g": 0.0,
+  "protein_g": 0.0,
+  "fat_g": 0.0,
+  "calories": 52
+ },
+ "black coffee": {
+  "unit": "cup",
+  "carbs_g": 0.0,
+  "sugar_g": 0.0,
+  "fiber_g": 0.0,
+  "protein_g": 0.3,
+  "fat_g": 0.0,
+  "calories": 2
+ },
+ "latte": {
+  "unit": "cup",
+  "carbs_g": 15.0,
+  "sugar_g": 14.0,
+  "fiber_g": 0.0,
+  "protein_g": 10.0,
+  "fat_g": 7.0,
+  "calories": 170
+ },
+ "orange juice": {
+  "unit": "cup",
+  "carbs_g": 26.0,
+  "sugar_g": 21.0,
+  "fiber_g": 0.5,
+  "protein_g": 1.7,
+  "fat_g": 0.5,
+  "calories": 112
+ },
+ "banana": {
+  "unit": "banana",
+  "carbs_g": 27.0,
+  "sugar_g": 14.0,
+  "fiber_g": 3.1,
+  "protein_g": 1.3,
+  "fat_g": 0.4,
+  "calories": 105
+ },
+ "apple": {
+  "unit": "apple",
+  "carbs_g": 25.0,
+  "sugar_g": 19.0,
+  "fiber_g": 4.4,
+  "protein_g": 0.5,
+  "fat_g": 0.3,
+  "calories": 95
+ },
+ "oatmeal": {
+  "unit": "cup",
+  "carbs_g": 27.0,
+  "sugar_g": 1.0,
+  "fiber_g": 4.0,
+  "protein_g": 6.0,
+  "fat_g": 3.6,
+  "calories": 166
+ },
+ "greek yogurt": {
+  "unit": "cup",
+  "carbs_g": 9.0,
+  "sugar_g": 7.0,
+  "fiber_g": 0.0,
+  "protein_g": 20.0,
+  "fat_g": 5.0,
+  "calories": 160
+ },
+ "egg": {
+  "unit": "egg",
+  "carbs_g": 0.4,
+  "sugar_g": 0.2,
+  "fiber_g": 0.0,
+  "protein_g": 6.3,
+  "fat_g": 5.3,
+  "calories": 78
+ },
+ "toast": {
+  "unit": "slice",
+  "carbs_g": 13.0,
+  "sugar_g": 1.5,
+  "fiber_g": 1.0,
+  "protein_g": 3.0,
+  "fat_g": 1.0,
+  "calories": 75
+ },
+ "bagel": {
+  "unit": "bagel",
+  "carbs_g": 48.0,
+  "sugar_g": 6.0,
+  "fiber_g": 2.0,
+  "protein_g": 10.0,
+  "fat_g": 1.5,
+  "calories": 250
+ },
+ "cereal": {
+  "unit": "cup",
+  "carbs_g": 26.0,
+  "sugar_g": 10.0,
+  "fiber_g": 1.0,
+  "protein_g": 2.0,
+  "fat_g": 1.0,
+  "calories": 120
+ },
+ "pizza": {
+  "unit": "slice",
+  "carbs_g": 35.0,
+  "sugar_g": 4.0,
+  "fiber_g": 2.0,
+  "protein_g": 12.0,
+  "fat_g": 10.0,
+  "calories": 285
+ },
+ "burger": {
+  "unit": "burger",
+  "carbs_g": 40.0,
+  "sugar_g": 8.0,
+  "fiber_g": 2.0,
+  "protein_g": 25.0,
+  "fat_g": 22.0,
+  "calories": 480
+ },
+ "fries": {
+  "unit": "medium",
+  "carbs_g": 44.0,
+  "sugar_g": 0.3,
+  "fiber_g": 4.0,
+  "protein_g": 4.0,
+  "fat_g": 17.0,
+  "calories": 340
+ },
+ "turkey sandwich": {
+  "unit": "sandwich",
+  "carbs_g": 34.0,
+  "sugar_g": 5.0,
+  "fiber_g": 3.0,
+  "protein_g": 24.0,
+  "fat_g": 9.0,
+  "calories": 320
+ },
+ "burrito": {
+  "unit": "burrito",
+  "carbs_g": 70.0,
+  "sugar_g": 4.0,
+  "fiber_g": 9.0,
+  "protein_g": 28.0,
+  "fat_g": 22.0,
+  "calories": 600
+ },
+ "rice": {
+  "unit": "cup",
+  "carbs_g": 45.0,
+  "sugar_g": 0.1,
+  "fiber_g": 0.6,
+  "protein_g": 4.3,
+  "fat_g": 0.4,
+  "calories": 205
+ },
+ "pasta": {
+  "unit": "cup",
+  "carbs_g": 43.0,
+  "sugar_g": 0.8,
+  "fiber_g": 2.5,
+  "protein_g": 8.0,
+  "fat_g": 1.3,
+  "calories": 220
+ },
+ "chicken stir fry": {
+  "unit": "plate",
+  "carbs_g": 20.0,
+  "sugar_g": 8.0,
+  "fiber_g": 4.0,
+  "protein_g": 30.0,
+  "fat_g": 12.0,
+  "calories": 320
+ },
+ "salad": {
+  "unit": "bowl",
+  "carbs_g": 10.0,
+  "sugar_g": 4.0,
+  "fiber_g": 4.0,
+  "protein_g": 3.0,
+  "fat_g": 7.0,
+  "calories": 110
+ },
+ "cookie": {
+  "unit": "cookie",
+  "carbs_g": 22.0,
+  "sugar_g": 12.0,
+  "fiber_g": 0.7,
+  "protein_g": 2.0,
+  "fat_g": 7.0,
+  "calories": 160
+ },
+ "donut": {
+  "unit": "donut",
+  "carbs_g": 31.0,
+  "sugar_g": 13.0,
+  "fiber_g": 1.0,
+  "protein_g": 4.0,
+  "fat_g": 14.0,
+  "calories": 260
+ },
+ "ice cream": {
+  "unit": "cup",
+  "carbs_g": 32.0,
+  "sugar_g": 28.0,
+  "fiber_g": 1.0,
+  "protein_g": 5.0,
+  "fat_g": 15.0,
+  "calories": 270
+ },
+ "soda": {
+  "unit": "can",
+  "carbs_g": 39.0,
+  "sugar_g": 39.0,
+  "fiber_g": 0.0,
+  "protein_g": 0.0,
+  "fat_g": 0.0,
+  "calories": 140
+ },
+ "chips": {
+  "unit": "bag",
+  "carbs_g": 15.0,
+  "sugar_g": 0.2,
+  "fiber_g": 1.2,
+  "protein_g": 2.0,
+  "fat_g": 10.0,
+  "calories": 160
+ },
+ "granola bar": {
+  "unit": "bar",
+  "carbs_g": 29.0,
+  "sugar_g": 12.0,
+  "fiber_g": 1.5,
+  "protein_g": 2.5,
+  "fat_g": 6.0,
+  "calories": 190
+ },
+ "smoothie": {
+  "unit": "cup",
+  "carbs_g": 45.0,
+  "sugar_g": 38.0,
+  "fiber_g": 3.0,
+  "protein_g": 5.0,
+  "fat_g": 2.0,
+  "calories": 220
+ },
+ "almonds": {
+  "unit": "handful (28 g)",
+  "carbs_g": 6.0,
+  "sugar_g": 1.2,
+  "fiber_g": 3.5,
+  "protein_g": 6.0,
+  "fat_g": 14.0,
+  "calories": 164
+ },
+ "peanut butter": {
+  "unit": "tbsp",
+  "carbs_g": 3.0,
+  "sugar_g": 1.5,
+  "fiber_g": 1.0,
+  "protein_g": 4.0,
+  "fat_g": 8.0,
+  "calories": 95
+ },
+ "cheese": {
+  "unit": "slice",
+  "carbs_g": 0.4,
+  "sugar_g": 0.1,
+  "fiber_g": 0.0,
+  "protein_g": 7.0,
+  "fat_g": 9.0,
+  "calories": 113
+ },
+ "hummus": {
+  "unit": "2 tbsp",
+  "carbs_g": 4.0,
+  "sugar_g": 0.0,
+  "fiber_g": 1.0,
+  "protein_g": 2.0,
+  "fat_g": 5.0,
+  "calories": 70
+ },
+ "carrot": {
+  "unit": "carrot",
+  "carbs_g": 6.0,
+  "sugar_g": 3.0,
+  "fiber_g": 1.7,
+  "protein_g": 0.6,
+  "fat_g": 0.1,
+  "calories": 25
+ },
+ "popcorn": {
+  "unit": "3 cups",
+  "carbs_g": 19.0,
+  "sugar_g": 0.2,
+  "fiber_g": 3.6,
+  "protein_g": 3.0,
+  "fat_g": 1.0,
+  "calories": 93
+ },
+ "crackers": {
+  "unit": "6 crackers",
+  "carbs_g": 20.0,
+  "sugar_g": 1.0,
+  "fiber_g": 1.0,
+  "protein_g": 2.0,
+  "fat_g": 4.0,
+  "calories": 125
+ },
+ "dark chocolate": {
+  "unit": "square (10 g)",
+  "carbs_g": 4.6,
+  "sugar_g": 2.4,
+  "fiber_g": 1.1,
+  "protein_g": 0.8,
+  "fat_g": 4.3,
+  "calories": 60
+ },
+ "berries": {
+  "unit": "cup",
+  "carbs_g": 15.0,
+  "sugar_g": 9.0,
+  "fiber_g": 4.0,
+  "protein_g": 1.0,
+  "fat_g": 0.5,
+  "calories": 65
+ },
+ "string cheese": {
+  "unit": "stick",
+  "carbs_g": 1.0,
+  "sugar_g": 0.0,
+  "fiber_g": 0.0,
+  "protein_g": 7.0,
+  "fat_g": 6.0,
+  "calories": 80
+ }
 }

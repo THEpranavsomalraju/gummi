@@ -10,6 +10,7 @@ One tick per second releases what the replay clock has reached:
 Everything lands in the landing volume through the writer, off the request path.
 """
 import logging
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -17,7 +18,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from .. import config
+from .. import activity, config
 from ..live.broadcaster import broadcaster
 from ..state.hot_store import store
 from ..stream.landing_writer import landing
@@ -29,6 +30,12 @@ MACROS = ("carbs_g", "sugar_g", "fiber_g", "protein_g", "fat_g")
 GRADE_KEYS = ("prediction_id", "kind", "points", "gummi_mae_mg_dl", "cgm_only_mae_mg_dl", "last_value_mae_mg_dl",
               "gummi_peak_error_mg_dl", "within_band_pct", "walk_effect_graded", "gummi_beats_cgm_only",
               "gummi_beats_last_value", "message")
+
+
+def _local(t) -> str:
+    """Times handed to agents are local clock strings, so the LLM never reads a UTC hour as local."""
+    from ..util import TZ
+    return pd.Timestamp(t).tz_convert(TZ).strftime("%-I:%M %p")
 
 
 @dataclass
@@ -50,6 +57,8 @@ class Subject:
     next_nowcast: float = 0.0
     last_walk_alert: float = -1e9
     walk_checked_version: int = -1
+    briefed: set = field(default_factory=set)     # local dates with a morning briefing / evening recap
+    recapped: set = field(default_factory=set)
     pending: set = field(default_factory=set)     # prediction ids not graded yet
     personal_busy: bool = False
     version: int = 0                              # bumps on every change, drives caches and state pushes
@@ -75,12 +84,15 @@ class Engine:
         self.meal_table: pd.DataFrame | None = None
         self.subjects: dict[str, Subject] = {}
         self.dues: dict[str, dict] = {}
-        self.ready = False
+        self.ready = False                        # model and replay tables loaded
+        self.started = False                      # subjects built (fresh start or restored session)
         self.load_error: str | None = None
         self.counters = {"ticks": 0, "predictions": 0, "grades": 0, "meals": 0, "walk_alerts": 0,
                          "last_tick_ms": 0.0, "max_tick_ms": 0.0}
         self._last_r: float | None = None
         self._personal_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="personal")
+        self.silent = False                       # catching up after a restart: no landing, no agents
+        self.lock = threading.RLock()             # one writer at a time: the tick thread and phone requests
 
     # ---------- startup ----------
     def load(self) -> None:
@@ -105,6 +117,10 @@ class Engine:
     # ---------- replay control ----------
     def start(self, start_r: float) -> None:
         """Build every participant's hot state as of start_r: history already released, no events for it."""
+        with self.lock:
+            self._start(start_r)
+
+    def _start(self, start_r: float) -> None:
         self.subjects, self.dues = {}, {}
         self.counters.update({"predictions": 0, "grades": 0, "meals": 0, "walk_alerts": 0, "max_tick_ms": 0.0})
         for i, pid in enumerate(config.PARTICIPANTS):
@@ -116,6 +132,7 @@ class Engine:
             self.subjects[pid] = s
             self._release(s, start_r, emit=False)
         self._last_r = start_r
+        self.started = True
 
     def _due_followers(self, pid: str) -> list[str]:
         return [u.user_id for u in store.users.values() if u.following == pid]
@@ -144,6 +161,8 @@ class Engine:
                 n += emit
         if n or not emit:
             s.version += 1
+        if n:
+            activity.hit("source.replay", n)
         return n
 
     # ---------- meals and predictions ----------
@@ -216,6 +235,7 @@ class Engine:
         s.predictions[pred["prediction_id"]] = {**pred, "_cgm_only_curve": cgm_only_curve,
                                                 "_end_utc": iso_utc(pd.Timestamp(pred["window_end"]))}
         s.pending.add(pred["prediction_id"])
+        activity.hit("model.predict", detail=f"{s.pid}: {pred['about']}")
         self.counters["predictions"] += 1
         landing.enqueue({"source": "app", "user_id": s.pid, "kind": "prediction", "t": iso_utc(pd.Timestamp(pred["made_at"])),
                          "released_at": iso_utc(utcnow()), "payload": pred})
@@ -244,8 +264,10 @@ class Engine:
             grade = {"grade_id": p["prediction_id"].replace("pr_", "g_", 1), "graded_at": iso(clock.replay_to_wall(now_r)),
                      **{k: g.get(k) for k in GRADE_KEYS}}
             grade["prediction_id"] = p["prediction_id"]
+            grade["message"] = (grade["message"] or "").replace("Gummi was within", "I was within")
             s.grades.append(grade)
             self.counters["grades"] += 1
+            activity.hit("model.grade", detail=f"{s.pid}: {grade['message'][:90]}", log=p["kind"] == "meal")
             landing.enqueue({"source": "app", "user_id": s.pid, "kind": "grade", "t": iso_utc(clock.replay_to_wall(now_r)),
                              "released_at": iso_utc(utcnow()), "payload": {**grade, "status": "graded",
                              "gummi_bias_mg_dl": g.get("gummi_bias_mg_dl"), "actual_peak_mg_dl": g.get("actual_peak_mg_dl"),
@@ -302,6 +324,13 @@ class Engine:
             if card:
                 u.add_card(card)
                 broadcaster.publish(uid, "card", card)
+                from ..agent import events
+                events.submit("meal_story", uid, card, {
+                    "meal": p["about"], "grade": {k: grade[k] for k in ("message", "gummi_mae_mg_dl", "cgm_only_mae_mg_dl",
+                    "last_value_mae_mg_dl", "gummi_beats_cgm_only", "walk_effect_graded")},
+                    "predicted_peak": p["predicted_peak_mg_dl"], "actual_peak": g.get("actual_peak_mg_dl"),
+                    "actual_peak_at_local": _local(g["actual_peak_at"]) if g.get("actual_peak_at") else None,
+                    "eaten_at_local": _local(p["window_start"])})
 
     def _curve(self, s: Subject, p: dict) -> list[dict]:
         a, b = iso_utc(pd.Timestamp(p["window_start"])), iso_utc(pd.Timestamp(p["window_end"]))
@@ -325,8 +354,13 @@ class Engine:
             store.get(uid).add_card(card)
             broadcaster.publish(uid, "card", card)
         s.version += 1
+        activity.hit("engine.meal_due", detail=f"{s.pid}: {meal['items'][0]['name']}", log=True)
 
     def log_due(self, due_id: str, source: str) -> dict | None:
+        with self.lock:
+            return self._log_due(due_id, source)
+
+    def _log_due(self, due_id: str, source: str) -> dict | None:
         d = self.dues.get(due_id)
         if d is None:
             return None
@@ -346,8 +380,8 @@ class Engine:
     def _meal_logged_card(self, uid: str, s: Subject, meal: dict) -> None:
         from ..state import cards
         pred = s.predictions.get(meal["prediction_id"]) if meal["prediction_id"] else None
-        body = (f"I expect a peak near {pred['predicted_peak_mg_dl']:.0f} within two hours. That's Gummi's estimate, "
-                f"and I'll grade it when the readings arrive." if pred else "Logged.")
+        body = (f"I think this likely peaks near {pred['predicted_peak_mg_dl']:.0f} within two hours. That's my estimate, "
+                f"and I'll grade myself when your readings come in." if pred else "Logged.")
         card = cards.card("meal_logged", pd.Timestamp(meal["eaten_at"]).to_pydatetime(), f"{meal['items'][0]['name']} logged",
                           body, "rising" if pred else "calm",
                           attachments={"meal": meal, **({"prediction": self.public_prediction(pred)} if pred else {})})
@@ -393,21 +427,80 @@ class Engine:
         drop, src = eff.get("forecast_peak_drop_mg_dl", 0), eff.get("effect_source", "literature")
         minutes_to = max(5, round((pd.Timestamp(peak["t"]) - pd.Timestamp(now)).total_seconds() / 60))
         alert = {"alert_id": new_id("al"), "type": "walk_suggested",
-                 "message": f"Gummi's forecast likely crosses {config.HIGH_LINE:.0f} in about {minutes_to} minutes. "
+                 "message": f"I think you'll likely cross {config.HIGH_LINE:.0f} in about {minutes_to} minutes. "
                             f"A 10 minute walk now could lower the peak by about {drop:.0f} mg/dL ({src}).",
                  "created_at": iso(now), "expires_at": iso(now + pd.Timedelta(minutes=30)),
                  "action": {"label": "Start walk", "kind": "start_walk", "minutes": 10}}
-        card = cards.card("walk_suggested", now, "A short walk could help", alert["message"], "high",
+        card = cards.card("walk_suggested", now, "Walk break?", alert["message"], "high",
                           attachments={"alert": alert})
+        activity.hit("engine.walk_alert", detail=f"{s.pid}: forecast {peak['glucose_mg_dl']:.0f}", log=True)
+        from ..agent import events
         for uid in followers:
             u = store.get(uid)
             u.alert = alert
             u.add_card(card)
             broadcaster.publish(uid, "alert", alert)
             broadcaster.publish(uid, "card", card)
+            events.submit("walk_coach", uid, card, {"alert": alert["message"], "forecast_peak": peak["glucose_mg_dl"],
+                                                    "peak_at_local": _local(peak["t"]), "now_local": _local(now),
+                                                    "walk_drop": drop, "peak_after_walk": round(peak["glucose_mg_dl"] - (drop or 0), 1),
+                                                    "effect_source": src})
+
+    # ---------- morning briefing and evening recap (followed participants only, D-22) ----------
+    def _daily(self, s: Subject, now_r: float) -> None:
+        followers = self._due_followers(s.pid)
+        if not followers or not s.conf_t:
+            return
+        from ..agent import events
+        from ..state import cards
+        from ..util import TZ
+        now = clock.replay_to_wall(now_r)
+        local = now.astimezone(TZ)
+        day = local.date().isoformat()
+        for kind, hour, done in (("morning_briefing", 6, s.briefed), ("evening_recap", 20, s.recapped)):
+            if local.hour < hour or day in done:
+                continue
+            done.add(day)
+            last = s.conf_v[-1]
+            if kind == "morning_briefing":
+                card = cards.card(kind, now, "Good morning!", f"Your last Dexcom reading was {last:.0f} mg/dL. "
+                                  "I'm up and watching breakfast with you.", "calm", card_id=f"c_{s.pid}_{day}_morning")
+            else:
+                g = [x for x in s.grades if x["graded_at"][:10] == day]
+                card = cards.card(kind, now, "That's a wrap", f"I graded {len(g)} of my predictions today. Writing up your recap now.", "calm",
+                                  card_id=f"c_{s.pid}_{day}_recap")
+            for uid in followers:
+                store.get(uid).add_card(card)
+                broadcaster.publish(uid, "card", card)
+                events.submit(kind, uid, card, {"local_time": local.strftime("%-I:%M %p"), "participant": s.pid})
+            activity.hit(f"engine.{kind}", detail=s.pid, log=True)
+
+    # ---------- rehydration ----------
+    def catch_up(self, from_r: float, to_r: float) -> None:
+        """Rebuild state from the session start to to_r, one replay minute per step, without emitting anything."""
+        with self.lock:
+            self._catch_up(from_r, to_r)
+
+    def _catch_up(self, from_r: float, to_r: float) -> None:
+        self._start(from_r)
+        was = (clock.running, clock.paused, clock.anchor_replay, landing.enabled)
+        clock.running, clock.paused, self.silent, landing.enabled = True, False, True, False
+        try:
+            r = from_r
+            while r < to_r:
+                r = min(r + 1.0, to_r)
+                clock.anchor_replay, clock.anchor_wall = r, time.time()
+                self._tick()
+        finally:
+            clock.running, clock.paused, clock.anchor_replay = was[0], was[1], was[2]
+            landing.enabled, self.silent = was[3], False
 
     # ---------- the tick ----------
     def tick(self) -> None:
+        with self.lock:
+            self._tick()
+
+    def _tick(self) -> None:
         if not self.ready or not clock.running or clock.paused or not self.subjects:
             return
         t0 = time.perf_counter()
@@ -420,9 +513,10 @@ class Engine:
                 self._nowcast(s, now_r)
             self._grade_due(s, now_r)
             self._walk_alert(s, now_r)
+            self._daily(s, now_r)
         for due in self.dues.values():
             if not due["logged"] and now_r >= due["due_r"] + config.DUE_AUTOLOG_MIN:
-                self.log_due(due["due_id"], "replay_auto")
+                self._log_due(due["due_id"], "replay_auto")
         clock.count(n)
         self._last_r = now_r
         ms = (time.perf_counter() - t0) * 1000

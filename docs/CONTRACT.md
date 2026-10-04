@@ -1,6 +1,7 @@
 # Gummi Contract
 
-Contract version: 1.4 (draft, frozen at the end of Phase 0)
+Contract version: 1.5 (draft, frozen at the end of Phase 0)
+Changelog: 1.5 (2026-10-04, Backend Lead, Pranav's request): GET /foodlog, one list of the day's meals by origin. While acting as a participant, POST /meals and chat meals go into the food log as simulated entries (never graded) instead of being simulation-only (D-59). Additive.
 Changelog: 1.4 (2026-10-03, Backend Lead, answers iOS CONTRACT CHANGE REQUEST 1-6): documentation only, no shape changes. Grade.gummi_beats_cgm_only nullable; WalkSummary.intensity and effect_source values listed; DexcomStatus.environment values; date query format; MealItem.unit may be ""; SSE comment lines.
 Changelog: 1.3 (2026-10-03, Backend Lead, human-delegated, answers iOS REQUEST 20261003-1815): State gains replay_now and stream; Grade gains gummi_beats_cgm_only and gummi_beats_last_value; Meal gains is_standard_breakfast; chat card_type gains "meal_due"; meal_due cards resolve by upsert; attachments keys per card type; walk_completed body; nullable fields marked; error codes listed. All additive.
 Changelog: 1.2 (2026-10-03, Backend Lead, human-approved D-36): State gains upcoming_due for background meal_due notifications. Additive, no other shape changes.
@@ -131,6 +132,19 @@ MealItem.unit is always a string and may be "" when the source has no unit; quan
 is_standard_breakfast (1.3): true for the study's standardized breakfast (Data's silver_meals flag), false otherwise.
 source: "chat", "manual", "replay" (meals of participants nobody follows), "replay_due" (the user tapped Log it on a meal_due card), "replay_auto" (auto-logged 10 replay minutes after it came due) (D-35).
 
+### FoodLog (1.5)
+```json
+{ "date": "2026-10-04", "entries": [
+  { "meal": "Meal", "origin": "study_log", "graded": true,
+    "prediction": { "predicted_peak_mg_dl": 153.0, "cgm_only_peak_mg_dl": 120.0, "last_value_peak_mg_dl": 121.0, "status": "graded" },
+    "grade": "Grade or null", "note": null },
+  { "meal": "Meal", "origin": "gummi", "graded": false,
+    "prediction": { "predicted_peak_mg_dl": 149.0, "cgm_only_peak_mg_dl": null, "last_value_peak_mg_dl": null, "status": "pending" },
+    "grade": null, "note": "Simulated on the participant's day; not graded" } ] }
+```
+origin: "study_log" (the acted-as participant's real meals), "you" (POST /meals), "gummi" (added by the agent from chat). Newest first.
+graded is true once the meal's 2-hour window was graded. Entries from "you" or "gummi" while acting as a replay participant carry Gummi's simulated prediction and are never graded, because the participant didn't really eat them (D-59). The phone refetches /foodlog when a meal_due, meal_logged or meal_story card arrives.
+
 ### Simulation
 ```json
 { "items": ["meal items"], "eat_at": "...",
@@ -176,6 +190,7 @@ replay_anchor pairs a replay time with a wall-clock time. With speed, the phone 
 | PATCH | /meals/{meal_id} | `{"items": [...]}` | Meal (prediction recomputed) |
 | DELETE | /meals/{meal_id} | | `{"deleted": true}` |
 | GET | /meals?date= | | `{"meals": [Meal]}` |
+| GET | /foodlog?date= | | FoodLog (1.5) |
 | POST | /meals/due/{due_id}/log | | Meal (source "replay_due"). 409 due_already_logged if it was logged already |
 | POST | /simulate | `{"items": [...], "eat_at": null}` | Simulation |
 | POST | /vitals | `{"samples": [{"type": "steps", "value": 112, "start": "...", "end": "..."}]}` | `{"accepted": n}` |

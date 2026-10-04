@@ -14,7 +14,7 @@ from the Dexcom app.
 ## Limits to say out loud
 
 - 15 BIG IDEAs participants (one of the 16 was excluded for missing data: 75% completeness and a 21.9-hour gap,
-  matching the published exclusion). All are adults with normal to prediabetic HbA1c (5.2 to 6.4%), about 9 days
+  matching the published exclusion). All are adults with normal to prediabetic HbA1c (5.3 to 6.4%), about 9 days
   each. Nothing is shown beyond this cohort.
 - Food logs are self-reported. They contain errors: one meal logs 463 g of carbs, and two rows logged fat equal to
   their calories (repaired from the calories).
