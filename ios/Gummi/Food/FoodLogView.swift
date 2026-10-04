@@ -5,8 +5,20 @@ import SwiftUI
 struct FoodLogView: View {
     @Environment(AppModel.self) private var model
     @State private var collapsed: Set<MealSlot> = []
-    @State private var selected: FoodLogEntry?
-    @State private var showsLogFood = false
+    /// One sheet slot for both the row detail and Log food: two sheet modifiers on one view only present one of them.
+    private enum FoodSheet: Identifiable {
+        case detail(FoodLogEntry)
+        case logFood
+
+        var id: String {
+            switch self {
+            case .detail(let entry): "detail-\(entry.id)"
+            case .logFood: "log-food"
+            }
+        }
+    }
+
+    @State private var sheet: FoodSheet?
 
     private var entries: [FoodLogEntry] { (model.foodLog?.entries ?? []).sorted { $0.meal.eatenAt < $1.meal.eatenAt } }
 
@@ -44,14 +56,18 @@ struct FoodLogView: View {
             .refreshable { await model.loadFoodLog() }
             .navigationTitle("Food log")
             .background(Theme.background)
-            .sheet(item: $selected) { FoodDetailSheet(entry: $0) }
-            .sheet(isPresented: $showsLogFood) { LogFoodSheet() }
+            .sheet(item: $sheet) { sheet in
+                switch sheet {
+                case .detail(let entry): FoodDetailSheet(entry: entry)
+                case .logFood: LogFoodSheet()
+                }
+            }
             .task { await model.loadFoodLog() }
             .onChange(of: model.focusedMealId, initial: true) { _, id in
                 guard let id else { return }
                 Task {
                     if model.foodLog?.entries.contains(where: { $0.id == id }) != true { await model.loadFoodLog() }
-                    selected = model.foodLog?.entries.first { $0.id == id }
+                    sheet = model.foodLog?.entries.first { $0.id == id }.map(FoodSheet.detail)
                     model.focusedMealId = nil
                 }
             }
@@ -101,7 +117,7 @@ struct FoodLogView: View {
             Divider()
             if !isCollapsed {
                 ForEach(rows) { entry in
-                    Button { selected = entry } label: { FoodRow(entry: entry) }
+                    Button { sheet = .detail(entry) } label: { FoodRow(entry: entry) }
                         .buttonStyle(.plain)
                     Divider()
                 }
@@ -112,15 +128,14 @@ struct FoodLogView: View {
 
     private var addButton: some View {
         Button {
-            showsLogFood = true
+            sheet = .logFood
         } label: {
             Image(systemName: "plus")
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(Theme.accent)
-                .frame(width: 58, height: 58)
-                .glassSurface(in: Circle())
+                .frame(width: 46, height: 46)
         }
-        .buttonStyle(.plain)
+        .floatingGlassButton()
         .padding(20)
         .accessibilityLabel("Log food")
     }

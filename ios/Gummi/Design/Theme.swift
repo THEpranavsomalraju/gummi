@@ -51,4 +51,15 @@ extension View {
             background(.ultraThinMaterial, in: shape)
         }
     }
+
+    /// A floating round glass button. On iOS 26 this is the system glass button style: a glass effect drawn inside
+    /// a plain button label swallowed taps in a floating overlay (the Food "+" did nothing).
+    @ViewBuilder
+    func floatingGlassButton() -> some View {
+        if #available(iOS 26.0, *) {
+            buttonStyle(.glass).buttonBorderShape(.circle)
+        } else {
+            buttonStyle(.plain).background(.ultraThinMaterial, in: Circle())
+        }
+    }
 }

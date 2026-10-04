@@ -62,6 +62,7 @@ targets:
     scheme:
       testTargets:
         - GummiTests
+        - GummiUITests
 
   GummiTests:
     type: bundle.unit-test
@@ -75,3 +76,17 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.mahilmanoharan.gummi.tests
         GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "1"
+
+  GummiUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: GummiUITests
+    dependencies:
+      - target: Gummi
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mahilmanoharan.gummi.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"
+        TEST_TARGET_NAME: Gummi
