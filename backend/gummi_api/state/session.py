@@ -18,6 +18,7 @@ from .hot_store import store
 log = logging.getLogger("gummi.session")
 PATH = f"/Volumes/{config.CATALOG}/gummi_data/landing/agent_memory/session.json"
 _session_start: float | None = None
+OUTAGE_PAUSE_S = 300
 
 
 def mark_start(start_r: float) -> None:
@@ -65,13 +66,18 @@ def restore(engine) -> bool:
     clock.demo_midnight = datetime.fromisoformat(s["demo_midnight"])
     clock.start_day = int(s["start_day"])
     clock.speed, clock.delay_minutes = float(s["speed"]), int(s["delay_minutes"])
-    elapsed = (time.time() - s["anchor_wall"]) * clock.speed / 60.0 if s["running"] and not s["paused"] else 0.0
+    # A quick redeploy resumes where it was; after a longer outage (the App stopped for quota) only the time the App
+    # was alive counts, and the replay comes back paused instead of fast-forwarding past the end of the data.
+    outage = time.time() - s.get("saved_at", time.time())
+    paused = bool(s["paused"]) or outage > OUTAGE_PAUSE_S
+    end_wall = s.get("saved_at", time.time()) if outage > OUTAGE_PAUSE_S else time.time()
+    elapsed = max(0.0, end_wall - s["anchor_wall"]) * clock.speed / 60.0 if s["running"] and not s["paused"] else 0.0
     target = s["anchor_replay"] + elapsed
     t0 = time.time()
     engine.catch_up(s["session_start_r"], target)
     mark_start(s["session_start_r"])
     clock.anchor_replay, clock.anchor_wall = target, time.time()
-    clock.running, clock.paused = bool(s["running"]), bool(s["paused"])
+    clock.running, clock.paused = bool(s["running"]), paused
     log.info("restored replay session at %.0f replay min (%d users) in %.1f s", target, len(s.get("users") or {}),
              time.time() - t0)
     return True

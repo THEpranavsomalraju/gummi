@@ -101,6 +101,12 @@ def foodlog_entries(uid: str, date: str | None = None) -> list[dict]:
 
 @router.get("/foodlog")
 async def foodlog(uid: str = Depends(user_id), date: str | None = None):
+    if not date:                       # default: today, which is the replayed day while acting as a participant (D-45)
+        import pandas as pd
+        from ..stream.producer import clock
+        from ..util import TZ
+        now = clock.replay_to_wall(clock.now()) if _acting(uid) is not None and clock.now() is not None else pd.Timestamp.now(tz=TZ)
+        date = pd.Timestamp(now).tz_convert(TZ).date().isoformat()
     return {"date": date, "entries": foodlog_entries(uid, date)[:200]}
 
 

@@ -16,8 +16,19 @@ CHECK = re.compile(r"check|fingerstick|finger stick|dexcom app", re.I)
 LINES = {70.0, 140.0, 10.0, 15.0, 20.0, 30.0, 60.0}
 
 
-def problems(user_msg: str, answer: str, tool_numbers: set[float], high: float, low: float) -> list[str]:
+CLAIMS_LOG = re.compile(r"\b(logged|added|saved|put)\b[^.]{0,40}\b(log|it|that|them|for you)\b|\bin your (food )?log\b", re.I)
+
+
+def problems(user_msg: str, answer: str, tool_numbers: set[float], high: float, low: float, logged: bool = True,
+             verdict: str | None = None) -> list[str]:
     out = []
+    first = answer.strip().lower()[:30]
+    if verdict == "wait" and (first.startswith("yes") or first.startswith("go ")):
+        out.append("simulate_food's verdict is wait, but the reply opens with yes; open with \"I'd wait:\"")
+    if verdict in ("go", "go_with_tweak") and re.match(r"(no\b|i'?d wait|wait\b|not yet)", first):
+        out.append(f"simulate_food's verdict is {verdict}, but the reply says to wait; open with \"Yes\"")
+    if not logged and CLAIMS_LOG.search(answer):
+        out.append("says food was logged, but nothing was logged this turn; don't claim it, offer to add it instead")
     if DOSE.search(answer):
         out.append("mentions a medication or insulin dose; never give dosing advice")
     if SYMPTOM.search(user_msg):

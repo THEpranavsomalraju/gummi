@@ -4,10 +4,10 @@
     .venv/bin/python scripts/demo_stage.py go                    # on stage: resume; the meal story lands about 15 s later
     .venv/bin/python scripts/demo_stage.py verify                # rehearsal: stage, go, and check every beat landed
 
-Stage leaves the replay paused at day 4, 10:10 PM for p_012 (D-15). The 7:22 PM snack (dark chocolate chip, corn
+Stage leaves the replay paused at day 4, 10:14 PM for p_012 (D-15). The 7:22 PM snack (dark chocolate chip, corn
 cheese puffs) is logged and predicted, and its 2-hour grade is due once the 9:22 PM reading arrives an hour later.
 Resuming at 60x lands the Meal Story ("I predicted 185 ... It was 186. CGM-only said 155, last value said 178"), the
-grade and the proud mood about 12 replay minutes (12 s) later. The brownie walk nudge and the evening recap happen
+grade and the proud mood about 8 to 11 replay minutes (seconds) later. The brownie walk nudge and the evening recap happen
 during staging, so they're already in Activity.
 """
 import json
@@ -23,7 +23,7 @@ WORKSPACE = "https://dbc-0f92eb43-532a.cloud.databricks.com"
 APP = "https://gummi-7474657192035402.aws.databricksapps.com/api/v1"
 DEMO_USERS = ["u_mahil", "u_pranav"]
 PID = "p_012"
-STAGE_FROM, STAGE_TO = "day4T18:00", "day4T22:10"
+STAGE_FROM, STAGE_TO = "day4T18:00", "day4T22:14"   # 22:14: the brownie grade lands during staging, not on stage
 
 
 def client(uid: str = "u_pranav") -> httpx.Client:
@@ -73,11 +73,16 @@ def stage(redeploy: bool) -> None:
     step(f"Fast-forwarding the replay {STAGE_FROM} -> {STAGE_TO} (600x)")
     c.post("/stream/start", json={"speed": 600, "start_at": STAGE_FROM})
     target = minutes(STAGE_TO)
+    slowed = False
     while True:
         st = c.get("/stream/status").json()
-        if st["replay_clock"] and minutes(st["replay_clock"]) >= target - 1:
+        m = minutes(st["replay_clock"]) if st["replay_clock"] else 0
+        if m >= target:
             break
-        time.sleep(1)
+        if not slowed and m >= target - 15:       # the last minutes at 60x, so the pause lands on time, not 7 min late
+            c.post("/stream/speed", json={"speed": 60})
+            slowed = True
+        time.sleep(0.5)
     c.post("/stream/pause")
     c.post("/stream/speed", json={"speed": 60})
     st = c.get("/stream/status").json()
@@ -119,11 +124,27 @@ def go() -> float:
     return -1
 
 
+def _hold_live(uid: str) -> None:
+    """Background agents only run for phones connected to /live (D-85), so the rehearsal holds one open like the phone."""
+    import threading
+
+    def run():
+        while True:
+            try:
+                with client(uid).stream("GET", "/live", timeout=None) as r:
+                    for _ in r.iter_lines():
+                        pass
+            except Exception:  # noqa: BLE001
+                time.sleep(2)
+    threading.Thread(target=run, daemon=True).start()
+
+
 def verify() -> None:
+    _hold_live("u_mahil")
     stage(False)
     took = go()
     c = client("u_mahil")
-    time.sleep(8)                      # the Meal Story agent upgrades the template card
+    time.sleep(12)                     # the Meal Story agent upgrades the template card
     cards = c.get("/feed").json()["cards"]
     s = c.get("/state").json()
     checks = {
