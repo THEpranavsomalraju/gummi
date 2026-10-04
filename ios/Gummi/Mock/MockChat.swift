@@ -17,7 +17,7 @@ nonisolated enum MockChat {
     }
 
     enum Route: Equatable, Sendable {
-        case simulate, logMeal, walk, today, grade, state
+        case simulate, logMeal, walk, today, grade, state, spike
         /// "mock error": the backend's failure path (apology, gummi_view card, error, done).
         case failure
         /// "mock busy": the rate_limited error with no done.
@@ -68,6 +68,7 @@ nonisolated enum MockChat {
         if has(["can i eat", "can i have", "should i eat", "should i have", "is it ok"]) { return .simulate }
         if food(in: text) != nil, text.contains("?") { return .simulate }
         if text.contains("walk") { return .walk }
+        if has(["spike", "why did i", "peak"]) { return .spike }
         if has(["grade", "how did you do", "accura", "predict"]) { return .grade }
         if has(["today", "how am i", "doing", "my day"]) { return .today }
         return .state
@@ -187,6 +188,17 @@ nonisolated enum MockChat {
             script.end(mood: .calm, conversationId: conversationId, traceId: traceId)
             return Reply(steps: script.steps)
 
+        case .spike:
+            script.tool("explain_spike", card: nil)
+            script.selfCheck()
+            if let latestGrade {
+                script.say("Your biggest recent rise came after a meal. \(latestGrade.message) Carbs drive most of it; a short walk after eating usually softens the peak (literature).")
+            } else {
+                script.say("No spike to explain yet. Once a meal's two-hour window closes, I can tell you what drove it.")
+            }
+            script.end(mood: .calm, conversationId: conversationId, traceId: traceId)
+            return Reply(steps: script.steps)
+
         case .grade:
             script.tool("get_history", card: latestGrade.map(ChatCard.grade))
             if let latestGrade {
@@ -270,6 +282,12 @@ nonisolated enum MockChat {
             steps.append(Step(delay: .milliseconds(250), event: .tool(name: name, status: .start, label: label)))
             steps.append(Step(delay: .milliseconds(650), event: .tool(name: name, status: .end, label: label)))
             if let card { self.card(card) }
+        }
+
+        /// The backend's self-check rewrite chip (1.6).
+        mutating func selfCheck() {
+            steps.append(Step(delay: .milliseconds(200), event: .tool(name: "self_check", status: .start, label: "Double-checking myself…")))
+            steps.append(Step(delay: .milliseconds(500), event: .tool(name: "self_check", status: .end, label: "Checked ✓")))
         }
 
         mutating func card(_ card: ChatCard) {

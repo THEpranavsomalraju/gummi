@@ -122,3 +122,27 @@ struct ChatFadeTests {
         #expect(ToolChip(id: 0, name: "get_state", finished: true, serverLabel: "Crunched the numbers ✓").label == "Crunched the numbers")
     }
 }
+
+@Suite("Chat gap check (1.6)")
+struct ChatGapTests {
+    @Test func selfCheckCaptureDecodesAndSkipsTheHeartbeat() throws {
+        var parser = SSEParser()
+        let text = String(decoding: try Fixtures.data("chat_self_check", ext: "txt"), as: UTF8.self)
+        let events = try parser.push(Array(text.utf8)).map { try ChatEvent.decode(event: $0.event, data: Data($0.data.utf8)) }
+        #expect(events.count == 9)
+        #expect(events.contains(.tool(name: "self_check", status: .start, label: "Double-checking myself…")))
+        #expect(events.last == .done(conversationId: "conv_9", traceId: "tr-9"))
+    }
+
+    @Test func labelsFallBack() {
+        #expect(ToolChip(id: 0, name: "self_check").label == "Double-checking myself…")
+        #expect(ToolChip(id: 0, name: "self_check", finished: true, serverLabel: "Checked ✓").label == "Checked")
+        #expect(ToolChip(id: 0, name: "brand_new_tool").label == "Thinking…")
+        #expect(ToolChip(id: 0, name: "brand_new_tool", finished: true).label == "Done")
+    }
+
+    @Test func spikeQuestionsGoToExplainSpike() {
+        #expect(MockChat.route("Why did I spike?") == .spike)
+        #expect(ChatSheet.prompts.count == 4)
+    }
+}

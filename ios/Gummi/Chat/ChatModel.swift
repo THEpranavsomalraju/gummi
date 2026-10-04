@@ -20,7 +20,7 @@ nonisolated struct ToolChip: Identifiable, Equatable, Sendable {
             return serverLabel.replacingOccurrences(of: "✓", with: "").trimmingCharacters(in: .whitespaces)
         }
         switch name {
-        case "self_check": return finished ? "Double-checked my answer" : "Double-checking my answer…"
+        case "self_check": return finished ? "Checked" : "Double-checking myself…"
         default: return fallbackLabel
         }
     }
@@ -37,7 +37,7 @@ nonisolated struct ToolChip: Identifiable, Equatable, Sendable {
         case "get_gold_summary": finished ? "Read the Databricks gold tables" : "Reading the Databricks gold tables…"
         case "ask_data": finished ? "Asked Gummi Insights" : "Asking Gummi Insights, this can take a bit…"
         case "grade_prediction": finished ? "Graded my prediction" : "Grading my prediction…"
-        default: finished ? "Done" : "Working on it…"
+        default: finished ? "Done" : "Thinking…"
         }
     }
 }

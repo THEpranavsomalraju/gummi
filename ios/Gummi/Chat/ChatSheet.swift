@@ -6,7 +6,8 @@ import SwiftUI
 struct ChatSheet: View {
     /// The compact detent. Home sizes Gummi's stage to the space above it.
     static let compactDetent: CGFloat = 0.58
-    static let prompts = ["Can I eat a cookie now?", "How am I doing today?", "I just had a granola bar", "Should I take a walk?"]
+    /// Pranav's three plus logging by chat, which fills the Food tab (D-168).
+    static let prompts = ["Can I have a cookie?", "I just had a granola bar", "Should I walk?", "Why did I spike?"]
 
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
