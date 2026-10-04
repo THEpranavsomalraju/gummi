@@ -56,10 +56,10 @@ struct PuppetAnimatorTests {
         #expect(animator.motion == nil)
     }
 
-    @Test func danceRunsTwelveBeatsWithOneSpinThenEnds() {
+    @Test func jellyBopRunsTwelveBeatsWithOneSpinThenEnds() {
         var animator = PuppetAnimator(seed: 1)
-        animator.react(.dance)
-        #expect(animator.motion?.kind == .dance)
+        animator.react(.dance(.jellyBop))
+        #expect(animator.motion?.kind == .jellyBop)
         var spin: Float = 0
         for _ in 0..<Int(6.2 / Self.dt) {
             animator.step(dt: Self.dt)
@@ -71,11 +71,47 @@ struct PuppetAnimatorTests {
         #expect(animator.pose.rootYaw == 0)
     }
 
+    /// Every dance plays all its beats, moves the head, arms, and legs visibly, and hands back to idle.
+    @Test(arguments: Dance.allCases)
+    func everyDanceIsBigAndFinishes(dance: Dance) {
+        var animator = PuppetAnimator(seed: 5)
+        animator.input.look = .zero
+        animator.react(.dance(dance))
+        #expect(animator.motion?.kind == dance.clip)
+        var head: Float = 0, arms: Float = 0, legs: Float = 0, lift: Float = 0
+        for _ in 0..<Int((dance.clip.duration + 0.2) / Self.dt) {
+            let pose = animator.step(dt: Self.dt)
+            head = max(head, abs(pose.headYaw) + abs(pose.headPitch) + abs(pose.headRoll))
+            arms = max(arms, abs(pose.leftArmPitch), abs(pose.rightArmPitch), abs(pose.leftArmRoll), abs(pose.rightArmRoll))
+            legs = max(legs, abs(pose.leftLegPitch), abs(pose.rightLegPitch), abs(pose.leftLegRoll), abs(pose.rightLegRoll))
+            lift = max(lift, pose.leftLegLift, pose.rightLegLift)
+        }
+        #expect(animator.danceBeats == dance.clip.beats)
+        #expect(animator.motion == nil)
+        #expect(head > 0.3, "head moves")
+        #expect(arms > 1.0, "arms move")
+        #expect(legs > 0.1 || lift > 0.01, "legs move")
+    }
+
+    @Test func randomDancesNeverRepeatBackToBack() {
+        var animator = PuppetAnimator(seed: 9)
+        var previous: Dance?
+        var seen = Set<Dance>()
+        for _ in 0..<40 {
+            animator.react(.dance(nil))
+            let current = animator.lastDance
+            #expect(current != nil && current != previous)
+            if let current { seen.insert(current) }
+            previous = current
+        }
+        #expect(seen.count >= 5)
+    }
+
     @Test func turningHappyStartsADance() {
         var animator = PuppetAnimator(seed: 1)
         animator.input.mood = .happy
         animator.step(dt: Self.dt)
-        #expect(animator.motion?.kind == .dance)
+        #expect(animator.motion?.kind.isDance == true)
     }
 
     @Test func squishHoldsThenBouncesBack() {

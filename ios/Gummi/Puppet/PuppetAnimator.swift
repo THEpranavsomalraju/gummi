@@ -43,6 +43,7 @@ nonisolated struct PuppetAnimator: Sendable {
     private(set) var nextIdleAt: Double
     private(set) var idleLog: [(kind: ClipKind, start: Double)] = []
     private(set) var danceBeats = 0
+    private(set) var lastDance: Dance?
     private(set) var spinStartedAt: Double?
     private(set) var nextBlinkAt: Double
     private(set) var blinkTimes: [Double] = []
@@ -65,8 +66,14 @@ nonisolated struct PuppetAnimator: Sendable {
         case .tap(.head): self.reaction = start(.headTap)
         case .tap(.belly): self.reaction = start(.bellyTap)
         case .wave: self.reaction = start(.wave)
-        case .dance: motion = start(.dance)
+        case .dance(let dance): startDance(dance)
         }
+    }
+
+    private mutating func startDance(_ requested: Dance?) {
+        let dance = requested ?? Dance.allCases.filter { $0 != lastDance }.randomElement(using: &rng) ?? .jellyBop
+        lastDance = dance
+        motion = start(dance.clip)
     }
 
     @discardableResult
@@ -79,7 +86,7 @@ nonisolated struct PuppetAnimator: Sendable {
         if input.mood != currentMood {
             currentMood = input.mood
             if currentMood == .proud { spinStartedAt = time }
-            if currentMood == .happy { motion = start(.dance) }
+            if currentMood == .happy { startDance(nil) }
         }
         style.blend(toward: MoodStyle.of(input.thinking ? .thinking : input.mood), dt: fdt)
 
@@ -124,12 +131,16 @@ nonisolated struct PuppetAnimator: Sendable {
         p.rightEarRoll = v[.rightEar]
         p.leftArmRoll = v[.leftArmRoll]
         p.leftArmPitch = v[.leftArmPitch]
+        p.leftArmYaw = v[.leftArmYaw]
         p.rightArmRoll = v[.rightArmRoll]
         p.rightArmPitch = v[.rightArmPitch]
-        p.leftLegLift = v[.leftLegLift]
-        p.rightLegLift = v[.rightLegLift]
+        p.rightArmYaw = v[.rightArmYaw]
+        p.leftLegLift = max(v[.leftLegLift], 0)
+        p.rightLegLift = max(v[.rightLegLift], 0)
         p.leftLegPitch = v[.leftLegPitch]
         p.rightLegPitch = v[.rightLegPitch]
+        p.leftLegRoll = v[.leftLegRoll]
+        p.rightLegRoll = v[.rightLegRoll]
         p.rootYaw = spinYaw() + (motionOut?.yaw ?? 0) + (reactionOut?.yaw ?? 0)
 
         // Eyes: mood openness, blinks, clip squints; look follows the finger, or up when thinking.
@@ -172,19 +183,24 @@ nonisolated struct PuppetAnimator: Sendable {
         target[.rightArmRoll] += -style.rightArmRaise * 0.5
         target[.puff] = style.puff
 
-        // Life: weight shifts between the feet, a little sway, a wandering gaze, arms that swing along.
+        // Life: weight shifts between the feet (the free foot lifts), a sway, a wandering head, arms that swing along.
         let weight = ValueNoise.sample(t * 0.22)
         let wander = ValueNoise.sample(t * 0.17 + 31)
         let nodNoise = ValueNoise.sample(t * 0.29 + 57)
-        target[.hipsShift] += 0.006 * weight
-        target[.hipsRoll] += -(style.swayAmount * 1.6 + 0.02) * weight
-        target[.leftLegLift] += max(0, weight) * 0.005
-        target[.rightLegLift] += max(0, -weight) * 0.005
-        target[.headYaw] += 0.08 * wander
-        target[.headPitch] += 0.04 * nodNoise
-        target[.headRoll] += 0.03 * weight
-        target[.leftArmRoll] += 0.06 * ValueNoise.sample(t * 0.41 + 93) - 0.25 * springs.velocity[.hipsRoll] * 0.1
-        target[.rightArmRoll] += 0.06 * ValueNoise.sample(t * 0.37 + 121) - 0.25 * springs.velocity[.hipsRoll] * 0.1
+        let tilt = ValueNoise.sample(t * 0.23 + 77)
+        target[.hipsShift] += 0.009 * weight
+        target[.hipsRoll] += -(style.swayAmount * 1.6 + 0.03) * weight
+        target[.leftLegLift] += max(0, weight - 0.2) * 0.015
+        target[.rightLegLift] += max(0, -weight - 0.2) * 0.015
+        target[.leftLegPitch] += -max(0, weight - 0.2) * 0.2
+        target[.rightLegPitch] += -max(0, -weight - 0.2) * 0.2
+        target[.headYaw] += 0.16 * wander
+        target[.headPitch] += 0.07 * nodNoise
+        target[.headRoll] += 0.05 * weight + 0.06 * tilt
+        target[.leftArmRoll] += 0.1 * ValueNoise.sample(t * 0.41 + 93) - 0.03 * springs.velocity[.hipsRoll]
+        target[.rightArmRoll] += 0.1 * ValueNoise.sample(t * 0.37 + 121) - 0.03 * springs.velocity[.hipsRoll]
+        target[.leftArmPitch] += 0.08 * ValueNoise.sample(t * 0.31 + 151)
+        target[.rightArmPitch] += 0.08 * ValueNoise.sample(t * 0.33 + 171)
 
         // Mood signature motion.
         target[.rootY] += style.hopHeight * abs(sin(.pi * style.hopRate * ft))
@@ -194,7 +210,7 @@ nonisolated struct PuppetAnimator: Sendable {
         target[.headPitch] += style.nod * pow(max(0, sin(2 * .pi * ft / 4.5)), 3)
 
         // Talking bob, thinking tilt, and following the finger.
-        target[.headPitch] += talkAmount * 0.07 * sin(2 * .pi * 3 * ft) - thinkAmount * 0.12
+        target[.headPitch] += talkAmount * 0.1 * sin(2 * .pi * 3 * ft) - thinkAmount * 0.12
         target[.headYaw] += lookSmoothed.x * 0.35
         target[.headPitch] -= lookSmoothed.y * 0.22
         target[.chestYaw] += lookSmoothed.x * 0.08
@@ -242,12 +258,12 @@ nonisolated struct PuppetAnimator: Sendable {
         clip.elapsed += dt
         for impulse in clip.kind.impulses(side: clip.side) where impulse.at >= before && impulse.at < clip.elapsed {
             for (channel, amount) in impulse.kicks { springs.kick(channel, amount) }
-            if clip.kind == .dance { danceBeats += 1 }
+            if impulse.isBeat { danceBeats += 1 }
         }
         guard clip.elapsed < clip.kind.duration else {
             slot = nil
-            if clip.kind.isIdle || clip.kind == .dance {
-                nextIdleAt = time + Double.random(in: clip.kind == .dance ? 3...6 : Self.idleGap, using: &rng)
+            if clip.kind.isIdle || clip.kind.isDance {
+                nextIdleAt = time + Double.random(in: clip.kind.isDance ? 3...6 : Self.idleGap, using: &rng)
             }
             return nil
         }

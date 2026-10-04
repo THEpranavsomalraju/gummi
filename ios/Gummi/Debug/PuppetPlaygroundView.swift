@@ -32,10 +32,10 @@ struct PuppetPlaygroundView: View {
             }
         }
         .task {
-            // `-gummi.playgroundDance YES` dances on open, for screenshots.
-            if UserDefaults.standard.bool(forKey: "gummi.playgroundDance") {
+            // `-gummi.playgroundDance robot` (or any dance name, or YES for random) dances on open, for screenshots.
+            if let requested = UserDefaults.standard.string(forKey: "gummi.playgroundDance") {
                 try? await Task.sleep(for: .seconds(1))
-                controller.react(.dance)
+                controller.react(.dance(Dance(rawValue: requested)))
             }
         }
     }
@@ -56,10 +56,19 @@ struct PuppetPlaygroundView: View {
                 Button("Head", systemImage: "hand.tap") { controller.react(.tap(.head)) }
                 Button("Belly", systemImage: "hand.point.up.left") { controller.react(.tap(.belly)) }
                 Button("Wave", systemImage: "hand.wave") { controller.react(.wave) }
-                Button("Dance", systemImage: "figure.dance") { controller.react(.dance) }
+                Button("Random", systemImage: "dice") { controller.react(.dance(nil)) }
             }
             .buttonStyle(.bordered)
             .labelStyle(.titleAndIcon)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(Dance.allCases, id: \.self) { dance in
+                        Button(dance.title, systemImage: "figure.dance") { controller.react(.dance(dance)) }
+                    }
+                }
+                .padding(.horizontal)
+            }
+            .buttonStyle(.bordered)
             HStack(spacing: 8) {
                 Toggle("Talk", systemImage: "waveform", isOn: $talking)
                 Toggle("Think", systemImage: "ellipsis.bubble", isOn: $thinking)

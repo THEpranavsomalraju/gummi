@@ -11,7 +11,8 @@ nonisolated struct SurfaceMesh: Sendable {
 /// One vertex per grid cell that the surface crosses (the average of its edge crossings, then projected
 /// onto the surface); one quad per grid edge that the surface crosses.
 nonisolated enum SurfaceNets {
-    static func mesh(shape: KoalaShape, cell: Float) -> SurfaceMesh {
+    static func mesh(piece shape: KoalaPiece) -> SurfaceMesh {
+        let cell = shape.cell
         let lo = shape.boundsMin
         let counts = SIMD3<Int>(((shape.boundsMax - lo) / cell).rounded(.up)) &+ 1
         let nx = counts.x, ny = counts.y, nz = counts.z
@@ -33,7 +34,7 @@ nonisolated enum SurfaceNets {
         var mesh = SurfaceMesh()
         var cellVertex = [Int32](repeating: -1, count: (nx - 1) * (ny - 1) * (nz - 1))
         for k in 0..<(nz - 1) { for j in 0..<(ny - 1) { for i in 0..<(nx - 1) {
-            var corner = [Float](repeating: 0, count: 8)
+            var corner = SIMD8<Float>(repeating: 0)
             var inside = 0
             for c in 0..<8 {
                 let value = samples[node(i + (c & 1), j + ((c >> 1) & 1), k + ((c >> 2) & 1))]

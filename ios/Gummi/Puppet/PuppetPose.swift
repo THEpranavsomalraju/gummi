@@ -28,12 +28,19 @@ nonisolated struct PuppetPose: Equatable, Sendable {
     var rightEarRoll: Float = 0
     var leftArmRoll: Float = 0
     var leftArmPitch: Float = 0
+    /// Swings a raised arm across the body (pointing, stirring, sprinkling).
+    var leftArmYaw: Float = 0
     var rightArmRoll: Float = 0
     var rightArmPitch: Float = 0
+    var rightArmYaw: Float = 0
     var leftLegLift: Float = 0
     var rightLegLift: Float = 0
+    /// Kicks forward (< 0) and back (> 0).
     var leftLegPitch: Float = 0
     var rightLegPitch: Float = 0
+    /// Side kicks: outward is negative for the left leg, positive for the right.
+    var leftLegRoll: Float = 0
+    var rightLegRoll: Float = 0
     /// 1 is open, 0 closed, above 1 wide.
     var eyeOpen: Float = 1
     /// Eye shift toward a look target, -1...1.
@@ -48,8 +55,8 @@ nonisolated struct PuppetPose: Equatable, Sendable {
 nonisolated enum PoseChannel: Int, CaseIterable, Sendable {
     case rootX, rootY, rootZ, hipsShift, hipsRoll, hipsPitch, chestYaw, chestPitch
     case headPitch, headYaw, headRoll, leftEar, rightEar
-    case leftArmRoll, leftArmPitch, rightArmRoll, rightArmPitch
-    case leftLegLift, rightLegLift, leftLegPitch, rightLegPitch, squash, puff
+    case leftArmRoll, leftArmPitch, rightArmRoll, rightArmPitch, leftArmYaw, rightArmYaw
+    case leftLegLift, rightLegLift, leftLegPitch, rightLegPitch, leftLegRoll, rightLegRoll, squash, puff
 }
 
 nonisolated extension SIMD32 where Scalar == Float {
@@ -73,8 +80,8 @@ nonisolated struct ChannelSprings: Equatable, Sendable {
             case .hipsShift, .hipsRoll, .hipsPitch, .chestYaw, .chestPitch: (12, 0.45)
             case .headPitch, .headYaw, .headRoll: (13, 0.42)
             case .leftEar, .rightEar: (15, 0.18)
-            case .leftArmRoll, .leftArmPitch, .rightArmRoll, .rightArmPitch: (10, 0.32)
-            case .leftLegLift, .rightLegLift, .leftLegPitch, .rightLegPitch: (18, 0.5)
+            case .leftArmRoll, .leftArmPitch, .rightArmRoll, .rightArmPitch, .leftArmYaw, .rightArmYaw: (11, 0.34)
+            case .leftLegLift, .rightLegLift, .leftLegPitch, .rightLegPitch, .leftLegRoll, .rightLegRoll: (17, 0.42)
             case .squash: (17, 0.22)
             case .puff: (8, 0.6)
             }

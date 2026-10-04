@@ -20,7 +20,8 @@ nonisolated enum TapRegion: Sendable {
 nonisolated enum PuppetReaction: Sendable, Equatable {
     case tap(TapRegion)
     case wave
-    case dance
+    /// A specific dance, or nil for a random one (never the same twice in a row).
+    case dance(Dance?)
 }
 
 /// The contract between the app and a puppet renderer (ios/CLAUDE.md, D-25).

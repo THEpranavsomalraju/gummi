@@ -13,10 +13,18 @@ nonisolated enum KoalaSkeleton {
         let root = translation(pose.rootOffset) * scale([1 - 0.5 * s, 1 + s, 1 - 0.5 * s])
         let hips = root * about(joint(.hips), translation([pose.hipsShift, 0, 0])
             * rotation(pose.hipsPitch, [1, 0, 0]) * rotation(pose.hipsRoll, [0, 0, 1]))
+        // Breathing and puffing scale the torso only; the head and arms ride the unscaled chest frame.
         let breathe = SIMD3(1 + pose.puff + pose.breath * 0.6, 1 + pose.puff * 0.6 + pose.breath, 1 + pose.puff + pose.breath * 0.6)
-        let chest = hips * about(joint(.chest), rotation(pose.chestYaw, [0, 1, 0]) * rotation(pose.chestPitch, [1, 0, 0]) * scale(breathe))
-        let head = chest * about(joint(.head), rotation(pose.headYaw, [0, 1, 0])
+        let chestFrame = hips * about(joint(.chest), rotation(pose.chestYaw, [0, 1, 0]) * rotation(pose.chestPitch, [1, 0, 0]))
+        let chest = chestFrame * about(joint(.chest), scale(breathe))
+        let head = chestFrame * about(joint(.head), rotation(pose.headYaw, [0, 1, 0])
             * rotation(pose.headPitch, [1, 0, 0]) * rotation(pose.headRoll, [0, 0, 1]))
+        func arm(_ bone: KoalaBone, yaw: Float, roll: Float, pitch: Float) -> simd_float4x4 {
+            chestFrame * about(joint(bone), rotation(yaw, [0, 1, 0]) * rotation(roll, [0, 0, 1]) * rotation(pitch, [1, 0, 0]))
+        }
+        func leg(_ bone: KoalaBone, lift: Float, roll: Float, pitch: Float) -> simd_float4x4 {
+            root * about(joint(bone), translation([0, lift, 0]) * rotation(roll, [0, 0, 1]) * rotation(pitch, [1, 0, 0]))
+        }
 
         var bones = [simd_float4x4](repeating: matrix_identity_float4x4, count: KoalaBone.allCases.count)
         bones[KoalaBone.hips.rawValue] = hips
@@ -24,10 +32,10 @@ nonisolated enum KoalaSkeleton {
         bones[KoalaBone.head.rawValue] = head
         bones[KoalaBone.leftEar.rawValue] = head * about(joint(.leftEar), rotation(pose.leftEarRoll, [0, 0, 1]))
         bones[KoalaBone.rightEar.rawValue] = head * about(joint(.rightEar), rotation(pose.rightEarRoll, [0, 0, 1]))
-        bones[KoalaBone.leftArm.rawValue] = chest * about(joint(.leftArm), rotation(pose.leftArmRoll, [0, 0, 1]) * rotation(pose.leftArmPitch, [1, 0, 0]))
-        bones[KoalaBone.rightArm.rawValue] = chest * about(joint(.rightArm), rotation(pose.rightArmRoll, [0, 0, 1]) * rotation(pose.rightArmPitch, [1, 0, 0]))
-        bones[KoalaBone.leftLeg.rawValue] = root * about(joint(.leftLeg), translation([0, pose.leftLegLift, 0]) * rotation(pose.leftLegPitch, [1, 0, 0]))
-        bones[KoalaBone.rightLeg.rawValue] = root * about(joint(.rightLeg), translation([0, pose.rightLegLift, 0]) * rotation(pose.rightLegPitch, [1, 0, 0]))
+        bones[KoalaBone.leftArm.rawValue] = arm(.leftArm, yaw: pose.leftArmYaw, roll: pose.leftArmRoll, pitch: pose.leftArmPitch)
+        bones[KoalaBone.rightArm.rawValue] = arm(.rightArm, yaw: pose.rightArmYaw, roll: pose.rightArmRoll, pitch: pose.rightArmPitch)
+        bones[KoalaBone.leftLeg.rawValue] = leg(.leftLeg, lift: pose.leftLegLift, roll: pose.leftLegRoll, pitch: pose.leftLegPitch)
+        bones[KoalaBone.rightLeg.rawValue] = leg(.rightLeg, lift: pose.rightLegLift, roll: pose.rightLegRoll, pitch: pose.rightLegPitch)
         return bones
     }
 
@@ -63,7 +71,7 @@ nonisolated struct JellySim: Sendable {
 
     static let maxStretch: Float = 0.035
 
-    init(mesh: SurfaceMesh, shape: KoalaShape) {
+    init(mesh: SurfaceMesh, piece: KoalaPiece) {
         restPositions = mesh.positions
         restNormals = mesh.normals
         indices = mesh.indices
@@ -75,7 +83,7 @@ nonisolated struct JellySim: Sendable {
         for p in mesh.positions {
             var perBone = [Float](repeating: 0, count: KoalaBone.allCases.count)
             var softness: Float = 0, total: Float = 0
-            for part in shape.parts {
+            for part in piece.parts {
                 let influence = exp(-max(part.distance(p), 0) / sigma)
                 perBone[part.bone.rawValue] = max(perBone[part.bone.rawValue], influence)
                 softness += influence * part.softness
@@ -169,7 +177,7 @@ final class JellyBody {
         self.sim = sim
     }
 
-    static func make(sim: JellySim, shape: KoalaShape, material: some RealityKit.Material,
+    static func make(sim: JellySim, piece: KoalaPiece, material: some RealityKit.Material,
                      coreMaterial: some RealityKit.Material) async throws -> JellyBody {
         let attributes = [
             LowLevelMesh.Attribute(semantic: .position, format: .float3, offset: MemoryLayout<Vertex>.offset(of: \.position) ?? 0),
@@ -185,14 +193,13 @@ final class JellyBody {
         }
         // Bounds leave room for hops, spins, and wobble.
         mesh.parts.replaceAll([LowLevelMesh.Part(indexCount: sim.indices.count, topology: .triangle,
-                                                 bounds: BoundingBox(min: shape.boundsMin - 0.2, max: shape.boundsMax + 0.2))])
+                                                 bounds: BoundingBox(min: piece.boundsMin - 0.25, max: piece.boundsMax + 0.25))])
         let resource = try await MeshResource(from: mesh)
         let entity = ModelEntity(mesh: resource, materials: [material])
         let core = ModelEntity(mesh: resource, materials: [coreMaterial])
         let coreScale: Float = 0.86
-        let center = SIMD3<Float>(0, 0.2, 0)
         core.scale = SIMD3(repeating: coreScale)
-        core.position = center * (1 - coreScale)
+        core.position = piece.center * (1 - coreScale)
         core.isEnabled = false
         let body = JellyBody(entity: entity, core: core, mesh: mesh, sim: sim)
         body.upload()

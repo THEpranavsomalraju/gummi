@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Gummi, ready to drop into any screen.
 /// Eyes and head follow the finger anywhere on the view. Tap his head or belly for different reactions,
-/// double-tap to make him dance, press and hold to squish him.
+/// double-tap for a random dance, press and hold to squish him.
 struct PuppetView: View {
     var input: PuppetInput
     var showsFPS = false
@@ -91,7 +91,7 @@ struct PuppetView: View {
         .accessibilityLabel("Gummi is \(input.thinking ? "thinking" : input.mood == .unknown ? "calm" : input.mood.rawValue).")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { tap(.belly) }
-        .accessibilityAction(named: "Dance") { controller.react(.dance) }
+        .accessibilityAction(named: "Dance") { controller.react(.dance(nil)) }
     }
 
     private func sync() {
@@ -105,7 +105,7 @@ struct PuppetView: View {
     private func tap(_ region: TapRegion) {
         let now = Date.now
         if now.timeIntervalSince(lastTap) < 0.35 {
-            controller.react(.dance)
+            controller.react(.dance(nil))
             lastTap = .distantPast
         } else {
             controller.react(.tap(region))
