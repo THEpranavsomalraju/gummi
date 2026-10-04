@@ -1,0 +1,310 @@
+{
+ "version": 2,
+ "config": {
+  "sample_questions": [
+   {
+    "id": "01f1c00001a1043ebc99000000000001",
+    "question": [
+     "Which participant does Gummi predict best?"
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc99000000000002",
+    "question": [
+     "How did breakfast predictions do today?"
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc99000000000003",
+    "question": [
+     "When does Gummi beat CGM-only?"
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc99000000000004",
+    "question": [
+     "Compare Gummi, CGM-only and last value in meal windows versus quiet windows"
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc99000000000005",
+    "question": [
+     "Which meals had the biggest glucose rise?"
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc99000000000006",
+    "question": [
+     "What is the pipeline lag for each participant right now?"
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc99000000000007",
+    "question": [
+     "How many grades has each participant received?"
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc99000000000008",
+    "question": [
+     "How did p_012's meals go?"
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc99000000000009",
+    "question": [
+     "How often does Gummi beat the last value?"
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc9900000000000a",
+    "question": [
+     "Which participants have the highest latest glucose reading?"
+    ]
+   }
+  ]
+ },
+ "data_sources": {
+  "tables": [
+   {
+    "identifier": "workspace.gummi_data.replay_meals"
+   },
+   {
+    "identifier": "workspace.gummi_data.stream_gold_accuracy"
+   },
+   {
+    "identifier": "workspace.gummi_data.stream_gold_fleet"
+   },
+   {
+    "identifier": "workspace.gummi_data.stream_silver_cgm"
+   },
+   {
+    "identifier": "workspace.gummi_data.stream_silver_grades"
+   },
+   {
+    "identifier": "workspace.gummi_data.stream_silver_meals"
+   },
+   {
+    "identifier": "workspace.gummi_data.stream_silver_predictions"
+   }
+  ]
+ },
+ "instructions": {
+  "text_instructions": [
+   {
+    "id": "01f1c00001a1043ebc9900000000000b",
+    "content": [
+     "* Gummi is a CGM coach. These tables hold its predictions and how they were graded. Glucose and every error are in mg/dL.\n",
+     "* Accuracy is never shown alone. Always put Gummi next to the two baselines: CGM-only (cgm_only_mae_mg_dl, the published linear method on the last 24 readings) and last value (last_value_mae_mg_dl, repeating the last confirmed reading). Lower error is better.\n",
+     "* Users named p_<id> are replayed BIG IDEAs study participants. Gummi predicts each of them with a model that never saw that person, so label their accuracy \"out-of-sample\". Users named u_<name> are live teammates.\n",
+     "* stream_gold_accuracy is the main accuracy table. Rows with user_id = 'ALL' or window_type = 'all' are rollups: filter to one level, never sum across levels. sample = 'out-of-sample' for replay participants, 'live' for teammates.\n",
+     "* window_type 'meal' means the graded window was within 3 hours after a logged meal; 'quiet' is everything else. Meal windows are harder, so compare like with like.\n",
+     "* In stream_silver_grades use only rows where walk_effect_graded is true for accuracy; false means a phone walk overlapped replayed data and the window is excluded. Keep the newest row per grade_id (largest ingested_at).\n",
+     "* gummi_beats_cgm_only and gummi_beats_last_value are true when Gummi's error over the window was lower.\n",
+     "* Times: t, eaten_at, graded_at, made_at are on the replay clock (the participant's local clock time mapped onto today's date). \"Today\" means graded_at or eaten_at on current_date().\n",
+     "* replay_meals is the study food log: one row per meal for the 15 included participants (015 is excluded and not replayed). Identify participants by user_id (p_<id>), not participant_id. day_index and minute_of_day are the participant's local day and time, macros are in grams, is_standard_breakfast marks the standardized Frosted Flakes breakfast. Use every row unless the question asks for a subset.\n",
+     "* stream_gold_fleet has one row per streaming user with pipeline_lag_seconds (seconds from file landing to ingestion).\n",
+     "* Never give treatment, medication, or insulin advice, and never present Gummi's estimate as a current glucose reading. If asked, say Gummi is a coach and readings come from the Dexcom app.\n",
+     "* Accuracy numbers are draft until the team approves them; say \"draft\" when quoting them as results."
+    ]
+   }
+  ],
+  "example_question_sqls": [
+   {
+    "id": "01f1c00001a1043ebc9900000000000c",
+    "question": [
+     "Compare Gummi with CGM-only and last value by window type"
+    ],
+    "sql": [
+     "SELECT window_type, grades, gummi_mae_mg_dl, cgm_only_mae_mg_dl, last_value_mae_mg_dl,\n",
+     "       gummi_beats_cgm_only_pct, gummi_beats_last_value_pct\n",
+     "FROM workspace.gummi_data.stream_gold_accuracy\n",
+     "WHERE sample = 'out-of-sample' AND user_id = 'ALL'\n",
+     "ORDER BY window_type"
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc9900000000000d",
+    "question": [
+     "Which participant does Gummi predict best?"
+    ],
+    "sql": [
+     "SELECT user_id, grades, gummi_mae_mg_dl, cgm_only_mae_mg_dl, last_value_mae_mg_dl\n",
+     "FROM workspace.gummi_data.stream_gold_accuracy\n",
+     "WHERE sample = 'out-of-sample' AND user_id <> 'ALL' AND window_type = 'all'\n",
+     "ORDER BY gummi_mae_mg_dl ASC\n",
+     "LIMIT 1"
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc9900000000000e",
+    "question": [
+     "How did breakfast predictions do today?"
+    ],
+    "sql": [
+     "WITH g AS (\n",
+     "  SELECT * FROM workspace.gummi_data.stream_silver_grades\n",
+     "  QUALIFY ROW_NUMBER() OVER (PARTITION BY grade_id ORDER BY ingested_at DESC) = 1\n",
+     "), p AS (\n",
+     "  SELECT * FROM workspace.gummi_data.stream_silver_predictions\n",
+     "  QUALIFY ROW_NUMBER() OVER (PARTITION BY prediction_id ORDER BY ingested_at DESC) = 1\n",
+     ")\n",
+     "SELECT g.user_id, p.about, p.made_at, g.gummi_mae_mg_dl, g.cgm_only_mae_mg_dl, g.last_value_mae_mg_dl, g.message\n",
+     "FROM g JOIN p ON g.prediction_id = p.prediction_id\n",
+     "WHERE g.grade_kind = 'meal' AND g.walk_effect_graded AND hour(p.made_at) < 11 AND to_date(p.made_at) = current_date()\n",
+     "ORDER BY p.made_at"
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc99000000000020",
+    "question": [
+     "How many standardized breakfasts did each participant eat?"
+    ],
+    "sql": [
+     "SELECT user_id, COUNT(*) AS standard_breakfasts\n",
+     "FROM workspace.gummi_data.replay_meals\n",
+     "WHERE is_standard_breakfast\n",
+     "GROUP BY user_id\n",
+     "ORDER BY user_id"
+    ]
+   }
+  ]
+ },
+ "benchmarks": {
+  "questions": [
+   {
+    "id": "01f1c00001a1043ebc9900000000000f",
+    "question": [
+     "What is Gummi's out-of-sample error across all windows, next to CGM-only and last value?"
+    ],
+    "answer": [
+     {
+      "format": "SQL",
+      "content": [
+       "SELECT gummi_mae_mg_dl, cgm_only_mae_mg_dl, last_value_mae_mg_dl\n",
+       "FROM workspace.gummi_data.stream_gold_accuracy\n",
+       "WHERE sample = 'out-of-sample' AND user_id = 'ALL' AND window_type = 'all'"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc99000000000010",
+    "question": [
+     "Which participant does Gummi predict best?"
+    ],
+    "answer": [
+     {
+      "format": "SQL",
+      "content": [
+       "SELECT user_id, gummi_mae_mg_dl\n",
+       "FROM workspace.gummi_data.stream_gold_accuracy\n",
+       "WHERE sample = 'out-of-sample' AND user_id <> 'ALL' AND window_type = 'all'\n",
+       "ORDER BY gummi_mae_mg_dl ASC\n",
+       "LIMIT 1"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc99000000000011",
+    "question": [
+     "In meal windows, how often does Gummi beat CGM-only?"
+    ],
+    "answer": [
+     {
+      "format": "SQL",
+      "content": [
+       "SELECT gummi_beats_cgm_only_pct\n",
+       "FROM workspace.gummi_data.stream_gold_accuracy\n",
+       "WHERE sample = 'out-of-sample' AND user_id = 'ALL' AND window_type = 'meal'"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc99000000000012",
+    "question": [
+     "How many grades has each participant received?"
+    ],
+    "answer": [
+     {
+      "format": "SQL",
+      "content": [
+       "SELECT user_id, grades\n",
+       "FROM workspace.gummi_data.stream_gold_accuracy\n",
+       "WHERE user_id <> 'ALL' AND window_type = 'all'\n",
+       "ORDER BY user_id"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc99000000000013",
+    "question": [
+     "What is the pipeline lag for each participant?"
+    ],
+    "answer": [
+     {
+      "format": "SQL",
+      "content": [
+       "SELECT user_id, pipeline_lag_seconds\n",
+       "FROM workspace.gummi_data.stream_gold_fleet\n",
+       "ORDER BY user_id"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc99000000000014",
+    "question": [
+     "Which participant has the highest latest glucose reading?"
+    ],
+    "answer": [
+     {
+      "format": "SQL",
+      "content": [
+       "SELECT user_id, last_glucose_mg_dl\n",
+       "FROM workspace.gummi_data.stream_gold_fleet\n",
+       "ORDER BY last_glucose_mg_dl DESC\n",
+       "LIMIT 1"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc99000000000015",
+    "question": [
+     "How many standardized breakfasts are in the study food log for each participant?"
+    ],
+    "answer": [
+     {
+      "format": "SQL",
+      "content": [
+       "SELECT user_id, COUNT(*) AS standard_breakfasts\n",
+       "FROM workspace.gummi_data.replay_meals\n",
+       "WHERE is_standard_breakfast\n",
+       "GROUP BY user_id\n",
+       "ORDER BY user_id"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "01f1c00001a1043ebc99000000000016",
+    "question": [
+     "What is the average carbs per meal in the study food log?"
+    ],
+    "answer": [
+     {
+      "format": "SQL",
+      "content": [
+       "SELECT AVG(carbs_g) AS avg_carbs_g\n",
+       "FROM workspace.gummi_data.replay_meals"
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}
