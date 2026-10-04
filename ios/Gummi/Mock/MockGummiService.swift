@@ -173,6 +173,15 @@ actor MockEngine {
 
     /// PATCH /meals for a chat meal: the phone sends scaled macros, so the totals are just their sum.
     func updateMeal(_ id: String, items: [MealItem]) throws -> SavedMeal {
+        if let index = manualMeals.firstIndex(where: { $0.meal.mealId == id }) {
+            let old = manualMeals[index]
+            let meal = Meal(mealId: id, eatenAt: old.meal.eatenAt, source: .manual, items: items, totals: MealTotals(items: items),
+                            isStandardBreakfast: false, predictionId: nil)
+            let peak = old.simulated == true ? MockChat.simulate(items, state: snapshot(), turn: chatTurns)?.peakMgDl : nil
+            manualMeals[index] = SavedMeal(meal, simulated: old.simulated, likelyPeakMgDl: peak)
+            pushState()
+            return manualMeals[index]
+        }
         guard let saved = chatMeals[id] else { throw APIError.http(status: 404, code: "not_found", message: "meal \(id) not found") }
         guard !items.isEmpty else { throw APIError.http(status: 422, code: "invalid", message: "items must not be empty") }
         let meal = saved.meal
