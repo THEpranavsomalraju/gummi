@@ -8,10 +8,10 @@ from .. import config
 from ..auth import user_id
 from ..errors import ApiError
 from ..live.broadcaster import broadcaster
-from ..mock import data as mock
+from ..engine.engine import engine
 from ..state.hot_store import dexcom_status, store
-from ..stream.producer import clock
-from ..util import display_name_for, iso, utcnow
+from ..state.view import fleet, stream_status
+from ..stream.producer import clock, parse_start
 from .core import current_state
 
 router = APIRouter()
@@ -19,7 +19,7 @@ WEB = Path(__file__).parents[1] / "web"
 
 
 def _status() -> dict:
-    return clock.status(pipeline_lag_seconds=6.0 if clock.running else None)
+    return stream_status()
 
 
 def _push_states() -> None:
@@ -31,10 +31,19 @@ def _push_states() -> None:
 @router.post("/stream/start")
 async def stream_start(body: dict | None = None):
     body = body or {}
+    if not engine.ready:
+        raise ApiError(503, "warming_up", engine.load_error or "Gummi is still loading the model and replay data")
+    speed = body.get("speed", 60)
+    if not isinstance(speed, (int, float)) or not 0 < speed <= 600:
+        raise ApiError(422, "invalid", "speed must be a number between 0 and 600")
     try:
-        clock.start(body.get("speed", 60), body.get("delay_minutes", config.DELAY_MINUTES), body.get("start_at") or "day6T05:00")
+        start_r = parse_start(body.get("start_at") or config.DEFAULT_START)
     except ValueError as e:
         raise ApiError(422, "invalid", str(e))
+    clock.start(speed, body.get("delay_minutes", config.DELAY_MINUTES), body.get("start_at") or config.DEFAULT_START)
+    for u in store.users.values():
+        u.cards, u.grades, u.alert, u.overlay_walks = [], [], None, []
+    engine.start(start_r)
     _push_states()
     return _status()
 
@@ -71,27 +80,13 @@ async def stream_speed(body: dict):
 
 
 @router.get("/stream/status")
-async def stream_status():
+async def stream_status_route():
     return _status()
 
 
 @router.get("/fleet")
-async def fleet():
-    now = utcnow()
-    entries = []
-    for pid in config.PARTICIPANTS:
-        est = mock.estimate(pid, now)
-        fc = mock.forecast(pid, now, bump=0)
-        view = mock.gummi_view(pid, now, est)
-        g, c, lv, n = mock.participant_accuracy(pid)
-        entries.append({"user_id": pid, "display_name": display_name_for(pid),
-                        "mood": mock.mood_for(view, est, fc, now), "data_through": iso(mock.data_through(now)),
-                        "sparkline": mock.sparkline(pid, now), "grades": n, "gummi_mae_mg_dl": g,
-                        "cgm_only_mae_mg_dl": c, "last_value_mae_mg_dl": lv, "last_grade": None})
-    avg = lambda k: round(sum(e[k] for e in entries) / len(entries), 1)  # noqa: E731
-    return {"entries": entries, "fleet_gummi_mae_mg_dl": avg("gummi_mae_mg_dl"),
-            "fleet_cgm_only_mae_mg_dl": avg("cgm_only_mae_mg_dl"),
-            "fleet_last_value_mae_mg_dl": avg("last_value_mae_mg_dl"), "stream": _status()}
+async def fleet_route():
+    return fleet()
 
 
 @router.get("/fleet/view", response_class=HTMLResponse)
@@ -119,4 +114,3 @@ async def dexcom_disconnect(uid: str = Depends(user_id)):
     return {"ok": True}
 
 
-__all__ = ["router", "store"]

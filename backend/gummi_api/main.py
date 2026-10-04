@@ -2,8 +2,7 @@
 import asyncio
 import contextlib
 import logging
-import random
-from datetime import timedelta
+import time
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -12,51 +11,54 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import config
 from .errors import ApiError
+from .engine.engine import engine
+from .engine.gold import gold
 from .live.broadcaster import broadcaster
-from .mock import data as mock
 from .routes import chat, core, meals, stream
 from .state.hot_store import store
+from .state.view import build_state
 from .stream.landing_writer import landing
-from .stream.producer import clock
-from .util import utcnow
+from .stream.producer import clock, parse_start
 
 logging.basicConfig(level=logging.INFO)
 
 
-async def mock_ticker() -> None:
-    """Mock mode: fresh State every 5 s, a new card every MOCK_CARD_SECONDS, a grade and proud mood every third card."""
-    i, last_card = 0, 0.0
-    loop = asyncio.get_running_loop()
+async def engine_loop() -> None:
+    """Load the model and replay tables off the event loop, prepare a still snapshot at the default start (so the phone
+    has a chart before anyone presses start), then tick once per second and push State to every connected phone."""
+    broadcaster.bind(asyncio.get_running_loop())
+    await asyncio.to_thread(engine.load)
+    if engine.ready and clock.anchor_replay is None:
+        start_r = parse_start(config.DEFAULT_START)
+        clock.anchor_replay, clock.anchor_wall = start_r, time.time()
+        clock.start_day = int(start_r // 1440) + 1
+        engine.start(start_r)
+    last_push = 0.0
+    seen: dict[str, int] = {}
     while True:
-        await asyncio.sleep(config.MOCK_STATE_SECONDS)
-        users = broadcaster.users()
-        for uid in users:
-            broadcaster.publish(uid, "state", core.current_state(uid))
-        if users and loop.time() - last_card >= config.MOCK_CARD_SECONDS:
-            last_card, now = loop.time(), utcnow()
-            for uid in users:
-                u = store.get(uid)
-                card = mock.rotating_card(i, now)
-                u.cards.append(card)
-                broadcaster.publish(uid, "card", card)
-                if card["type"] == "walk_suggested":
-                    u.alert = mock.walk_alert(now)
-                    broadcaster.publish(uid, "alert", u.alert)
-                if card["type"] == "grade":
-                    g = mock.grade("pr_mock", "snack", now, random.Random(i))
-                    u.grades.append(g)
-                    u.proud_until = now + timedelta(seconds=20)
-                    broadcaster.publish(uid, "grade", g)
-                    broadcaster.publish(uid, "mood", {"mood": "proud"})
-                    core.counters["grades"] += 1
-            i += 1
+        await asyncio.sleep(1.0)
+        try:
+            await asyncio.to_thread(engine.tick)      # off the event loop: requests never wait on the model
+        except Exception:  # noqa: BLE001
+            logging.exception("engine tick failed")
+        now = time.monotonic()
+        for uid in broadcaster.users():
+            pid = store.get(uid).following
+            v = engine.subjects[pid].version if pid in engine.subjects else -1
+            # at most once per second; on change, or every 5 s so Gummi's estimate keeps moving with the clock
+            if seen.get(uid) != v or now - last_push >= 5:
+                seen[uid] = v
+                try:
+                    broadcaster.publish(uid, "state", build_state(uid))
+                except Exception:  # noqa: BLE001
+                    logging.exception("state push failed for %s", uid)
+        if now - last_push >= 5:
+            last_push = now
 
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
-    tasks = [asyncio.create_task(landing.run()), asyncio.create_task(clock.run())]
-    if config.MODE == "mock":
-        tasks.append(asyncio.create_task(mock_ticker()))
+    tasks = [asyncio.create_task(landing.run()), asyncio.create_task(engine_loop()), asyncio.create_task(gold.run())]
     yield
     for t in tasks:
         t.cancel()

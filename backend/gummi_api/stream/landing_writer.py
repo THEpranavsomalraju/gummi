@@ -8,6 +8,7 @@ import asyncio
 import io
 import json
 import logging
+import threading
 from collections import defaultdict
 
 from .. import config
@@ -27,13 +28,15 @@ class LandingWriter:
         self.last_file: str | None = None
         self.last_error: str | None = None
         self._client = None
+        self._lock = threading.Lock()          # the engine tick enqueues from a worker thread
 
     def enqueue(self, event: dict) -> None:
         if self.enabled:
             event.setdefault("event_id", new_id("ev") + f"_{utcnow():%H%M%S%f}")
-            self.queue.append(event)
-            if len(self.queue) > 50_000:            # landing outage: keep memory bounded, drop oldest
-                del self.queue[:10_000]
+            with self._lock:
+                self.queue.append(event)
+                if len(self.queue) > 50_000:            # landing outage: keep memory bounded, drop oldest
+                    del self.queue[:10_000]
 
     def _workspace(self):
         if self._client is None:
@@ -47,7 +50,8 @@ class LandingWriter:
     async def flush(self) -> None:
         if not self.queue:
             return
-        batch, self.queue = self.queue, []
+        with self._lock:
+            batch, self.queue = self.queue, []
         by_source: dict[str, list[dict]] = defaultdict(list)
         for ev in batch:
             by_source[ev["source"]].append(ev)
@@ -68,7 +72,8 @@ class LandingWriter:
                     await asyncio.sleep(0.5 * 2 ** attempt)
             else:
                 log.warning("landing upload failed, requeued %d events: %s", len(events), self.last_error)
-                self.queue[:0] = events
+                with self._lock:
+                    self.queue[:0] = events
 
     async def run(self) -> None:
         while True:

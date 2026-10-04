@@ -3,4 +3,4 @@ env:
   - name: GUMMI_CATALOG
     value: workspace
   - name: GUMMI_MODE
-    value: mock
+    value: live

@@ -1,10 +1,8 @@
-"""Per-user in-memory state. Phone routes read only from here (Phase 1: backed by mock generators)."""
+"""Per-teammate in-memory state (profile, follow, cards, steps, walks). Replay participants live in the engine."""
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
 
 from .. import config
-from ..mock import data as mock
-from ..util import display_name_for, iso, utcnow
+from ..util import display_name_for
 
 
 @dataclass
@@ -12,16 +10,27 @@ class UserState:
     user_id: str
     profile: dict
     following: str | None = None
-    meals: list[dict] = field(default_factory=list)
-    predictions: dict[str, dict] = field(default_factory=dict)
+    meals: list[dict] = field(default_factory=list)       # teammate's own meals while not acting as anyone
     grades: list[dict] = field(default_factory=list)
-    cards: list[dict] = field(default_factory=list)          # pushed during this session, newest last
+    cards: list[dict] = field(default_factory=list)       # oldest first, unique card_id
     steps: int = 0
     walks: list[dict] = field(default_factory=list)
-    walk_started_at: datetime | None = None
+    overlay_walks: list[dict] = field(default_factory=list)   # phone walks placed on the replay timeline (D-28)
+    walk_started_at: object = None
+    walk_started_r: float | None = None
     alert: dict | None = None
-    proud_until: datetime | None = None
-    dismissed_due: set[str] = field(default_factory=set)
+    proud_until: float = 0.0
+    happy_until: float = 0.0
+
+    def add_card(self, card: dict) -> None:
+        """CONTRACT 1.3 upsert: a card with a known card_id replaces the old one in place."""
+        for i, c in enumerate(self.cards):
+            if c["card_id"] == card["card_id"]:
+                self.cards[i] = card
+                return
+        self.cards.append(card)
+        if len(self.cards) > 300:
+            del self.cards[:50]
 
 
 class HotStore:
@@ -33,37 +42,9 @@ class HotStore:
             self.users[user_id] = UserState(user_id, default_profile(user_id))
         return self.users[user_id]
 
-    def state(self, user_id: str, stream_status: dict) -> dict:
-        """Build a contract State for user_id at the current wall clock."""
-        u = self.get(user_id)
-        now = utcnow()
-        subject = u.following or user_id                     # acting as the followed participant (D-27)
-        conf = mock.confirmed(subject, now)
-        est = mock.estimate(subject, now)
-        fc = mock.forecast(subject, now)
-        view = mock.gummi_view(subject, now, est)
-        cards = mock.day_cards(subject, now) + u.cards
-        today_conf = [p["glucose_mg_dl"] for p in conf]
-        in_range = sum(config.LOW_LINE < g < config.HIGH_LINE for g in today_conf) / max(1, len(today_conf))
-        acc = mock.participant_accuracy(subject)
-        pending = [p for p in u.predictions.values() if p["status"] == "pending"]
-        if not pending:
-            last = conf[-1]["glucose_mg_dl"]
-            pending = [mock.prediction("Breakfast, 2 waffles", now - timedelta(minutes=40), 158.0, last, fc[:12])]
-        return {
-            "user_id": user_id, "following": u.following, "acting_as": u.following,
-            "dexcom": dexcom_status(),
-            "gummi_view": view, "confirmed": conf, "estimate": est, "forecast": fc,
-            "mood": mock.mood_for(view, est, fc, now, u.proud_until),
-            "alert": u.alert, "top_card": cards[-1] if cards else None,
-            "pending_predictions": pending,
-            "today": {"time_in_range_pct": round(100 * in_range, 1), "peak_mg_dl": max(today_conf),
-                      "meals": 2 + len(u.meals), "steps": 3120 + u.steps, "walks": 1 + len(u.walks),
-                      "gummi_mae_mg_dl": acc[0], "cgm_only_mae_mg_dl": acc[1], "last_value_mae_mg_dl": acc[2]},
-            "profile": {"high_line_mg_dl": u.profile["high_line_mg_dl"], "low_line_mg_dl": u.profile["low_line_mg_dl"]},
-            "upcoming_due": mock.upcoming_due(now, u.following, stream_status["running"], stream_status["paused"]),
-            "model_version": config.MODEL_VERSION, "server_time": iso(now),
-        }
+    @staticmethod
+    def display_name(user_id: str) -> str:
+        return display_name_for(user_id)
 
 
 def default_profile(user_id: str) -> dict:
