@@ -104,6 +104,10 @@ nonisolated struct ClipOutput: Sendable {
     var eyeOpenScale: Float = 1
     var eyeLook: SIMD2<Float>?
     var mouth: MouthShape?
+    var eyes: EyeShape?
+    var browTilt: Float?
+    var browRaise: Float?
+    var blush: Float?
     /// Spin that bypasses the springs.
     var yaw: Float = 0
 }
@@ -134,6 +138,7 @@ nonisolated extension ClipKind {
             out.target[.headPitch] = -0.08 * e
             out.target[.chestYaw] = yaw * 0.3
             out.eyeLook = SIMD2(Self.keyframes(min(p + 0.06, 1), keys) / 0.7 * 0.9, 0.1)
+            out.browRaise = 0.3
         case .stretch:
             out.target[.leftArmPitch] = -2.8 * e
             out.target[.rightArmPitch] = -2.8 * e
@@ -145,6 +150,7 @@ nonisolated extension ClipKind {
             out.target[.leftLegLift] = 0.006 * e
             out.target[.rightLegLift] = 0.006 * e
             out.eyeOpenScale = 1 - 0.85 * e
+            if e > 0.3 { out.eyes = .sleepy }
             if p > 0.25, p < 0.7 { out.mouth = .yawn }
         case .scratchHead:
             out.target[.rightArmPitch] = -2.6 * e
@@ -155,6 +161,8 @@ nonisolated extension ClipKind {
             out.target[.leftLegRoll] = -0.1 * e
             out.eyeLook = SIMD2(0.45, 0.6) * e
             out.mouth = .flat
+            out.browTilt = -0.6
+            out.browRaise = 0.2
         case .earTwitch:
             out.target[.headRoll] = 0.08 * side * e
         case .curiousTilt:
@@ -164,12 +172,16 @@ nonisolated extension ClipKind {
             out.target[.chestYaw] = 0.12 * side * e
             out.target[side < 0 ? .leftLegPitch : .rightLegPitch] = -0.18 * e
             out.eyeOpenScale = 1 + 0.15 * e
+            out.browRaise = 0.9
+            if e > 0.3 { out.mouth = .surprised }
         case .doubleHop:
             out.target[.leftArmPitch] = -0.7 * e
             out.target[.rightArmPitch] = -0.7 * e
             out.target[.leftArmRoll] = -0.3 * e
             out.target[.rightArmRoll] = 0.3 * e
-            out.mouth = .bigSmile
+            out.eyes = .happy
+            out.mouth = .grin
+            out.blush = 0.6
         case .wave:
             out.target[.rightArmPitch] = -2.5 * e
             out.target[.rightArmRoll] = (0.4 + 0.45 * Float(sin(2 * .pi * 2.4 * s))) * e
@@ -177,14 +189,17 @@ nonisolated extension ClipKind {
             out.target[.headYaw] = 0.12 * e
             out.target[.hipsRoll] = 0.05 * e
             out.target[.leftLegLift] = 0.008 * e
-            out.eyeOpenScale = 1 - 0.3 * e
-            out.mouth = .bigSmile
+            out.eyes = .happy
+            out.mouth = .grin
+            out.blush = 0.5
         case .yawn:
             out.target[.headPitch] = -0.28 * e
             out.target[.leftArmRoll] = -0.35 * e
             out.target[.rightArmRoll] = 0.35 * e
             out.target[.squash] = 0.05 * e
             out.eyeOpenScale = 1 - 0.9 * e
+            if e > 0.3 { out.eyes = .sleepy }
+            out.browRaise = -0.3
             if p > 0.15, p < 0.8 { out.mouth = .yawn }
         case .fanBurst:
             let flap = Float(sin(2 * .pi * 5 * s))
@@ -192,7 +207,9 @@ nonisolated extension ClipKind {
             out.target[.rightArmRoll] = (0.4 + 0.4 * flap) * e
             out.target[.headYaw] = 0.15 * flap * e
             out.eyeOpenScale = 1 + 0.15 * e
-            out.mouth = .flat
+            out.mouth = .wavy
+            out.browTilt = 0.9
+            out.browRaise = 0.4
         case .hugSelf:
             out.target[.leftArmRoll] = 0.4 * e
             out.target[.rightArmRoll] = -0.4 * e
@@ -204,6 +221,8 @@ nonisolated extension ClipKind {
             out.target[.leftLegRoll] = 0.06 * e
             out.target[.rightLegRoll] = -0.06 * e
             out.mouth = .frown
+            out.eyes = .small
+            out.browTilt = 1
         case .toeTap:
             let tap = Float(abs(sin(.pi * 3 * p)))
             out.target[side < 0 ? .leftLegPitch : .rightLegPitch] = -0.3 * e
@@ -221,16 +240,21 @@ nonisolated extension ClipKind {
             out.target[.squash] = -0.04 * bob * e
             out.target[.leftArmRoll] = -0.12 * bob * e
             out.target[.rightArmRoll] = 0.12 * bob * e
-            out.eyeOpenScale = 1 - 0.4 * e
-            out.mouth = .bigSmile
+            out.eyes = .happy
+            out.mouth = .grin
+            out.blush = 0.4
         case .headTap:
-            out.eyeOpenScale = p < 0.45 ? 0.1 : 1
-            out.mouth = .bigSmile
+            out.eyes = p < 0.45 ? .squeeze : .happy
+            out.mouth = .grin
+            out.blush = 0.6
         case .bellyTap:
-            out.eyeOpenScale = 0.5
-            out.mouth = .bigSmile
+            out.eyes = .happy
+            out.mouth = .grin
+            out.blush = 1
         case .squishRelease:
-            out.mouth = .bigSmile
+            out.eyes = .happy
+            out.mouth = .grin
+            out.blush = 0.6
         case .jellyBop, .robot, .runningMan, .twist, .discoPoint, .sprinkler, .cabbagePatch:
             out = danceFrame(at: s)
         }
@@ -298,7 +322,10 @@ nonisolated extension ClipKind {
         var out = ClipOutput()
         let beat = Int(s / Self.beat)
         let phase = s / Self.beat - Double(beat)
-        out.mouth = .bigSmile
+        out.mouth = .grin
+        out.eyes = .happy
+        out.blush = 0.8
+        out.browRaise = 0.5
         switch self {
         case .jellyBop: jellyBop(&out, s: s, beat: beat)
         case .robot: robot(&out, beat: beat)
@@ -318,8 +345,8 @@ nonisolated extension ClipKind {
             out.target[.leftArmYaw] = 0
             out.target[.rightArmYaw] = 0
             out.target[.headPitch] = -0.15
-            out.mouth = .bigSmile
-            out.eyeOpenScale = 0.6
+            out.mouth = .grin
+            out.eyes = .sparkle
         }
         out.target *= Self.envelope(s / duration, fade: 0.04)
         return out
@@ -399,7 +426,8 @@ nonisolated extension ClipKind {
             out.target[beat % 4 == 1 ? .leftLegPitch : .rightLegPitch] = -0.25
         }
         out.eyeOpenScale = 1.1
-        out.mouth = beat < beats - 2 ? .flat : .bigSmile
+        out.eyes = .open
+        out.mouth = beat < beats - 2 ? .flat : .grin
     }
 
     /// Running Man: one knee lifts while the other foot slides back, every half beat, arms pumping opposite.
@@ -439,7 +467,7 @@ nonisolated extension ClipKind {
         let rightPoints = beat < beats / 2
         let up = beat.isMultiple(of: 2)
         let sign: Float = rightPoints ? 1 : -1
-        let pointing = up ? ArmPose(pitch: -2.7, roll: 0.7 * sign) : ArmPose(pitch: -0.8, roll: -0.5 * sign, yaw: -0.5 * sign)
+        let pointing = up ? ArmPose(pitch: -2.7, roll: 0.7 * sign) : ArmPose(pitch: -1.0, roll: -0.35 * sign, yaw: -0.45 * sign)
         let onHip = ArmPose(pitch: 0.15, roll: -0.55 * sign)
         if rightPoints { setArms(&out, left: onHip, right: pointing) } else { setArms(&out, left: pointing, right: onHip) }
         out.target[.hipsShift] = (up ? 0.012 : -0.006) * sign

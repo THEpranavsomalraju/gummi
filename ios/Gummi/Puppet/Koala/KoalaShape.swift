@@ -105,11 +105,11 @@ nonisolated struct KoalaShape: Sendable {
             // down from the body; the arm tapers to a smaller hand and hangs with a gap down the side.
             KoalaPiece(name: side < 0 ? "leftArm" : "rightArm", parts: [
                 // Root: sunk into the upper torso, it widens the arm where it meets the body (a slope, not a bump).
-                ShapePart(bone: bone, center: [side * 0.086, 0.222, 0.0], radii: [0.03, 0.028, 0.029], softness: 0.4),
-                ShapePart(bone: bone, center: [side * 0.117, 0.184, 0.004], radii: [0.028, 0.05, 0.029], roll: side * 0.38, blend: 0.04, softness: 0.5),
-                ShapePart(bone: bone, center: [side * 0.133, 0.137, 0.01], radii: [0.024, 0.025, 0.026], blend: 0.03, softness: 0.65),
-            ], boundsMin: [side < 0 ? -0.19 : 0.05, 0.07, -0.06], boundsMax: [side < 0 ? -0.05 : 0.19, 0.27, 0.07],
-            cell: 0.005, center: [side * 0.12, 0.17, 0.006])
+                ShapePart(bone: bone, center: [side * 0.082, 0.204, 0.0], radii: [0.03, 0.028, 0.029], softness: 0.4),
+                ShapePart(bone: bone, center: [side * 0.116, 0.166, 0.004], radii: [0.028, 0.05, 0.029], roll: side * 0.38, blend: 0.04, softness: 0.5),
+                ShapePart(bone: bone, center: [side * 0.132, 0.119, 0.01], radii: [0.024, 0.025, 0.026], blend: 0.03, softness: 0.65),
+            ], boundsMin: [side < 0 ? -0.19 : 0.04, 0.05, -0.06], boundsMax: [side < 0 ? -0.04 : 0.19, 0.26, 0.07],
+            cell: 0.005, center: [side * 0.115, 0.15, 0.006])
         }
         func leg(_ side: Float, _ bone: KoalaBone) -> KoalaPiece {
             // Stubby legs; the torso and legs trade length so his total height stays the same.
@@ -122,8 +122,8 @@ nonisolated struct KoalaShape: Sendable {
         return KoalaShape(
             pieces: [
                 KoalaPiece(name: "torso", parts: [
-                    ShapePart(bone: .hips, center: [0, 0.14, 0], radii: [0.092, 0.1, 0.084], softness: 0.75),
-                    ShapePart(bone: .chest, center: [0, 0.21, -0.004], radii: [0.084, 0.068, 0.076], blend: 0.04, softness: 0.5),
+                    ShapePart(bone: .hips, center: [0, 0.142, 0], radii: [0.086, 0.094, 0.079], softness: 0.75),
+                    ShapePart(bone: .chest, center: [0, 0.207, -0.004], radii: [0.079, 0.064, 0.071], blend: 0.038, softness: 0.5),
                 ], boundsMin: [-0.12, 0.02, -0.11], boundsMax: [0.12, 0.3, 0.11], cell: 0.0065, center: [0, 0.165, 0]),
                 KoalaPiece(name: "head", parts: [
                     ShapePart(bone: .head, center: [0, 0.31, 0.006], radii: [0.104, 0.097, 0.096], softness: 0.3),
@@ -136,7 +136,7 @@ nonisolated struct KoalaShape: Sendable {
             joints: [
                 .hips: [0, 0.085, 0], .chest: [0, 0.185, 0], .head: [0, 0.25, 0.004],
                 .leftEar: [-0.072, 0.358, -0.012], .rightEar: [0.072, 0.358, -0.012],
-                .leftArm: [-0.097, 0.226, 0.004], .rightArm: [0.097, 0.226, 0.004],
+                .leftArm: [-0.092, 0.208, 0.004], .rightArm: [0.092, 0.208, 0.004],
                 .leftLeg: [-0.048, 0.095, 0.008], .rightLeg: [0.048, 0.095, 0.008],
             ])
     }()

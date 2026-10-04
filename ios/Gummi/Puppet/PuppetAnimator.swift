@@ -49,6 +49,9 @@ nonisolated struct PuppetAnimator: Sendable {
     private(set) var blinkTimes: [Double] = []
     private var blinkStartedAt: Double?
     private var lookSmoothed = SIMD2<Float>(repeating: 0)
+    private var browTilt: Float = 0
+    private var browRaise: Float = 0
+    private var blush: Float = 0
     private var talkAmount: Float = 0
     private var thinkAmount: Float = 0
     private var currentMood: Mood = .calm
@@ -68,6 +71,12 @@ nonisolated struct PuppetAnimator: Sendable {
         case .wave: self.reaction = start(.wave)
         case .dance(let dance): startDance(dance)
         }
+    }
+
+    /// Starts an idle behavior now (tests and the playground).
+    mutating func forceIdle(_ kind: ClipKind) {
+        motion = start(kind)
+        idleLog.append((kind, time))
     }
 
     private mutating func startDance(_ requested: Dance?) {
@@ -148,15 +157,27 @@ nonisolated struct PuppetAnimator: Sendable {
         let thinkingLook = SIMD2(lookSmoothed.x, lookSmoothed.y * (1 - style.eyeLookUp) + style.eyeLookUp)
         p.eyeLook = input.look == nil ? (reactionOut?.eyeLook ?? motionOut?.eyeLook ?? thinkingLook) : thinkingLook
 
+        // Expressions (anime / Mii style): a reaction beats a behavior or dance, which beats the mood.
         p.mouth = reactionOut?.mouth ?? motionOut?.mouth ?? style.mouth
+        p.eyes = reactionOut?.eyes ?? motionOut?.eyes ?? style.eyes
+        var tiltTarget = reactionOut?.browTilt ?? motionOut?.browTilt ?? style.browTilt
+        let raiseTarget = reactionOut?.browRaise ?? motionOut?.browRaise ?? style.browRaise
+        let blushTarget = reactionOut?.blush ?? motionOut?.blush ?? style.blush
         if currentMood == .dipping, !input.thinking, motion == nil, reaction == nil, fmod(time, 6) < 1.3 {
             p.mouth = .yawn
-            p.eyeOpen *= 0.4
+            p.eyes = .sleepy
         }
         if input.pressing {
-            p.mouth = .flat
-            p.eyeOpen *= 0.35
+            p.mouth = .wavy
+            p.eyes = .squeeze
+            tiltTarget = 0.6
         }
+        browTilt += (tiltTarget - browTilt) * (1 - exp(-fdt * 12))
+        browRaise += (raiseTarget - browRaise) * (1 - exp(-fdt * 12))
+        blush += (blushTarget - blush) * (1 - exp(-fdt * 6))
+        p.browTilt = browTilt
+        p.browRaise = browRaise
+        p.blush = blush
 
         p.rimColor = style.rimColor
         p.rimStrength = style.rimStrength

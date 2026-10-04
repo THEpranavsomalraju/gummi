@@ -43,7 +43,7 @@ struct KoalaMeshTests {
     func armsHangFreeBelowTheShoulder(name: String) throws {
         let torso = try #require(Self.shape.piece(named: "torso"))
         let mesh = try #require(Self.meshes[name])
-        let lowerArm = mesh.positions.filter { $0.y < 0.16 }
+        let lowerArm = mesh.positions.filter { $0.y < 0.15 }
         #expect(!lowerArm.isEmpty)
         #expect(lowerArm.allSatisfy { torso.distance($0) > 0.002 })
         // The rounded shoulder tucks into the torso, so the arm never looks detached.
@@ -84,6 +84,41 @@ struct KoalaMeshTests {
         #expect(dominant(near: [0, 0.41, 0.006]) == .head)
         #expect(dominant(near: [-0.14, 0.39, -0.012]) == .leftEar)
         #expect(dominant(near: [0.14, 0.39, -0.012]) == .rightEar)
+    }
+
+    nonisolated private static let armHeavyClips: [ClipKind] = [.jellyBop, .robot, .runningMan, .twist, .discoPoint, .sprinkler,
+                                                                .cabbagePatch, .stretch, .scratchHead, .hugSelf, .fanBurst, .wave]
+
+    /// Through every dance and arm-heavy idle, the lower arms and hands stay out of the belly.
+    @Test(arguments: armHeavyClips)
+    func armsNeverSinkIntoTheBody(clip: ClipKind) throws {
+        let torso = try #require(Self.shape.piece(named: "torso"))
+        let arms = try ["leftArm", "rightArm"].map { name -> (KoalaBone, [SIMD3<Float>]) in
+            let mesh = try #require(Self.meshes[name])
+            return (name == "leftArm" ? .leftArm : .rightArm, mesh.positions.filter { $0.y < 0.15 })
+        }
+        var animator = PuppetAnimator(seed: 4)
+        animator.input.look = .zero
+        if let dance = Dance.allCases.first(where: { $0.clip == clip }) {
+            animator.react(.dance(dance))
+        } else {
+            animator.forceIdle(clip)
+        }
+        var deepest: Float = 0
+        for _ in 0..<Int(clip.duration * 30) {
+            let pose = animator.step(dt: 1.0 / 30)
+            var bones = KoalaSkeleton.matrices(for: pose, joints: Self.shape.joints)
+            KoalaCollisions.resolveArms(&bones, shape: Self.shape)
+            let toTorso = bones[KoalaBone.hips.rawValue].inverse
+            for (bone, vertices) in arms {
+                let arm = bones[bone.rawValue]
+                for vertex in vertices {
+                    let q = toTorso * (arm * SIMD4(vertex, 1))
+                    deepest = min(deepest, torso.distance(SIMD3(q.x, q.y, q.z)))
+                }
+            }
+        }
+        #expect(deepest > -0.004, "deepest arm vertex inside the belly: \(deepest) m")
     }
 
     /// Steady motion carries the jelly along without smearing; only the start wobbles.

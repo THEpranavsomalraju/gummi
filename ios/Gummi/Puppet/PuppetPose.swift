@@ -1,9 +1,31 @@
 import Foundation
 import simd
 
-/// Mouth shapes. Gummi never opens his mouth to talk; moods and moments change the expression.
+/// Mouth shapes. Gummi never opens his mouth to talk; moods and moments change the expression (anime / Mii style).
 nonisolated enum MouthShape: CaseIterable, Sendable {
     case smile, bigSmile, flat, frown, yawn
+    /// An open "D" grin for happy and proud moments.
+    case grin
+    /// A small "o" for surprise.
+    case surprised
+    /// A wobbly line for worry.
+    case wavy
+}
+
+/// Eye shapes: anime and Mii faces read through the eyes.
+nonisolated enum EyeShape: CaseIterable, Sendable {
+    /// Glossy ovals with highlights; they blink and follow the finger.
+    case open
+    /// "^ ^" happy arcs.
+    case happy
+    /// "- -" sleepy lines.
+    case sleepy
+    /// "> <" squeezed shut.
+    case squeeze
+    /// Wide with extra sparkle (proud).
+    case sparkle
+    /// Small worried dots.
+    case small
 }
 
 /// Everything a renderer needs for one frame, as joint motions on Gummi's skeleton (KoalaBone).
@@ -46,6 +68,12 @@ nonisolated struct PuppetPose: Equatable, Sendable {
     /// Eye shift toward a look target, -1...1.
     var eyeLook = SIMD2<Float>(repeating: 0)
     var mouth: MouthShape = .smile
+    var eyes: EyeShape = .open
+    /// Brows: tilt -1 (furrowed, inner ends down) to 1 (worried, inner ends up); raise -1 (low) to 1 (high).
+    var browTilt: Float = 0
+    var browRaise: Float = 0
+    /// Cheek blush, 0 (none) to 1.
+    var blush: Float = 0
     /// Rim light color (0...1 RGB) and strength 0...1.
     var rimColor = SIMD3<Float>(repeating: 1)
     var rimStrength: Float = 0.5

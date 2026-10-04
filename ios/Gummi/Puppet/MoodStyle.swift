@@ -27,6 +27,10 @@ nonisolated struct MoodStyle: Equatable, Sendable {
     var rightArmRaise: Float = 0
     var nod: Float = 0
     var mouth: MouthShape = .smile
+    var eyes: EyeShape = .open
+    var browTilt: Float = 0
+    var browRaise: Float = 0
+    var blush: Float = 0
     var rimColor = SIMD3<Float>(0.55, 0.72, 0.96)
     var rimStrength: Float = 0.5
 
@@ -41,6 +45,7 @@ nonisolated struct MoodStyle: Equatable, Sendable {
             style.hopHeight = 0.006
             style.hopRate = 1.2
             style.breathRate = 0.32
+            style.browRaise = 0.7
             style.rimStrength = 0.7
         case .high:
             style.puff = 0.06
@@ -48,7 +53,9 @@ nonisolated struct MoodStyle: Equatable, Sendable {
             style.fan = 0.28
             style.eyeOpen = 1.15
             style.breathRate = 0.45
-            style.mouth = .flat
+            style.mouth = .wavy
+            style.browTilt = 0.8
+            style.browRaise = 0.3
             style.rimStrength = 0.9
         case .dipping:
             style.bodyPitch = 0.08
@@ -57,6 +64,9 @@ nonisolated struct MoodStyle: Equatable, Sendable {
             style.eyeOpen = 0.7
             style.swayAmount = 0.015
             style.breathRate = 0.18
+            style.mouth = .flat
+            style.browTilt = 0.5
+            style.browRaise = -0.3
             style.rimStrength = 0.6
         case .low:
             style.shiver = 0.0025
@@ -64,24 +74,34 @@ nonisolated struct MoodStyle: Equatable, Sendable {
             style.earDroop = 0.25
             style.headPitch = 0.12
             style.mouth = .frown
+            style.eyes = .small
+            style.browTilt = 1
+            style.browRaise = 0.2
             style.swayAmount = 0
             style.rimStrength = 0.8
         case .proud:
             style.bodyPitch = -0.1
             style.headPitch = -0.12
             style.puff = 0.03
-            style.eyeOpen = 0.55
-            style.mouth = .bigSmile
+            style.eyes = .sparkle
+            style.mouth = .grin
+            style.browRaise = 0.6
+            style.blush = 1
             style.rimStrength = 1
         case .happy:
             style.hopHeight = 0.02
             style.hopRate = 2
             style.armSpread = 0.2
-            style.mouth = .bigSmile
-            style.eyeOpen = 0.6
+            style.mouth = .grin
+            style.eyes = .happy
+            style.browRaise = 0.5
+            style.blush = 1
             style.rimStrength = 0.8
         case .sleepy:
             style.eyeOpen = 0.32
+            style.eyes = .sleepy
+            style.browTilt = 0.2
+            style.browRaise = -0.6
             style.headPitch = 0.15
             style.headRoll = 0.12
             style.earDroop = 0.2
@@ -94,6 +114,8 @@ nonisolated struct MoodStyle: Equatable, Sendable {
             style.headRoll = -0.16
             style.rightArmRaise = 1
             style.mouth = .flat
+            style.browTilt = -0.5
+            style.browRaise = 0.4
             style.rimStrength = 0.6
         }
         return style
@@ -109,8 +131,10 @@ nonisolated struct MoodStyle: Equatable, Sendable {
         mix(&hopRate, target.hopRate); mix(&swayAmount, target.swayAmount); mix(&breathAmount, target.breathAmount)
         mix(&breathRate, target.breathRate); mix(&shiver, target.shiver); mix(&fan, target.fan)
         mix(&rightArmRaise, target.rightArmRaise); mix(&nod, target.nod); mix(&rimStrength, target.rimStrength)
+        mix(&browTilt, target.browTilt); mix(&browRaise, target.browRaise); mix(&blush, target.blush)
         rimColor += (target.rimColor - rimColor) * k
         mouth = target.mouth
+        eyes = target.eyes
     }
 
     private static func rgb(_ color: UIColor) -> SIMD3<Float> {

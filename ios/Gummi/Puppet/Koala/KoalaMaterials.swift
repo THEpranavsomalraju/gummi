@@ -55,6 +55,29 @@ enum KoalaMaterials {
     }
 
     static func highlight() -> UnlitMaterial {
-        UnlitMaterial(color: .white)
+        var material = UnlitMaterial(color: .white)
+        material.faceCulling = .none
+        return material
+    }
+
+    /// Soft pink cheeks, a little see-through.
+    static func blush() -> PhysicallyBasedMaterial {
+        var material = PhysicallyBasedMaterial()
+        material.baseColor = .init(tint: UIColor(red: 1.0, green: 0.55, blue: 0.62, alpha: 1))
+        material.metallic = .init(floatLiteral: 0)
+        material.roughness = .init(floatLiteral: 0.8)
+        material.blending = .transparent(opacity: .init(floatLiteral: 0.6))
+        material.faceCulling = .none
+        return material
+    }
+
+    static func tongue() -> PhysicallyBasedMaterial {
+        var material = PhysicallyBasedMaterial()
+        material.baseColor = .init(tint: UIColor(red: 0.95, green: 0.45, blue: 0.5, alpha: 1))
+        material.metallic = .init(floatLiteral: 0)
+        material.roughness = .init(floatLiteral: 0.35)
+        material.clearcoat = .init(floatLiteral: 0.6)
+        material.faceCulling = .none
+        return material
     }
 }
