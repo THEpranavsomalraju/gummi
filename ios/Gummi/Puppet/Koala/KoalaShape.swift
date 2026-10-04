@@ -101,29 +101,30 @@ nonisolated struct KoalaShape: Sendable {
 
     static let standard: KoalaShape = {
         func arm(_ side: Float, _ bone: KoalaBone) -> KoalaPiece {
-            // A low, rounded shoulder tucks into the torso; a short arm hangs from it with a gap down the side.
-            // Wide blends keep the shoulder and wrist soft instead of grooved.
+            // No shoulder bump: the arm's top leans in and sinks into the upper torso, so the shoulder slopes
+            // down from the body; the arm tapers to a smaller hand and hangs with a gap down the side.
             KoalaPiece(name: side < 0 ? "leftArm" : "rightArm", parts: [
-                ShapePart(bone: bone, center: [side * 0.098, 0.205, 0.004], radii: [0.031, 0.029, 0.031], softness: 0.4),
-                ShapePart(bone: bone, center: [side * 0.138, 0.158, 0.008], radii: [0.033, 0.056, 0.034], roll: side * 0.22, blend: 0.045, softness: 0.55),
-                ShapePart(bone: bone, center: [side * 0.152, 0.11, 0.013], radii: [0.034, 0.032, 0.034], blend: 0.04, softness: 0.65),
-            ], boundsMin: [side < 0 ? -0.2 : 0.04, 0.045, -0.06], boundsMax: [side < 0 ? -0.04 : 0.2, 0.26, 0.07],
-            cell: 0.005, center: [side * 0.132, 0.15, 0.01])
+                // Root: sunk into the upper torso, it widens the arm where it meets the body (a slope, not a bump).
+                ShapePart(bone: bone, center: [side * 0.086, 0.222, 0.0], radii: [0.03, 0.028, 0.029], softness: 0.4),
+                ShapePart(bone: bone, center: [side * 0.117, 0.184, 0.004], radii: [0.028, 0.05, 0.029], roll: side * 0.38, blend: 0.04, softness: 0.5),
+                ShapePart(bone: bone, center: [side * 0.133, 0.137, 0.01], radii: [0.024, 0.025, 0.026], blend: 0.03, softness: 0.65),
+            ], boundsMin: [side < 0 ? -0.19 : 0.05, 0.07, -0.06], boundsMax: [side < 0 ? -0.05 : 0.19, 0.27, 0.07],
+            cell: 0.005, center: [side * 0.12, 0.17, 0.006])
         }
         func leg(_ side: Float, _ bone: KoalaBone) -> KoalaPiece {
-            // Longer stubby legs (the torso got shorter by the same amount, so his height is unchanged).
+            // Stubby legs; the torso and legs trade length so his total height stays the same.
             KoalaPiece(name: side < 0 ? "leftLeg" : "rightLeg", parts: [
-                ShapePart(bone: bone, center: [side * 0.048, 0.07, 0.008], radii: [0.041, 0.066, 0.041], softness: 0.2),
+                ShapePart(bone: bone, center: [side * 0.048, 0.056, 0.008], radii: [0.041, 0.052, 0.041], softness: 0.2),
                 ShapePart(bone: bone, center: [side * 0.048, 0.029, 0.03], radii: [0.04, 0.026, 0.044], blend: 0.02, softness: 0.3),
-            ], boundsMin: [side * 0.048 - 0.06, -0.015, -0.05], boundsMax: [side * 0.048 + 0.06, 0.15, 0.09],
+            ], boundsMin: [side * 0.048 - 0.06, -0.015, -0.05], boundsMax: [side * 0.048 + 0.06, 0.13, 0.09],
             cell: 0.005, center: [side * 0.048, 0.06, 0.012])
         }
         return KoalaShape(
             pieces: [
                 KoalaPiece(name: "torso", parts: [
-                    ShapePart(bone: .hips, center: [0, 0.155, 0], radii: [0.092, 0.089, 0.084], softness: 0.75),
+                    ShapePart(bone: .hips, center: [0, 0.14, 0], radii: [0.092, 0.1, 0.084], softness: 0.75),
                     ShapePart(bone: .chest, center: [0, 0.21, -0.004], radii: [0.084, 0.068, 0.076], blend: 0.04, softness: 0.5),
-                ], boundsMin: [-0.12, 0.04, -0.11], boundsMax: [0.12, 0.3, 0.11], cell: 0.0065, center: [0, 0.175, 0]),
+                ], boundsMin: [-0.12, 0.02, -0.11], boundsMax: [0.12, 0.3, 0.11], cell: 0.0065, center: [0, 0.165, 0]),
                 KoalaPiece(name: "head", parts: [
                     ShapePart(bone: .head, center: [0, 0.31, 0.006], radii: [0.104, 0.097, 0.096], softness: 0.3),
                     ShapePart(bone: .leftEar, center: [-0.094, 0.375, -0.012], radii: [0.05, 0.048, 0.024], blend: 0.014, softness: 0.85),
@@ -133,10 +134,10 @@ nonisolated struct KoalaShape: Sendable {
                 leg(-1, .leftLeg), leg(1, .rightLeg),
             ],
             joints: [
-                .hips: [0, 0.1, 0], .chest: [0, 0.185, 0], .head: [0, 0.25, 0.004],
+                .hips: [0, 0.085, 0], .chest: [0, 0.185, 0], .head: [0, 0.25, 0.004],
                 .leftEar: [-0.072, 0.358, -0.012], .rightEar: [0.072, 0.358, -0.012],
-                .leftArm: [-0.1, 0.212, 0.004], .rightArm: [0.1, 0.212, 0.004],
-                .leftLeg: [-0.048, 0.115, 0.008], .rightLeg: [0.048, 0.115, 0.008],
+                .leftArm: [-0.097, 0.226, 0.004], .rightArm: [0.097, 0.226, 0.004],
+                .leftLeg: [-0.048, 0.095, 0.008], .rightLeg: [0.048, 0.095, 0.008],
             ])
     }()
 
