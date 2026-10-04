@@ -366,8 +366,8 @@ class Engine:
     def _meal_logged_card(self, uid: str, s: Subject, meal: dict) -> None:
         from ..state import cards
         pred = s.predictions.get(meal["prediction_id"]) if meal["prediction_id"] else None
-        body = (f"I expect a peak near {pred['predicted_peak_mg_dl']:.0f} within two hours. That's Gummi's estimate, "
-                f"and I'll grade it when the readings arrive." if pred else "Logged.")
+        body = (f"I think this likely peaks near {pred['predicted_peak_mg_dl']:.0f} within two hours. That's my estimate, "
+                f"and I'll grade myself when your readings come in." if pred else "Logged.")
         card = cards.card("meal_logged", pd.Timestamp(meal["eaten_at"]).to_pydatetime(), f"{meal['items'][0]['name']} logged",
                           body, "rising" if pred else "calm",
                           attachments={"meal": meal, **({"prediction": self.public_prediction(pred)} if pred else {})})
@@ -413,7 +413,7 @@ class Engine:
         drop, src = eff.get("forecast_peak_drop_mg_dl", 0), eff.get("effect_source", "literature")
         minutes_to = max(5, round((pd.Timestamp(peak["t"]) - pd.Timestamp(now)).total_seconds() / 60))
         alert = {"alert_id": new_id("al"), "type": "walk_suggested",
-                 "message": f"Gummi's forecast likely crosses {config.HIGH_LINE:.0f} in about {minutes_to} minutes. "
+                 "message": f"I think you'll likely cross {config.HIGH_LINE:.0f} in about {minutes_to} minutes. "
                             f"A 10 minute walk now could lower the peak by about {drop:.0f} mg/dL ({src}).",
                  "created_at": iso(now), "expires_at": iso(now + pd.Timedelta(minutes=30)),
                  "action": {"label": "Start walk", "kind": "start_walk", "minutes": 10}}
@@ -449,10 +449,10 @@ class Engine:
             last = s.conf_v[-1]
             if kind == "morning_briefing":
                 card = cards.card(kind, now, "Good morning", f"Your last Dexcom reading was {last:.0f} mg/dL. "
-                                  "I'll watch breakfast with you.", "calm", card_id=f"c_{s.pid}_{day}_morning")
+                                  "I'll keep an eye on breakfast with you.", "calm", card_id=f"c_{s.pid}_{day}_morning")
             else:
                 g = [x for x in s.grades if x["graded_at"][:10] == day]
-                card = cards.card(kind, now, "Your day", f"{len(g)} predictions graded today. More in a moment.", "calm",
+                card = cards.card(kind, now, "Your day", f"I graded {len(g)} of my predictions today. Writing up the rest now.", "calm",
                                   card_id=f"c_{s.pid}_{day}_recap")
             for uid in followers:
                 store.get(uid).add_card(card)

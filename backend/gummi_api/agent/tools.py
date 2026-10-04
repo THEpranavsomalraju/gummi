@@ -28,7 +28,7 @@ _ITEMS = {"type": "array", "description": "Foods with portions. For foods that a
               "protein_g": {"type": "number"}, "fat_g": {"type": "number"}, "calories": {"type": "number"}}}}
 
 SCHEMAS = [
-    {"name": "get_state", "description": "Gummi's estimate for now (with band and trend), the last confirmed Dexcom reading, the 2-hour forecast peak, today's numbers and the next due meal.",
+    {"name": "get_state", "description": "Your estimate for now (with band and trend), the last confirmed Dexcom reading, the 2-hour forecast peak, today's numbers and the next due meal.",
      "parameters": {"type": "object", "properties": {}}},
     {"name": "simulate_food", "description": "What eating these foods would likely do: peak with and without, verdict, and alternatives (half portion, walk after). Use for any 'can I eat/should I have' question, and for meals mentioned while acting as a study participant.",
      "parameters": {"type": "object", "required": ["items"], "properties": {"items": _ITEMS,
@@ -41,7 +41,7 @@ SCHEMAS = [
      "parameters": {"type": "object", "properties": {"hours": {"type": "number"}}}},
     {"name": "explain_spike", "description": "The biggest rise in the last N hours: peak, the meals before it with carbs, walks, and what Gummi predicted versus what happened.",
      "parameters": {"type": "object", "properties": {"hours": {"type": "number"}}}},
-    {"name": "today_summary", "description": "Today's time in range, peak, meals, steps, walks, and Gummi's accuracy next to CGM-only and last value.",
+    {"name": "today_summary", "description": "Today's time in range, peak, meals, steps, walks, and your prediction accuracy next to CGM-only and last value.",
      "parameters": {"type": "object", "properties": {}}},
     {"name": "get_gold_summary", "description": "Accuracy from the Databricks gold tables for this person over N days, plus the all-participant rollup, always with CGM-only and last value. Out-of-sample for study participants.",
      "parameters": {"type": "object", "properties": {"days": {"type": "number"}}}},
@@ -97,11 +97,13 @@ def get_state(c: Ctx, **_):
         return {"available": False, "note": "No glucose data: not following a participant."}, None
     v, conf, fc = s["gummi_view"], s["confirmed"], s["forecast"]
     peak = max(fc, key=lambda p: p["glucose_mg_dl"]) if fc else None
-    res = {"gummis_estimate_now": v["glucose_mg_dl"], "band": [v["band_low_mg_dl"], v["band_high_mg_dl"]], "trend": v["trend"],
+    res = {"my_estimate_now": v["glucose_mg_dl"], "band": [v["band_low_mg_dl"], v["band_high_mg_dl"]], "trend": v["trend"],
            "confidence": v["confidence"], "last_dexcom_reading": conf[-1]["glucose_mg_dl"] if conf else None,
            "minutes_since_reading": v["minutes_since_confirmed"],
            "forecast_peak_2h": {"mg_dl": peak["glucose_mg_dl"], "at": _hm(peak["t"])} if peak else None,
            "high_line": s["profile"]["high_line_mg_dl"], "local_time": _hm(_now()) if _now() else None,
+           "estimate_vs_range": ("above" if v["glucose_mg_dl"] >= s["profile"]["high_line_mg_dl"] else
+                                 "below" if v["glucose_mg_dl"] <= s["profile"]["low_line_mg_dl"] else "in range"),
            "today": s["today"], "next_due_meal": s["upcoming_due"][0]["body"] if s["upcoming_due"] else None,
            "acting_as": s["acting_as"]}
     return res, {"card_type": "gummi_view", "payload": v}
@@ -144,6 +146,8 @@ def suggest_walk(c: Ctx, minutes=10, **_):
     eff = s.model.walk_effect(engine.ctx(s), minutes, "moderate")
     res = {"forecast_peak": peak["glucose_mg_dl"] if peak else None, "peak_at": _hm(peak["t"]) if peak else None,
            "walk_minutes": minutes, "modeled_peak_drop_mg_dl": eff.get("forecast_peak_drop_mg_dl"),
+           "peak_after_walk": r1(peak["glucose_mg_dl"] - (eff.get("forecast_peak_drop_mg_dl") or 0)) if peak else None,
+           "peak_is_over_high_line": bool(peak and peak["glucose_mg_dl"] >= c.u.profile["high_line_mg_dl"]),
            "effect_source": eff.get("effect_source"), "high_line": c.u.profile["high_line_mg_dl"]}
     card = {"card_type": "walk_suggestion", "payload": {"minutes": int(minutes), "start": iso(_now()),
             "forecast_peak_mg_dl": res["forecast_peak"], "forecast_peak_drop_mg_dl": res["modeled_peak_drop_mg_dl"],
@@ -190,7 +194,8 @@ def explain_spike(c: Ctx, hours=6, **_):
     pred = next((p for p in reversed(list(s.predictions.values())) if p["kind"] == "meal" and p.get("meal_id")
                  and start <= pd.Timestamp(p["window_start"]) <= t_peak), None)
     return {"peak_mg_dl": v_peak, "peak_at": _hm(t_peak), "rise_mg_dl": r1(v_peak - before[-1]) if before else None,
-            "meals_before": meals, "walks": len(c.u.overlay_walks),
+            "glucose_before_mg_dl": before[-1] if before else None,
+            "total_carbs_before_peak_g": r1(sum(m["carbs_g"] for m in meals)), "meals_before": meals, "walks": len(c.u.overlay_walks),
             "gummi_predicted_peak": pred["predicted_peak_mg_dl"] if pred else None,
             "cgm_only_predicted_peak": pred["cgm_only_peak_mg_dl"] if pred else None}, None
 

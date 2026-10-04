@@ -32,16 +32,16 @@ MAX_STEPS = 4
 AGENTS = {
     "morning_briefing": {
         "name": "Morning Briefing agent", "tools": ["get_state", "get_history", "today_summary"],
-        "task": "Write this person's morning briefing: how the night went (from get_history), where Gummi's estimate "
-                "likely is now, and the one thing worth watching today. Use the tools first."},
+        "task": "Write this person's morning briefing: how the night went (from get_history), where you estimate "
+                "they likely are now, and the one thing worth watching today. Use the tools first."},
     "meal_story": {
         "name": "Meal Story agent", "tools": ["explain_spike", "get_history"],
-        "task": "Two hours after a meal, tell its story: what they ate, the real peak, and how Gummi's prediction "
-                "compared with CGM-only and last value (all in the grade below). Add one useful observation, such as "
+        "task": "Two hours after a meal, tell its story: what they ate, the real peak, and how your prediction "
+                "compared with CGM-only and last value (all in the grade below). Own it when you were off. Add one useful observation, such as "
                 "carbs, timing, or a walk. If the grade says the walk effect was not graded, say so."},
     "walk_coach": {
         "name": "Walk Coach agent", "tools": ["suggest_walk", "get_state"],
-        "task": "Gummi's forecast likely crosses the high line soon. Call suggest_walk, then nudge a walk now: when "
+        "task": "Your forecast says they'll likely cross the high line soon. Call suggest_walk, then nudge a walk now: when "
                 "the peak likely lands, how much a 10-minute walk could lower it, and the effect's source."},
     "evening_recap": {
         "name": "Evening Recap agent", "tools": ["today_summary", "get_gold_summary", "get_history"],
@@ -75,7 +75,7 @@ def _budget_ok() -> bool:
 
 
 def _system(spec: dict) -> str:
-    return (f"{SOUL}\n\n{RULES}\n\nYou are Gummi's {spec['name']}. {spec['task']}\n"
+    return (f"{SOUL}\n\n{RULES}\n\nYou are Gummi, working as the {spec['name']}. {spec['task']}\n"
             "Reply with JSON only: {\"title\": \"at most 6 words\", \"body\": \"at most 2 short sentences\"}.")
 
 
