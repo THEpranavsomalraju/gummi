@@ -27,7 +27,7 @@ def load_model():
     if src.is_dir() and all((src / f).exists() for f in FILES):
         path = src                                   # local dir, or /Volumes FUSE mount when it exists
     else:
-        path = config.CACHE_DIR / "gummi_model_v1"
+        path = config.CACHE_DIR / Path(config.MODEL_VOLUME_DIR).name
         try:
             _download(config.MODEL_VOLUME_DIR, path)
         except Exception as e:  # noqa: BLE001
