@@ -89,7 +89,31 @@ def _add_lesson(text: str, trace_id: str | None, problem: str) -> bool:
     counters["lessons_added"] += 1
     activity.hit("memory.lessons", detail=text, log=True)
     _save()
+    threading.Thread(target=_register_prompt_version, args=(text, trace_id), daemon=True).start()
     return True
+
+
+PROMPT_NAME = f"{config.CATALOG}.gummi_ml.gummi_coach_prompt"
+
+
+def _register_prompt_version(lesson: str, trace_id: str | None) -> None:
+    """Every lesson becomes a new version of the Coach prompt in the Unity Catalog prompt registry (alias production),
+    so Gummi's self-improvement is visible and auditable in Databricks."""
+    if not config.PERSIST:
+        return
+    try:
+        import mlflow
+        from .prompts import RULES, SOUL
+        mlflow.set_registry_uri("databricks-uc")
+        block = "Lessons from reviewing past conversations:\n" + "\n".join(f"- {x}" for x in lessons())
+        p = mlflow.genai.register_prompt(name=PROMPT_NAME, template=f"{SOUL}\n\n{RULES}\n\n{block}\n\nContext: {{{{context}}}}",
+                                         commit_message=f"Reviewer lesson: {lesson}"[:500],
+                                         tags={"source_trace": trace_id or "", "agent": "coach"})
+        mlflow.genai.set_prompt_alias(PROMPT_NAME, alias="production", version=p.version)
+        activity.hit("memory.prompt_registry", detail=f"{PROMPT_NAME} v{p.version}", log=True)
+        counters["prompt_version"] = p.version
+    except Exception as e:  # noqa: BLE001
+        log.warning("prompt version not registered: %s", str(e)[:200])
 
 
 def _log_feedback(trace_id: str, review: dict) -> None:

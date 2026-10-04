@@ -18,6 +18,8 @@
 # MAGIC | 7. Agent traces and the agent's safety evaluation (MLflow) | [Experiment gummi-agent](https://dbc-0f92eb43-532a.cloud.databricks.com/ml/experiments/3505481683626519) |
 # MAGIC | 8. Agent Bricks supervisor | [Gummi Insights](https://dbc-0f92eb43-532a.cloud.databricks.com/ml/endpoints/mas-becc8b0e-endpoint) |
 # MAGIC | 9. Ask the data in plain English | [Genie: Gummi Data](https://dbc-0f92eb43-532a.cloud.databricks.com/genie/rooms/01f1bf87ea5918298b59e25b38538d16) |
+# MAGIC | 10. Gummi's prompt, versioned as it learns | [workspace.gummi_ml.gummi_coach_prompt](https://dbc-0f92eb43-532a.cloud.databricks.com/explore/data/workspace/gummi_ml) (Unity Catalog prompt registry) |
+# MAGIC | 11. Real Dexcom connection (sandbox, OAuth) | [Connect page](https://gummi-7474657192035402.aws.databricksapps.com/api/v1/dexcom/connect) |
 
 # COMMAND ----------
 
@@ -28,6 +30,16 @@
 # MAGIC 3. **Every prediction is graded** two hours later against what happened, next to the published **CGM-only** method and a **last-value** guess.
 # MAGIC 4. **Agents act on events**: Coach (chat), Meal Story, Walk Coach, Morning Briefing and Evening Recap. They call tools that run the model; the LLM never makes up a number. Every run is an **MLflow trace**.
 # MAGIC 5. **Every event lands in a Unity Catalog volume**. The **Lakeflow** pipeline turns it into bronze, silver and gold streaming tables within seconds. The gold tables feed the fleet view, the Evening Recap agent and **Gummi Insights**, an Agent Bricks supervisor over Genie, Unity Catalog functions and a Knowledge Assistant.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## How Gummi checks and improves itself
+# MAGIC 1. **Before sending**, every answer passes code checks (no dosing, estimates hedged, every number from a tool, no walk advice after symptoms). A failing draft is rewritten once.
+# MAGIC 2. **After sending**, a separate **Reviewer agent** (Llama 4 Maverick, a different model family) scores the reply and attaches the scores to its **MLflow trace** as feedback.
+# MAGIC 3. **When the Reviewer finds a mistake**, it writes one general lesson. Lessons go into Gummi's prompt for future conversations, and each one is registered as a new version of `workspace.gummi_ml.gummi_coach_prompt` in the **Unity Catalog prompt registry**. A filter blocks any lesson that touches medication or loosens a rule.
+# MAGIC 4. **MLflow production monitoring** runs safety, treatment-advice, symptom-handling and estimate-wording judges on live traces automatically (experiment *gummi-agent* → Monitoring).
+# MAGIC 5. **The model learns too**: every graded meal updates that person's personal carb factor and offset.
 
 # COMMAND ----------
 
