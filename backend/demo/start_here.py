@@ -16,10 +16,25 @@
 # MAGIC | 5. Live accuracy dashboard (AI/BI) | [Gummi live accuracy](https://dbc-0f92eb43-532a.cloud.databricks.com/dashboardsv3/01f1bf883268170693784c519c8eb10b/published) |
 # MAGIC | 6. Gummi's model in Unity Catalog | [workspace.gummi_ml.gummi_model](https://dbc-0f92eb43-532a.cloud.databricks.com/explore/data/models/workspace/gummi_ml/gummi_model) |
 # MAGIC | 7. Agent traces and the agent's safety evaluation (MLflow) | [Experiment gummi-agent](https://dbc-0f92eb43-532a.cloud.databricks.com/ml/experiments/3505481683626519) |
-# MAGIC | 8. Agent Bricks supervisor | [Gummi Insights](https://dbc-0f92eb43-532a.cloud.databricks.com/ml/endpoints/mas-becc8b0e-endpoint) |
+# MAGIC | 8. Agent Bricks supervisor | [Gummi Insights](https://dbc-0f92eb43-532a.cloud.databricks.com/ml/bricks) |
 # MAGIC | 9. Ask the data in plain English | [Genie: Gummi Data](https://dbc-0f92eb43-532a.cloud.databricks.com/genie/rooms/01f1bf87ea5918298b59e25b38538d16) |
 # MAGIC | 10. Gummi's prompt, versioned as it learns | [workspace.gummi_agent.gummi_coach_prompt](https://dbc-0f92eb43-532a.cloud.databricks.com/explore/data/workspace/gummi_agent) (Unity Catalog prompt registry) |
 # MAGIC | 11. Real Dexcom connection (sandbox, OAuth) | [Connect page](https://gummi-7474657192035402.aws.databricksapps.com/api/v1/dexcom/connect) |
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## How accurate is Gummi?
+# MAGIC Average error in mg/dL (lower is better). Each of the 15 participants is predicted by a model that never saw them during training (5-fold, grouped by participant).
+# MAGIC
+# MAGIC | Looking ahead | **Gummi** (glucose history + meals) | CGM-only (published method) | Last reading |
+# MAGIC |---|---|---|---|
+# MAGIC | 30 minutes | **8.9** | 9.5 | 10.7 |
+# MAGIC | 1 hour | **12.1** | 13.4 | 14.9 |
+# MAGIC | 2 hours | **14.2** | 15.7 | 18.4 |
+# MAGIC | 1 hour, right after a meal | **15.7** | 17.3 | 20.4 |
+# MAGIC
+# MAGIC We first reproduced the published CGM-only baseline (13.90 RMSE at 30 minutes), then added meals. Source: `workspace.gummi_ml.eval_results`, full table further down.
 
 # COMMAND ----------
 
@@ -71,7 +86,7 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Offline evaluation: participant-grouped cross-validation (DRAFT until the team approves)
+# MAGIC ## Offline evaluation: participant-grouped cross-validation (full table)
 # MAGIC Five folds grouped by participant, so no one is in both training and test. The published CGM-only baseline is reproduced at 13.90 RMSE at 30 minutes.
 
 # COMMAND ----------
@@ -96,12 +111,15 @@
 from databricks.sdk import WorkspaceClient
 
 question = "For participant p_012: which meals raised their glucose the most, and how did Gummi's predictions compare with CGM-only and last value?"
-resp = WorkspaceClient().api_client.do("POST", "/serving-endpoints/mas-becc8b0e-endpoint/invocations",
-                                       body={"input": [{"role": "user", "content": question}]})
-for item in resp.get("output", []):
-    if item.get("type") == "function_call":
-        print("tool chosen:", item.get("name"))
-    if item.get("type") == "message":
-        for c in item.get("content", []):
-            if c.get("type") == "output_text":
-                print("\n" + c["text"])
+try:
+    resp = WorkspaceClient().api_client.do("POST", "/serving-endpoints/mas-becc8b0e-endpoint/invocations",
+                                           body={"input": [{"role": "user", "content": question}]})
+    for item in resp.get("output", []):
+        if item.get("type") == "function_call":
+            print("tool chosen:", item.get("name"))
+        if item.get("type") == "message":
+            for c in item.get("content", []):
+                if c.get("type") == "output_text":
+                    print("\n" + c["text"])
+except Exception as e:  # the supervisor's endpoint is redeploying
+    print("Gummi Insights is redeploying right now; open it under Agents to see its sub-agents.", str(e)[:120])
