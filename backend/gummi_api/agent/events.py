@@ -65,6 +65,8 @@ def submit(agent: str, uid: str, card: dict, context: dict) -> None:
     from ..engine.engine import engine
     if engine.silent:
         return                                   # rehydrating after a restart: keep templates, no LLM calls
+    if uid not in broadcaster.users():
+        return                                   # nobody has that phone open: the template card is enough (quota)
     with _lock:
         job = _pending.get(card["card_id"])
         if job is not None:

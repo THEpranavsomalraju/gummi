@@ -65,7 +65,8 @@ class Gold:
     async def run(self) -> None:
         first = True
         while True:
-            if first or clock.running:
+            from .. import activity
+            if first or (clock.running and activity.idle_seconds() < 120):
                 try:
                     await asyncio.to_thread(self.refresh)
                 except Exception as e:  # noqa: BLE001

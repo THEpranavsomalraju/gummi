@@ -77,6 +77,7 @@ EDGES = [
 
 @router.get("/map/state")
 async def map_state():
+    activity.viewer_seen()
     snap = activity.snapshot()
     st = stream_status()
     r = gold.rollup or {}

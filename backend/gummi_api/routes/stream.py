@@ -101,6 +101,8 @@ async def stream_status_route():
 
 @router.get("/fleet")
 async def fleet_route():
+    from .. import activity
+    activity.viewer_seen()
     return fleet()
 
 

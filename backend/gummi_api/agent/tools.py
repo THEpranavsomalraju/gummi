@@ -61,6 +61,23 @@ class Ctx:
         self.subject = engine.subjects.get(self.pid) if self.pid else None
 
 
+RELIABLE_CARBS_G = 140.0      # 95% of the study meals the model learned from had 138 g of carbs or less
+
+
+def _requested_carbs(raw: list[dict]) -> float:
+    """Carbs the person actually asked about, before any portion cap (50 cookies is 50 cookies)."""
+    total = 0.0
+    for r in raw or []:
+        if r.get("carbs_g") is not None and lookup(str(r.get("name", "")))[1] != "seed":
+            total += float(r["carbs_g"])
+            continue
+        per, _ = lookup(str(r.get("name", "")))
+        unit = str(r.get("unit") or "").lower().rstrip(".")
+        q = 1.0 if unit in ("g", "gram", "grams", "oz", "ml") else float(r.get("quantity") or 1)
+        total += per["carbs_g"] * q
+    return r1(total)
+
+
 def _foods(raw: list[dict]) -> list[dict]:
     out = []
     for r in raw or []:
@@ -119,12 +136,25 @@ def simulate_food(c: Ctx, items=None, in_minutes=0, **_):
     foods = _foods(items)
     eat = (_now() + timedelta(minutes=float(in_minutes or 0))).isoformat() if in_minutes and _now() else None
     sim = run_simulation(c.uid, foods, eat)
+    asked = _requested_carbs(items)
+    modeled = r1(sum(f["carbs_g"] for f in foods))
+    reliable = asked <= RELIABLE_CARBS_G
+    sim["reliable"] = reliable
+    sim["requested_carbs_g"] = asked
     res = {"foods": [f"{f['quantity']:g} {f['unit']} {f['name']}" for f in foods],
-           "carbs_g": r1(sum(f["carbs_g"] for f in foods)), "nutrition_source": sorted({f["nutrition_source"] for f in foods}),
+           "carbs_g": modeled, "requested_carbs_g": asked, "nutrition_source": sorted({f["nutrition_source"] for f in foods}),
            "peak_with_food": sim["peak_mg_dl"], "peak_at": _hm(sim["peak_at"]),
            "peak_without_food": max(p["glucose_mg_dl"] for p in sim["baseline_curve"]),
            "verdict": sim["verdict"], "high_line": c.u.profile["high_line_mg_dl"],
            "alternatives": sim["alternatives"], "method": sim["method"]}
+    if asked > modeled + 1:
+        res["portion_note"] = f"Modeled as {modeled:.0f} g carbs (portions capped at 6); they asked about {asked:.0f} g."
+    if not reliable:
+        res = {k: v for k, v in res.items() if k not in ("peak_with_food", "peak_at", "alternatives")}
+        res["reliable"] = False
+        res["note"] = (f"About {asked:.0f} g of carbs is more than 95% of the meals I learned from (most were under "
+                       f"140 g), so I can't give a trustworthy peak. Say that plainly and kindly: it would very likely "
+                       f"push them well above {c.u.profile['high_line_mg_dl']:.0f} mg/dL. Do not quote a peak number.")
     return res, {"card_type": "simulation", "payload": sim}
 
 

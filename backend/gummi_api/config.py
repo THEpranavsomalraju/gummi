@@ -48,7 +48,8 @@ PING_SECONDS = 15.0
 STATE_PUSH_SECONDS = 1.0            # state events at most once per second (CONTRACT section 5)
 MOCK_CARD_SECONDS = float(os.environ.get("GUMMI_MOCK_CARD_SECONDS", "60"))
 MOCK_STATE_SECONDS = 5.0
-GOLD_REFRESH_SECONDS = 20.0
+GOLD_REFRESH_SECONDS = 60.0        # only while someone is watching (quota: the warehouse can auto-stop)
+IDLE_PAUSE_MIN = 15                 # replay pauses itself after 15 min with no phone, map or fleet view open
 
 # Replay engine
 DEFAULT_START = "day6T05:00"        # D-62: the 05:54 standardized breakfast comes due on screen
