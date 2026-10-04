@@ -48,10 +48,11 @@ PING_SECONDS = 15.0
 STATE_PUSH_SECONDS = 1.0            # state events at most once per second (CONTRACT section 5)
 MOCK_CARD_SECONDS = float(os.environ.get("GUMMI_MOCK_CARD_SECONDS", "60"))
 MOCK_STATE_SECONDS = 5.0
-GOLD_REFRESH_SECONDS = 20.0
+GOLD_REFRESH_SECONDS = 60.0        # only while someone is watching (quota: the warehouse can auto-stop)
+IDLE_PAUSE_MIN = 15                 # replay pauses itself after 15 min with no phone, map or fleet view open
 
 # Replay engine
-DEFAULT_START = "day6T05:00"        # D-62: the 05:54 standardized breakfast comes due on screen
+DEFAULT_START = "day4T05:00"        # D-15 (Nikhil, 2026-10-04): p_012 day 4; breakfast at 05:56
 DUE_AUTOLOG_MIN = 10                # D-27: unlogged due meals auto-log after 10 replay minutes
 UPCOMING_DUE_MIN = 360              # D-36: next 6 replay hours
 NOWCAST_EVERY_MIN = 60              # one nowcast prediction per participant per replay hour

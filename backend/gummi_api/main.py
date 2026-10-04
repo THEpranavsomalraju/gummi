@@ -52,6 +52,13 @@ async def engine_loop() -> None:
         except Exception:  # noqa: BLE001
             logging.exception("engine tick failed")
         now = time.monotonic()
+        from . import activity
+        if broadcaster.users():
+            activity.viewer_seen()
+        elif clock.running and not clock.paused and activity.idle_seconds() > config.IDLE_PAUSE_MIN * 60:
+            clock.pause()                         # nobody watching: stop spending quota; stage/go or Resume restarts it
+            logging.info("replay paused after %d idle minutes", config.IDLE_PAUSE_MIN)
+            await asyncio.to_thread(session.save)
         for uid in broadcaster.users():
             pid = store.get(uid).following
             v = engine.subjects[pid].version if pid in engine.subjects else -1

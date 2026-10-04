@@ -28,6 +28,19 @@ def hit(node: str, n: int = 1, detail: str | None = None, trace_id: str | None =
             _feed.appendleft({"t": now, "node": node, "detail": detail or node})
 
 
+_last_viewer = time.time()
+
+
+def viewer_seen() -> None:
+    """Something is watching (a /live phone, the map, or the fleet view): keep the replay and gold refresh going."""
+    global _last_viewer
+    _last_viewer = time.time()
+
+
+def idle_seconds() -> float:
+    return time.time() - _last_viewer
+
+
 def snapshot() -> dict:
     now = time.time()
     with _lock:

@@ -122,6 +122,22 @@ def _llm_step(messages: list[dict], emit, use_tools: bool = True) -> tuple[str, 
     raise RuntimeError(f"llm_unavailable: {last_err}")
 
 
+def _fallback_text(tool_results: list) -> str:
+    """Last resort when the model returns nothing: say something true from the tool results."""
+    for r in reversed(tool_results):
+        if not isinstance(r, dict):
+            continue
+        if r.get("reliable") is False:
+            return "That's more than I can predict reliably. It would very likely push you well above your range."
+        if r.get("peak_with_food") is not None:
+            return f"That would likely peak around {r['peak_with_food']:.0f} mg/dL ({r.get('verdict', '').replace('_', ' ')})."
+        if r.get("my_estimate_now") is not None:
+            return f"My estimate says you're likely around {r['my_estimate_now']:.0f} mg/dL right now."
+        if r.get("note"):
+            return str(r["note"]).split(". Do not")[0].split(". Say")[0] + "."
+    return "Sorry, I lost my train of thought there. Ask me again?"
+
+
 def _mood_after(cards: list[dict]) -> str:
     for c in cards:
         if c["card_type"] == "simulation":
@@ -189,10 +205,22 @@ def run_turn(uid: str, message: str, conversation_id: str, emit) -> None:
                 messages += [{"role": "assistant", "content": final},
                              {"role": "user", "content": "Self-check before sending: your draft broke these rules: "
                               + "; ".join(issues) + ". Rewrite it so it follows every rule, same voice. Reply with the rewrite only."}]
-                final, _ = _llm_step(messages, quiet, use_tools=False)
+                draft = final
+                rewrite, _ = _llm_step(messages, quiet, use_tools=False)
+                final = rewrite if rewrite.strip() else draft      # an empty rewrite never replaces a good draft
                 fix.set_outputs({"rewrite": final})
             emit("tool", {"name": "self_check", "status": "end", "label": LABELS["self_check"][1]})
             activity.hit("agent.self_check", detail=issues[0], log=True)
+        if not final.strip():
+            # never send an empty bubble: one retry without tools, then an answer built from the tool results
+            messages.append({"role": "user", "content": "Reply to my last message now in two short sentences, using the tool results above."})
+            try:
+                final, _ = _llm_step(messages, quiet, use_tools=False)
+            except Exception:  # noqa: BLE001
+                final = ""
+            if not final.strip():
+                final = _fallback_text(tool_results)
+            activity.hit("agent.empty_reply_recovered", detail=message[:60], log=True)
         for i in range(0, len(final), 24):                 # stream the checked answer
             emit("token", {"text": final[i:i + 24]})
         root.set_outputs({"text": final, "cards": [c["card_type"] for c in cards], "self_check": issues})
