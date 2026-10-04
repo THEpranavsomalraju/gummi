@@ -18,6 +18,8 @@ nonisolated enum MockChat {
 
     enum Route: Equatable, Sendable {
         case simulate, logMeal, walk, today, grade, state, spike
+        /// Anything else: what Gummi can do, without leading with the estimate.
+        case help
         /// "mock error": the backend's failure path (apology, gummi_view card, error, done).
         case failure
         /// "mock busy": the rate_limited error with no done.
@@ -64,14 +66,17 @@ nonisolated enum MockChat {
         func has(_ words: [String]) -> Bool { words.contains { text.contains($0) } }
         if text.contains("mock busy") { return .busy }
         if text.contains("mock error") { return .failure }
-        if has(["just had", "i ate", "i had", "just ate", "log "]) { return .logMeal }
+        // Telling Gummi you ate something logs it; asking whether you can eat it simulates (Pranav's routing fix).
+        let asks = has(["can i", "should i", "could i", "is it ok", "would it"])
+        if !asks, text.range(of: #"\b(add|added|log|logged|ate|had)\b"#, options: .regularExpression) != nil { return .logMeal }
         if has(["can i eat", "can i have", "should i eat", "should i have", "is it ok"]) { return .simulate }
         if food(in: text) != nil, text.contains("?") { return .simulate }
         if text.contains("walk") { return .walk }
         if has(["spike", "why did i", "peak"]) { return .spike }
         if has(["grade", "how did you do", "accura", "predict"]) { return .grade }
         if has(["today", "how am i", "doing", "my day"]) { return .today }
-        return .state
+        if has(["right now", "estimate", "current", "my glucose", "my sugar", "where am i"]) { return .state }
+        return .help
     }
 
     static func food(in text: String) -> Seed? {
@@ -206,6 +211,11 @@ nonisolated enum MockChat {
             } else {
                 script.say("Nothing graded yet. I grade each meal two hours after it's eaten, next to CGM-only and last value.")
             }
+            script.end(mood: .calm, conversationId: conversationId, traceId: traceId)
+            return Reply(steps: script.steps)
+
+        case .help:
+            script.say("I can log food, check a food before you eat it, suggest a walk, or explain a spike. What would you like?")
             script.end(mood: .calm, conversationId: conversationId, traceId: traceId)
             return Reply(steps: script.steps)
 

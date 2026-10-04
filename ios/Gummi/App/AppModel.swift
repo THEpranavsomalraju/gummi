@@ -134,6 +134,8 @@ final class AppModel {
         self.makeService = makeService ?? { mode in try AppModel.liveOrMockService(mode, defaults: defaults) }
         let configured = (try? AppConfig.load()) != nil
         mode = defaults.string(forKey: Self.modeKey).flatMap(AppMode.init(rawValue:)) ?? (configured ? .live : .mock)
+        // A `-gummi.mode` launch argument wins for this launch; saving it makes it stick after the next plain launch.
+        defaults.set(mode.rawValue, forKey: Self.modeKey)
         chat.actingAsName = { [weak self] in self?.displayName(for: self?.state?.actingAs) }
     }
 

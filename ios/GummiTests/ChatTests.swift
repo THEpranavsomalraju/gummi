@@ -316,7 +316,14 @@ struct MockChatTests {
         #expect(MockChat.route("Should I take a walk?") == .walk)
         #expect(MockChat.route("How am I doing today?") == .today)
         #expect(MockChat.route("How did you do on lunch?") == .grade)
-        #expect(MockChat.route("hello") == .state)
+        #expect(MockChat.route("hello") == .help)
+        #expect(MockChat.route("Add a cookie to my log") == .logMeal)
+        #expect(MockChat.route("I ate two slices of pizza") == .logMeal)
+        #expect(MockChat.route("Can I add a cookie?") == .simulate)
+        #expect(MockChat.route("Should I have had the bagel?") != .logMeal)
+        #expect(MockChat.route("What's my estimate right now?") == .state)
+        // "ate" inside a word (estimate) isn't eating.
+        #expect(MockChat.route("Show my estimate") == .state)
         #expect(MockChat.route("mock busy") == .busy)
     }
 
