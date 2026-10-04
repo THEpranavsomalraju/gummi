@@ -9,7 +9,8 @@ resources:
       continuous: ${var.continuous}
       channel: CURRENT
       configuration:
-        landing_path: /Volumes/${var.catalog}/gummi_data/landing/events/
+        # The App's real replay (Backend REQUEST 2125). landing/events/ keeps the test fixtures, read by no pipeline.
+        landing_path: /Volumes/${var.catalog}/gummi_data/landing/events_live/
       libraries:
         - file:
             path: ../pipelines/gummi_stream/01_bronze.sql
