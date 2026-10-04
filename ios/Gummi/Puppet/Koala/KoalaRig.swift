@@ -74,7 +74,7 @@ final class KoalaRig {
 
         rimLight.light.color = UIColor(red: CGFloat(pose.rimColor.x), green: CGFloat(pose.rimColor.y),
                                        blue: CGFloat(pose.rimColor.z), alpha: 1)
-        rimLight.light.intensity = 4000 + 16000 * pose.rimStrength
+        rimLight.light.intensity = 800 + 7000 * pose.rimStrength
 
         // The camera leans a few degrees toward the finger.
         let azimuth = 0.28 + pose.eyeLook.x * 0.06, elevation = 0.12 + pose.eyeLook.y * 0.04
@@ -83,13 +83,13 @@ final class KoalaRig {
         camera.look(at: Self.lookTarget, from: camera.position, relativeTo: nil)
     }
 
-    /// The translucent-shell experiment: see-through jelly over a glowing core.
+    /// The playground's alpha-blended variant of the same jelly surface.
     func setTranslucent(_ translucent: Bool) {
         let material = KoalaMaterials.jelly(translucent: translucent)
         for body in bodies {
             body.entity.model?.materials = [material]
-            // Only the big pieces get a glowing core.
-            body.core.isEnabled = translucent && (body === head || body === bodies.first)
+            // Volume color now comes from transmission, so no opaque inner copy is needed.
+            body.core.isEnabled = false
         }
     }
 
@@ -151,12 +151,12 @@ final class KoalaRig {
         scene.addChild(camera)
 
         let key = DirectionalLight()
-        key.light.intensity = 2400
+        key.light.intensity = 450
         key.look(at: [0, 0.15, 0], from: [-0.6, 1.1, 0.9], relativeTo: nil)
         scene.addChild(key)
 
         let fill = PointLight()
-        fill.light.intensity = 9000
+        fill.light.intensity = 700
         fill.light.attenuationRadius = 3
         fill.position = [0.7, 0.3, 0.8]
         scene.addChild(fill)
@@ -165,8 +165,8 @@ final class KoalaRig {
         rimLight.position = [0.1, 0.55, -0.45]
         scene.addChild(rimLight)
 
-        if let image = Self.studioEnvironmentImage(), let environment = try? EnvironmentResource(equirectangular: image) {
-            scene.components.set(ImageBasedLightComponent(source: .single(environment), intensityExponent: 0.6))
+        if let environment = KoalaMaterials.environment {
+            scene.components.set(ImageBasedLightComponent(source: .single(environment), intensityExponent: 3.2))
             let receivers: [Entity] = bodies.flatMap { [$0.entity, $0.core] } + (face?.models ?? [])
             for entity in receivers {
                 entity.components.set(ImageBasedLightReceiverComponent(imageBasedLight: scene))
@@ -174,22 +174,4 @@ final class KoalaRig {
         }
     }
 
-    /// A soft studio: bright top, gray horizon, darker floor, and broad soft lights for wide, gentle highlights.
-    private static func studioEnvironmentImage() -> CGImage? {
-        let width = 512, height = 256
-        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-                                      space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                                      bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return nil }
-        let colors = [CGColor(gray: 0.32, alpha: 1), CGColor(gray: 0.62, alpha: 1), CGColor(gray: 0.92, alpha: 1)] as CFArray
-        if let gradient = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB), colors: colors, locations: [0, 0.5, 1]) {
-            context.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: 0, y: height), options: [])
-        }
-        let soft = [CGColor(gray: 1, alpha: 1), CGColor(gray: 1, alpha: 0)] as CFArray
-        if let glow = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB), colors: soft, locations: [0, 1]) {
-            for (center, radius) in [(CGPoint(x: 330, y: 190), CGFloat(70)), (CGPoint(x: 140, y: 170), CGFloat(45))] {
-                context.drawRadialGradient(glow, startCenter: center, startRadius: 0, endCenter: center, endRadius: radius, options: [])
-            }
-        }
-        return context.makeImage()
-    }
 }
