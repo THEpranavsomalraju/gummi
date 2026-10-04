@@ -21,6 +21,19 @@ from .prompts import system_prompt
 log = logging.getLogger("gummi.chat")
 MAX_STEPS = 6
 HISTORY_TURNS = 6
+# Tool status chips (CONTRACT 1.6): a little fun, never weird. One start/end pair per tool per turn.
+LABELS = {
+    "get_state": ("Peeking at your numbers…", "Got your latest ✓"),
+    "simulate_food": ("Running it through my model…", "Crunched the numbers ✓"),
+    "log_meal": ("Adding it to your food log…", "Logged ✓"),
+    "suggest_walk": ("Doing the walk math…", "Walk math done ✓"),
+    "get_history": ("Flipping back through your day…", "Caught up ✓"),
+    "explain_spike": ("Retracing that spike…", "Found the culprit ✓"),
+    "today_summary": ("Tallying up today…", "All tallied ✓"),
+    "get_gold_summary": ("Checking my report card…", "Report card's in ✓"),
+    "ask_data": ("Digging deeper in Databricks… this one takes a sec", "Dug it up ✓"),
+    "self_check": ("Double-checking myself…", "Checked ✓"),
+}
 CONVERSATIONS: dict[str, list[dict]] = {}
 _busy: set[str] = set()
 
@@ -130,6 +143,7 @@ def run_turn(uid: str, message: str, conversation_id: str, emit) -> None:
     cards: list[dict] = []
     final = ""
     tool_results: list = []
+    chipped: set[str] = set()
     quiet = lambda ev, data: None  # noqa: E731  (answers are checked before the phone sees them)
     t0 = time.perf_counter()
     with span("gummi_chat_turn", "AGENT") as root:
@@ -146,7 +160,10 @@ def run_turn(uid: str, message: str, conversation_id: str, emit) -> None:
                              "tool_calls": [{"id": c["id"], "type": "function",
                                              "function": {"name": c["name"], "arguments": c["args"] or "{}"}} for c in calls]})
             for c in calls:
-                emit("tool", {"name": c["name"], "status": "start"})
+                first = c["name"] not in chipped
+                if first:
+                    chipped.add(c["name"])
+                    emit("tool", {"name": c["name"], "status": "start", "label": LABELS.get(c["name"], ("Thinking…", "Done ✓"))[0]})
                 try:
                     args = json.loads(c["args"] or "{}")
                 except json.JSONDecodeError:
@@ -156,7 +173,8 @@ def run_turn(uid: str, message: str, conversation_id: str, emit) -> None:
                     res, card = tools.run(c["name"], args, ctx)
                     ts.set_outputs(res)
                 activity.hit(f"tool.{c['name']}", detail="Coach agent", log=True)
-                emit("tool", {"name": c["name"], "status": "end"})
+                if first:
+                    emit("tool", {"name": c["name"], "status": "end", "label": LABELS.get(c["name"], ("Thinking…", "Done ✓"))[1]})
                 if card:
                     cards.append(card)
                     emit("card", card)
@@ -165,6 +183,7 @@ def run_turn(uid: str, message: str, conversation_id: str, emit) -> None:
         issues = guard.problems(message, final, guard.numbers_in(tool_results), u.profile["high_line_mg_dl"],
                                 u.profile["low_line_mg_dl"])
         if issues:
+            emit("tool", {"name": "self_check", "status": "start", "label": LABELS["self_check"][0]})
             with span("self_check_rewrite", "CHAIN") as fix:
                 fix.set_inputs({"draft": final, "problems": issues})
                 messages += [{"role": "assistant", "content": final},
@@ -172,6 +191,7 @@ def run_turn(uid: str, message: str, conversation_id: str, emit) -> None:
                               + "; ".join(issues) + ". Rewrite it so it follows every rule, same voice. Reply with the rewrite only."}]
                 final, _ = _llm_step(messages, quiet, use_tools=False)
                 fix.set_outputs({"rewrite": final})
+            emit("tool", {"name": "self_check", "status": "end", "label": LABELS["self_check"][1]})
             activity.hit("agent.self_check", detail=issues[0], log=True)
         for i in range(0, len(final), 24):                 # stream the checked answer
             emit("token", {"text": final[i:i + 24]})
@@ -199,6 +219,7 @@ async def stream_turn(uid: str, message: str, conversation_id: str | None):
 
     if uid in _busy:
         yield sse("error", {"code": "rate_limited", "message": "One message at a time, please."})
+        yield sse("done", {"conversation_id": conversation_id, "trace_id": None})
         return
     _busy.add(uid)
     yield sse("mood", {"mood": "thinking"})
@@ -221,7 +242,11 @@ async def stream_turn(uid: str, message: str, conversation_id: str | None):
     threading.Thread(target=work, daemon=True, name=f"chat-{uid}").start()
     try:
         while True:
-            item = await q.get()
+            try:
+                item = await asyncio.wait_for(q.get(), timeout=5.0)
+            except asyncio.TimeoutError:
+                yield ": working\n\n"           # SSE comment heartbeat while a slow tool runs (CONTRACT 1.6)
+                continue
             if item is None:
                 break
             yield item

@@ -212,3 +212,27 @@ def test_food_log(client):
     assert not mine.graded and mine.prediction and mine.prediction.predicted_peak_mg_dl > 0 and mine.grade is None
     assert any(e.graded and e.grade for e in log.entries if e.origin == "study_log"), "a study meal graded after 3 h"
     ok(client.post("/api/v1/stream/stop"))
+
+
+def test_day_summary_and_stale(client):
+    h = {"X-User-Id": "u_day"}
+    ok(client.post("/api/v1/follow", json={"user_id": "p_012"}, headers=h))
+    ok(client.post("/api/v1/stream/start", json={"speed": 60, "start_at": "day6T05:30"}))
+    advance(300)
+    d = M.DaySummary.model_validate(ok(client.get("/api/v1/day", headers=h)))
+    assert d.glucose and d.hourly and d.meals.count >= 1 and d.predictions.graded >= 1 and d.highlights
+    s = M.State.model_validate(ok(client.get("/api/v1/state", headers=h)))
+    assert s.data_status == "live" and s.gummi_view is not None
+    # run past the end of p_012's data: the estimate must stop, not extrapolate for hours
+    from gummi_api.stream.producer import parse_start
+    from gummi_api.state.hot_store import store
+    last = engine.subjects["p_012"].cgm_off[-1]
+    from gummi_api.stream.producer import clock
+    target = last + 60 + 300
+    engine.catch_up(parse_start("day6T05:30"), target)
+    clock.anchor_replay, clock.paused = target, True
+    s = M.State.model_validate(ok(client.get("/api/v1/state", headers=h)))
+    assert s.data_status == "stale" and s.gummi_view is None and s.estimate == [] and s.forecast == []
+    r = client.post("/api/v1/simulate", headers=h, json={"items": [{"name": "cookie"}]})
+    assert r.status_code == 409 and r.json()["error"]["code"] == "stale_data"
+    ok(client.post("/api/v1/stream/stop"))

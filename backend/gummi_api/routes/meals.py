@@ -133,6 +133,13 @@ def _patch(uid: str, meal_id: str, body: dict) -> dict:
     s, meal = _find(uid, meal_id)
     meal["items"] = _items(body.get("items", []))
     meal["totals"] = totals(meal["items"])
+    if s is None and meal["meal_id"] in store.get(uid).meal_sims:
+        try:                                              # the user's own simulated entry: refresh its likely peak
+            sim = run_simulation(uid, meal["items"])
+            store.get(uid).meal_sims[meal["meal_id"]].update(predicted_peak_mg_dl=sim["peak_mg_dl"], peak_at=sim["peak_at"],
+                                                              verdict=sim["verdict"])
+        except ApiError:
+            pass
     if s is not None:
         # portions corrected: update the model input and recompute the prediction (CONTRACT section 4)
         for row in s.meal_inputs:
@@ -192,6 +199,8 @@ def run_simulation(uid: str, items: list[dict], eat_at=None) -> dict:
     s = _acting(uid)
     if s is None or len(s.conf_t) < 3 or clock.now() is None:
         raise ApiError(409, "no_cgm_data", "Follow a participant first: simulations need glucose data")
+    if engine.stale(s, clock.now()):
+        raise ApiError(409, "stale_data", "No recent Dexcom readings, so I can't simulate right now")
     now = clock.replay_to_wall(clock.now())
     eat = parse(eat_at) if eat_at else now
     sim = s.model.simulate(engine.ctx(s), now, [{k: i[k] for k in MACROS} for i in items], eat_at=eat)
