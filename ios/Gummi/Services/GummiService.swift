@@ -9,7 +9,8 @@ nonisolated enum AppMode: String, CaseIterable, Sendable {
 nonisolated protocol ChatService: Sendable {
     /// One chat turn as server-sent events. Cancel the consuming task to stop it.
     func chat(_ message: String, conversationId: String?) -> AsyncThrowingStream<ChatEvent, Error>
-    func updateMeal(id: String, items: [MealItem]) async throws -> Meal
+    /// PATCH /meals. On a participant's day the backend re-simulates and returns the new likely peak (1.6).
+    func updateMeal(id: String, items: [MealItem]) async throws -> SavedMeal
 }
 
 /// Everything the app needs from a backend. The live and mock versions emit identical events,
@@ -62,8 +63,14 @@ nonisolated final class LiveGummiService: GummiService {
     func chat(_ message: String, conversationId: String?) -> AsyncThrowingStream<ChatEvent, Error> {
         api.chat(message: message, conversationId: conversationId)
     }
-    func updateMeal(id: String, items: [MealItem]) async throws -> Meal { try await api.updateMeal(id: id, items: items) }
+    func updateMeal(id: String, items: [MealItem]) async throws -> SavedMeal { try await api.updateMeal(id: id, items: items) }
     func sendWalkEvent(_ body: WalkEventBody) async throws { try await api.sendWalkEvent(body) }
     func latestWalk() async throws -> WalkSummary { try await api.latestWalk() }
     func uploadSteps(_ samples: [StepSample]) async throws -> Int { try await api.uploadSteps(samples) }
+}
+
+nonisolated extension GummiService {
+    func setPaused(_ paused: Bool) async throws {
+        _ = try await paused ? pauseStream() : resumeStream()
+    }
 }

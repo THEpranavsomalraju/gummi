@@ -12,7 +12,7 @@ nonisolated enum MockChat {
     struct Reply: Sendable {
         var steps: [Step]
         /// The meal log_meal saved, for the engine to keep (PATCH) and announce (meal_logged card).
-        var savedMeal: Meal? = nil
+        var savedMeal: SavedMeal? = nil
         var likelyPeak: Double? = nil
     }
 
@@ -80,7 +80,10 @@ nonisolated enum MockChat {
     static func quantity(in text: String) -> Double {
         let text = text.lowercased()
         if text.contains("half") { return 0.5 }
-        let words: [(String, Double)] = [("two", 2), ("three", 3), ("four", 4), ("2 ", 2), ("3 ", 3), ("4 ", 4)]
+        if let number = text.split(whereSeparator: { !$0.isNumber }).compactMap({ Double($0) }).first, number > 0 {
+            return number
+        }
+        let words: [(String, Double)] = [("two", 2), ("three", 3), ("four", 4)]
         return words.first { text.contains($0.0) }?.1 ?? 1
     }
 
@@ -113,6 +116,11 @@ nonisolated enum MockChat {
                 return Reply(steps: script.steps)
             }
             script.tool("simulate_food", card: .simulation(simulation))
+            guard simulation.isReliable else {
+                script.say("That's more than I've learned to predict: about \(Int(simulation.requestedCarbsG ?? 0)) g of carbs. It would very likely spike you well above your range. A smaller portion is something I can actually forecast.")
+                script.end(mood: .high, conversationId: conversationId, traceId: traceId)
+                return Reply(steps: script.steps)
+            }
             let peak = Int(simulation.peakMgDl.rounded())
             let at = clock(simulation.peakAt)
             let half = simulation.alternatives.first.map { Int($0.peakMgDl.rounded()) } ?? peak
@@ -133,15 +141,17 @@ nonisolated enum MockChat {
             let item = seed.item(quantity: quantity(in: message))
             let meal = Meal(mealId: "m_chat_\(turn)", eatenAt: state.replayNow ?? .now, source: .chat, items: [item],
                             totals: MealTotals(items: [item]), isStandardBreakfast: false, predictionId: nil)
-            script.tool("log_meal", card: .mealSaved(meal))
-            let likely = acting == nil ? nil : simulate([item], state: state, turn: turn)?.peakMgDl
+            let likelySimulation = acting == nil ? nil : simulate([item], state: state, turn: turn)
+            let likely = likelySimulation?.peakMgDl
+            let saved = SavedMeal(meal, simulated: acting != nil, likelyPeakMgDl: likely, peakAt: likelySimulation?.peakAt)
+            script.tool("log_meal", card: .mealSaved(saved))
             if let acting, let likely {
                 script.say("Got it, I added \(amount(item)) to the food log. I think it likely peaks near \(Int(likely.rounded())). It's simulated on \(acting)'s day, so I won't grade it.")
             } else {
                 script.say("Saved \(amount(item)) to your food log. No glucose data is connected for you, so there's no prediction.")
             }
             script.end(mood: .calm, conversationId: conversationId, traceId: traceId)
-            return Reply(steps: script.steps, savedMeal: meal, likelyPeak: likely)
+            return Reply(steps: script.steps, savedMeal: saved, likelyPeak: likely)
 
         case .walk:
             guard let peak = state.forecast.max(by: { $0.glucoseMgDl < $1.glucoseMgDl }) else {
@@ -225,13 +235,16 @@ nonisolated enum MockChat {
         let high = state.profile.highLineMgDl
         let verdict: Verdict = peak.glucoseMgDl < high ? .go : min(halfPeak, walkPeak) < high ? .goWithTweak : .wait
         let name = items.first?.name ?? "that"
+        // Like the backend (1.6): past about 140 g of carbs the model is out of its depth, so no peak is quoted.
+        let reliable = carbs <= 140
         return Simulation(items: items, eatAt: now.t, baselineCurve: baseline, withFoodCurve: withFood,
                           peakMgDl: peak.glucoseMgDl, peakAt: peak.t, verdict: verdict,
                           summary: "With the \(name) you'd likely peak near \(Int(peak.glucoseMgDl.rounded())).",
                           alternatives: [Alternative(label: "Half portion", peakMgDl: halfPeak.rounded(toPlaces: 1)),
                                          Alternative(label: "Walk 10 minutes after", peakMgDl: walkPeak.rounded(toPlaces: 1),
                                                      effectSource: .literature)],
-                          method: .model, predictionId: "pr_sim_\(turn)")
+                          method: .model, predictionId: "pr_sim_\(turn)",
+                          reliable: reliable ? nil : false, requestedCarbsG: reliable ? nil : carbs.rounded())
     }
 
     private static func clock(_ date: Date) -> String {
@@ -252,8 +265,10 @@ nonisolated enum MockChat {
         var steps: [Step] = [Step(delay: .zero, event: .mood(.thinking))]
 
         mutating func tool(_ name: String, card: ChatCard?) {
-            steps.append(Step(delay: .milliseconds(250), event: .tool(name: name, status: .start)))
-            steps.append(Step(delay: .milliseconds(650), event: .tool(name: name, status: .end)))
+            // 1.6: tool events carry the chip label.
+            let label = ToolChip(id: 0, name: name).label
+            steps.append(Step(delay: .milliseconds(250), event: .tool(name: name, status: .start, label: label)))
+            steps.append(Step(delay: .milliseconds(650), event: .tool(name: name, status: .end, label: label)))
             if let card { self.card(card) }
         }
 

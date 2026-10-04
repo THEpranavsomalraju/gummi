@@ -61,6 +61,7 @@ struct TodayView: View {
                                                description: Text("Gummi's briefings, meals, and grades land here as the day unfolds."))
                     }
                 }
+                .safeAreaInset(edge: .top) { ConnectionCapsule() }
                 .onChange(of: model.focusedCardId, initial: true) { _, id in
                     guard let id else { return }
                     withAnimation(.snappy) { proxy.scrollTo(id, anchor: .top) }

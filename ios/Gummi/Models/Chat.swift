@@ -12,7 +12,7 @@ nonisolated struct WalkSuggestion: Codable, Hashable, Sendable {
 
 /// An inline chat card (CONTRACT section 6). A card_type this build doesn't know decodes as nil and is skipped.
 nonisolated enum ChatCard: Hashable, Sendable {
-    case mealSaved(Meal)
+    case mealSaved(SavedMeal)
     case simulation(Simulation)
     case gummiView(GummiView)
     case walkSuggestion(WalkSuggestion)
@@ -26,7 +26,7 @@ nonisolated enum ChatCard: Hashable, Sendable {
     static func decode(_ data: Data, using decoder: JSONDecoder = JSONCoding.decoder()) throws -> ChatCard? {
         func payload<P: Decodable>(_ type: P.Type) throws -> P { try decoder.decode(Body<P>.self, from: data).payload }
         switch try decoder.decode(Head.self, from: data).cardType {
-        case "meal_saved": return .mealSaved(try payload(Meal.self))
+        case "meal_saved": return .mealSaved(try payload(SavedMeal.self))
         case "simulation": return .simulation(try payload(Simulation.self))
         case "gummi_view": return .gummiView(try payload(GummiView.self))
         case "walk_suggestion": return .walkSuggestion(try payload(WalkSuggestion.self))
@@ -34,6 +34,33 @@ nonisolated enum ChatCard: Hashable, Sendable {
         case "meal_due": return .mealDue(try payload(StoryCard.self))
         default: return nil
         }
+    }
+}
+
+/// A meal_saved card's payload and PATCH /meals' response (1.6): the Meal plus, on a study participant's day,
+/// that it's simulated (never graded) and its likely peak.
+nonisolated struct SavedMeal: Decodable, Hashable, Sendable {
+    let meal: Meal
+    /// Nil from a pre-1.6 backend, which didn't say.
+    var simulated: Bool? = nil
+    var likelyPeakMgDl: Double? = nil
+    var peakAt: Date? = nil
+
+    init(_ meal: Meal, simulated: Bool? = nil, likelyPeakMgDl: Double? = nil, peakAt: Date? = nil) {
+        self.meal = meal
+        self.simulated = simulated
+        self.likelyPeakMgDl = likelyPeakMgDl
+        self.peakAt = peakAt
+    }
+
+    private enum CodingKeys: String, CodingKey { case simulated, likelyPeakMgDl, peakAt }
+
+    init(from decoder: Decoder) throws {
+        meal = try Meal(from: decoder)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        simulated = try container.decodeIfPresent(Bool.self, forKey: .simulated)
+        likelyPeakMgDl = try container.decodeIfPresent(Double.self, forKey: .likelyPeakMgDl)
+        peakAt = try container.decodeIfPresent(Date.self, forKey: .peakAt)
     }
 }
 

@@ -25,11 +25,15 @@ struct GummiApp: App {
             .environment(model)
             .onAppear { notificationTaps.onTap = { model.selectedTab = .today } }
             #if DEBUG
-            // Screenshot helpers: -gummi.tab today, -gummi.sheet follow|chat|walk, and -gummi.chat "first|second"
+            // Screenshot helpers: -gummi.tab today|settings, -gummi.sheet follow|chat|walk, and -gummi.chat "first|second"
             // to ask questions in turn (an empty -gummi.chat opens the empty chat).
             .task {
                 let defaults = UserDefaults.standard
-                if defaults.string(forKey: "gummi.tab") == "today" { model.selectedTab = .today }
+                switch defaults.string(forKey: "gummi.tab") {
+                case "today": model.selectedTab = .today
+                case "settings": model.selectedTab = .settings
+                default: break
+                }
                 try? await Task.sleep(for: .seconds(2))
                 switch defaults.string(forKey: "gummi.sheet") {
                 case "follow": model.showsFollowPicker = true

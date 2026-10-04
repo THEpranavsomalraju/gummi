@@ -38,7 +38,8 @@ nonisolated enum ChatEvent: Sendable, Hashable {
 
     case token(String)
     /// Tool names stay free strings: Backend adds tools without breaking the phone.
-    case tool(name: String, status: ToolStatus)
+    /// `label` (1.6) is the backend's chip text; older builds send none.
+    case tool(name: String, status: ToolStatus, label: String? = nil)
     case card(ChatCard)
     case mood(Mood)
     case done(conversationId: String, traceId: String?)
@@ -47,7 +48,7 @@ nonisolated enum ChatEvent: Sendable, Hashable {
     case unknown(name: String)
 
     nonisolated private struct TokenPayload: Decodable { let text: String }
-    nonisolated private struct ToolPayload: Decodable { let name: String; let status: ToolStatus }
+    nonisolated private struct ToolPayload: Decodable { let name: String; let status: ToolStatus; let label: String? }
     nonisolated private struct MoodPayload: Decodable { let mood: Mood }
     nonisolated private struct DonePayload: Decodable { let conversationId: String; let traceId: String? }
     nonisolated private struct ErrorPayload: Decodable { let code: String; let message: String }
@@ -59,7 +60,7 @@ nonisolated enum ChatEvent: Sendable, Hashable {
             return .token(try decoder.decode(TokenPayload.self, from: data).text)
         case "tool":
             let tool = try decoder.decode(ToolPayload.self, from: data)
-            return .tool(name: tool.name, status: tool.status)
+            return .tool(name: tool.name, status: tool.status, label: tool.label)
         case "card":
             return try ChatCard.decode(data, using: decoder).map(ChatEvent.card) ?? .unknown(name: "card")
         case "mood":

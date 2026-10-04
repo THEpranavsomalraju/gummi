@@ -42,7 +42,7 @@ nonisolated final class MockGummiService: GummiService {
         }
     }
 
-    func updateMeal(id: String, items: [MealItem]) async throws -> Meal { try await engine.updateMeal(id, items: items) }
+    func updateMeal(id: String, items: [MealItem]) async throws -> SavedMeal { try await engine.updateMeal(id, items: items) }
     func sendWalkEvent(_ body: WalkEventBody) async throws { await engine.walkEvent(body) }
     func latestWalk() async throws -> WalkSummary {
         guard let walk = await engine.latestWalk else {
@@ -71,7 +71,7 @@ actor MockEngine {
     private var subscribers: [UUID: AsyncStream<ServiceEvent>.Continuation] = [:]
     private var ticker: Task<Void, Never>?
     private var chatTurns = 0
-    private var chatMeals: [String: Meal] = [:]
+    private var chatMeals: [String: SavedMeal] = [:]
     private(set) var latestWalk: WalkSummary?
 
     init(session: MockSession, minutesPerSecond: Double) {
@@ -159,23 +159,28 @@ actor MockEngine {
         chatTurns += 1
         let reply = MockChat.reply(to: message, state: snapshot(), latestGrade: session.grades.last, turn: chatTurns,
                                    conversationId: conversationId ?? "conv_mock_\(chatTurns)")
-        if let meal = reply.savedMeal {
-            chatMeals[meal.mealId] = meal
-            broadcast(.live(.card(session.addChatMeal(meal, likelyPeak: reply.likelyPeak))))
+        if let saved = reply.savedMeal {
+            chatMeals[saved.meal.mealId] = saved
+            broadcast(.live(.card(session.addChatMeal(saved.meal, likelyPeak: reply.likelyPeak))))
             pushState()
         }
         return reply.steps
     }
 
     /// PATCH /meals for a chat meal: the phone sends scaled macros, so the totals are just their sum.
-    func updateMeal(_ id: String, items: [MealItem]) throws -> Meal {
-        guard let meal = chatMeals[id] else { throw APIError.http(status: 404, code: "not_found", message: "meal \(id) not found") }
+    func updateMeal(_ id: String, items: [MealItem]) throws -> SavedMeal {
+        guard let saved = chatMeals[id] else { throw APIError.http(status: 404, code: "not_found", message: "meal \(id) not found") }
         guard !items.isEmpty else { throw APIError.http(status: 422, code: "invalid", message: "items must not be empty") }
+        let meal = saved.meal
         let updated = Meal(mealId: meal.mealId, eatenAt: meal.eatenAt, source: meal.source, items: items,
                            totals: MealTotals(items: items), isStandardBreakfast: false, predictionId: meal.predictionId)
-        chatMeals[id] = updated
+        // Re-simulated like the backend (1.6): the likely peak moves with the carbs.
+        let state = snapshot()
+        let peak = saved.simulated == true ? MockChat.simulate(items, state: state, turn: chatTurns)?.peakMgDl : nil
+        let result = SavedMeal(updated, simulated: saved.simulated, likelyPeakMgDl: peak ?? saved.likelyPeakMgDl, peakAt: saved.peakAt)
+        chatMeals[id] = result
         pushState()
-        return updated
+        return result
     }
 
     /// A real phone walk in mock mode: the same summary card and happy mood the backend sends.

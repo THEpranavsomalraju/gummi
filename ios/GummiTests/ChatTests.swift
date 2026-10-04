@@ -37,7 +37,7 @@ struct ChatDecodingTests {
         let grade = String(decoding: try Fixtures.data("grade_walk_not_graded"), as: UTF8.self)
         let due = String(decoding: try Fixtures.data("card_meal_due"), as: UTF8.self)
         guard case .card(.mealSaved(let saved)) = try cardEvent("meal_saved", payload: meal) else { throw CocoaError(.coderInvalidValue) }
-        #expect(saved.mealId == "m_1")
+        #expect(saved.meal.mealId == "m_1")
         guard case .card(.simulation(let sim)) = try cardEvent("simulation", payload: simulation) else { throw CocoaError(.coderInvalidValue) }
         #expect(sim.items.first?.name == "cookie")
         guard case .card(.grade(let graded)) = try cardEvent("grade", payload: grade) else { throw CocoaError(.coderInvalidValue) }
@@ -154,9 +154,9 @@ struct ChatModelTests {
             }
         }
 
-        func updateMeal(id: String, items: [MealItem]) async throws -> Meal {
-            Meal(mealId: id, eatenAt: .now, source: .chat, items: items, totals: MealTotals(items: items),
-                 isStandardBreakfast: false, predictionId: nil)
+        func updateMeal(id: String, items: [MealItem]) async throws -> SavedMeal {
+            SavedMeal(Meal(mealId: id, eatenAt: .now, source: .chat, items: items, totals: MealTotals(items: items),
+                           isStandardBreakfast: false, predictionId: nil))
         }
     }
 
@@ -272,7 +272,7 @@ struct ChatModelTests {
 
     @Test func mealSavedIsTaggedWhileActingAsAndSavesEditedPortions() async throws {
         let meal = try #require(meal)
-        let chat = model(ScriptedChat([([.card(.mealSaved(meal)), .done(conversationId: "c", traceId: nil)], false)]))
+        let chat = model(ScriptedChat([([.card(.mealSaved(SavedMeal(meal))), .token("Saved."), .done(conversationId: "c", traceId: nil)], false)]))
         chat.actingAsName = { "Participant 12" }
         chat.send("I just had cereal")
         await finish(chat)
@@ -284,7 +284,7 @@ struct ChatModelTests {
             Issue.record("expected the meal_saved card")
             return
         }
-        #expect(saved.totals.carbsG == (meal.totals.carbsG * 2).rounded(toPlaces: 1))
+        #expect(saved.meal.totals.carbsG == (meal.totals.carbsG * 2).rounded(toPlaces: 1))
         #expect(chat.savingMealIds.isEmpty)
     }
 
@@ -324,8 +324,8 @@ struct MockChatTests {
         let reply = MockChat.reply(to: "Can I eat a cookie now?", state: try state(), latestGrade: nil, turn: 1, conversationId: "conv_m")
         let events = events(reply)
         #expect(events.first == .mood(.thinking))
-        #expect(events[1] == .tool(name: "simulate_food", status: .start))
-        #expect(events[2] == .tool(name: "simulate_food", status: .end))
+        #expect(events[1] == .tool(name: "simulate_food", status: .start, label: "Simulating that food…"))
+        #expect(events[2] == .tool(name: "simulate_food", status: .end, label: "Simulating that food…"))
         guard case .card(.simulation(let simulation)) = events[3] else {
             Issue.record("expected a simulation card")
             return
@@ -344,12 +344,14 @@ struct MockChatTests {
 
     @Test func logMealWhileActingAsIsSimulatedAndUngraded() throws {
         let reply = MockChat.reply(to: "I just had two cookies", state: try state(), latestGrade: nil, turn: 2, conversationId: "c")
-        let meal = try #require(reply.savedMeal)
+        let saved = try #require(reply.savedMeal)
+        let meal = saved.meal
+        #expect(saved.simulated == true && saved.likelyPeakMgDl != nil)
         #expect(meal.items.first?.quantity == 2 && meal.totals.carbsG == 44)
         #expect(reply.likelyPeak != nil)
         let text = events(reply).compactMap { if case .token(let piece) = $0 { piece } else { nil } }.joined()
         #expect(text.contains("simulated on Participant 12's day, so I won't grade it"))
-        #expect(events(reply).contains(.card(.mealSaved(meal))))
+        #expect(events(reply).contains(.card(.mealSaved(saved))))
     }
 
     @Test func notFollowingAnyoneExplainsInsteadOfSimulating() throws {
@@ -370,12 +372,12 @@ struct MockChatTests {
         let service = MockGummiService(day: try MockDay.load())
         var saved: Meal?
         for try await event in service.chat("I just had a granola bar", conversationId: nil) {
-            if case .card(.mealSaved(let meal)) = event { saved = meal }
+            if case .card(.mealSaved(let meal)) = event { saved = meal.meal }
         }
         let meal = try #require(saved)
         let half = meal.items.map { $0.scaled(toQuantity: 0.5) }
         let updated = try await service.updateMeal(id: meal.mealId, items: half)
-        #expect(updated.totals.carbsG == 14.5)
+        #expect(updated.meal.totals.carbsG == 14.5)
         await #expect(throws: APIError.self) { try await service.updateMeal(id: "m_missing", items: half) }
     }
 }

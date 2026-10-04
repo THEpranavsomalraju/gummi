@@ -11,8 +11,18 @@ nonisolated struct ToolChip: Identifiable, Equatable, Sendable {
     let id: Int
     let name: String
     var finished = false
+    /// The backend's own chip text (1.6), shown as is.
+    var serverLabel: String? = nil
 
     var label: String {
+        if let serverLabel, !serverLabel.isEmpty { return serverLabel }
+        switch name {
+        case "self_check": return finished ? "Double-checked my answer" : "Double-checking my answer…"
+        default: return fallbackLabel
+        }
+    }
+
+    private var fallbackLabel: String {
         switch name {
         case "get_state": finished ? "Checked your numbers" : "Checking your numbers…"
         case "simulate_food": finished ? "Simulated that food" : "Simulating that food…"
@@ -36,12 +46,15 @@ nonisolated enum ChatFailure: Equatable, Sendable {
     case unavailable
     /// The connection dropped or closed before `done`.
     case dropped
+    /// `done` arrived with nothing said.
+    case empty
 
     var line: String {
         switch self {
         case .busy: "One message at a time, please."
         case .unavailable: "Sorry, I lost my train of thought there. Try me again in a moment."
         case .dropped: "I lost my train of thought. Try again?"
+        case .empty: "Sorry, I lost my train of thought there. Ask me again?"
         }
     }
 }
@@ -152,12 +165,14 @@ final class ChatModel {
         savingMealIds.insert(mealId)
         defer { savingMealIds.remove(mealId) }
         do {
-            let meal = try await service.updateMeal(id: mealId, items: items)
+            let saved = try await service.updateMeal(id: mealId, items: items)
             withAnimation(.snappy) {
                 for t in turns.indices {
                     for c in turns[t].cards.indices {
-                        if case .mealSaved(let old) = turns[t].cards[c].card, old.mealId == mealId {
-                            turns[t].cards[c].card = .mealSaved(meal)
+                        if case .mealSaved(let old) = turns[t].cards[c].card, old.meal.mealId == mealId {
+                            turns[t].cards[c].card = .mealSaved(SavedMeal(saved.meal, simulated: saved.simulated ?? old.simulated,
+                                                                          likelyPeakMgDl: saved.likelyPeakMgDl,
+                                                                          peakAt: saved.peakAt))
                         }
                     }
                 }
@@ -195,15 +210,23 @@ final class ChatModel {
         case .token(let text):
             turns[index].text += text
             startTypewriter()
-        case .tool(let name, let status):
+        case .tool(let name, let status, let label):
             if status == .start {
-                withAnimation(.snappy) { turns[index].tools.append(ToolChip(id: turns[index].tools.count, name: name)) }
+                withAnimation(.snappy) {
+                    turns[index].tools.append(ToolChip(id: turns[index].tools.count, name: name, serverLabel: label))
+                }
             } else if let chip = turns[index].tools.lastIndex(where: { $0.name == name && !$0.finished }) {
-                withAnimation(.snappy) { turns[index].tools[chip].finished = true }
+                withAnimation(.snappy) {
+                    turns[index].tools[chip].finished = true
+                    if let label { turns[index].tools[chip].serverLabel = label }
+                }
             }
         case .card(let card):
             var simulatedOn: String?
-            if case .mealSaved = card { simulatedOn = actingAsName() }
+            // 1.6 says whether it's simulated; an older backend didn't, so infer it from acting as someone.
+            if case .mealSaved(let saved) = card, saved.simulated ?? (actingAsName() != nil) {
+                simulatedOn = actingAsName() ?? "the participant"
+            }
             withAnimation(.bouncy) { turns[index].cards.append(ChatCardItem(card: card, simulatedOn: simulatedOn)) }
         case .mood(let newMood):
             // Thinking comes from the turn itself; the final mood shows on Home's Gummi while chat is open.
@@ -227,6 +250,7 @@ final class ChatModel {
         turns[index].finished = true
         for chip in turns[index].tools.indices { turns[index].tools[chip].finished = true }
         if !ended, turns[index].failure == nil { turns[index].failure = .dropped }
+        if ended, turns[index].failure == nil, turns[index].text.isEmpty { turns[index].failure = .empty }
         // A failure with nothing said yet is said in Gummi's voice.
         if let failure = turns[index].failure, turns[index].text.isEmpty {
             turns[index].text = failure.line

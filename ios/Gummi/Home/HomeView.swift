@@ -15,6 +15,11 @@ struct HomeView: View {
             let chatting = model.chatRequest != nil
             VStack(spacing: 10) {
                 HomeHeader()
+                    .overlay(alignment: .bottom) {
+                        // Floats over the cards, so the layout never jumps.
+                        ConnectionCapsule().offset(y: 36).zIndex(1)
+                    }
+                    .zIndex(1)
                 if !chatting {
                     CoachCardStack()
                         .frame(height: height * 0.24)

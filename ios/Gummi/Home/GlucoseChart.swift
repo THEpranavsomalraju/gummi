@@ -13,7 +13,11 @@ struct GlucoseChart: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            if state.confirmed.isEmpty && state.estimate.isEmpty {
+            if state.dataStatus == .stale {
+                // 1.6: over 3 hours without a reading, Gummi doesn't guess.
+                ContentUnavailableView("No recent readings", systemImage: "waveform.path.ecg",
+                                       description: Text(Self.staleText(state.minutesSinceReading)))
+            } else if state.confirmed.isEmpty && state.estimate.isEmpty {
                 ContentUnavailableView("Waiting for readings", systemImage: "waveform.path.ecg",
                                        description: Text("The chart fills in as the replay streams."))
             } else {
@@ -94,6 +98,12 @@ struct GlucoseChart: View {
             }
         }
         .environment(\.timeZone, Theme.timeZone)
+    }
+
+    nonisolated static func staleText(_ minutes: Int?) -> String {
+        guard let minutes else { return "Gummi waits for new data before estimating anything." }
+        let age = minutes < 120 ? "\(minutes) min" : minutes < 48 * 60 ? "\(minutes / 60) h" : "\(minutes / 1440) days"
+        return "The last one was \(age) ago, so Gummi isn't estimating. Resume the replay to continue."
     }
 
     private var legend: some View {

@@ -14,6 +14,8 @@ nonisolated enum ConnectionStatus: Equatable, Sendable {
 nonisolated enum ServiceEvent: Sendable {
     case live(LiveEvent)
     case connection(ConnectionStatus)
+    /// Why the last connect failed, so the app can say "server asleep" instead of just "offline".
+    case problem(APIError)
 }
 
 /// GET /live over URLSession bytes, parsed by SSEParser (CONTRACT section 5).
@@ -68,7 +70,12 @@ nonisolated final class LiveClient: Sendable {
                 let (bytes, response) = try await api.session.bytes(for: request)
                 let status = (response as? HTTPURLResponse)?.statusCode ?? 0
                 refreshToken = status == 401
-                guard status == 200 else { throw APIError.from(status: status, body: Data()) }
+                guard status == 200 else {
+                    // Read a little of the body: a stopped Databricks App answers 503 with an HTML page.
+                    var body = Data()
+                    for try await byte in bytes where body.count < 512 { body.append(byte) }
+                    throw APIError.from(status: status, body: body)
+                }
 
                 var parser = SSEParser()
                 var announced = false
@@ -89,6 +96,11 @@ nonisolated final class LiveClient: Sendable {
                 }
             } catch {
                 if Task.isCancelled { return }
+                if let error = error as? APIError {
+                    continuation.yield(.problem(error))
+                } else if let error = error as? URLError {
+                    continuation.yield(.problem(.transport(error.localizedDescription)))
+                }
             }
 
             // The stream ended or failed: back off, and poll /state while it stays down.

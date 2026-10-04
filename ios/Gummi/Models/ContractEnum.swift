@@ -192,3 +192,10 @@ nonisolated enum GummiMode: String, ContractEnum {
     case unknown = "_unknown"
     static let unknownValue = GummiMode.unknown
 }
+
+/// CONTRACT 1.6 State.data_status.
+nonisolated enum DataStatus: String, ContractEnum {
+    case live, stale, none
+    case unknown = "_unknown"
+    static let unknownValue = DataStatus.unknown
+}

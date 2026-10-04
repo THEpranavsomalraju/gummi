@@ -26,7 +26,8 @@ final class StepsUploader {
 
     /// Reads and uploads new buckets. Returns the steps sent. Errors leave the cursor alone, so the next run retries.
     func uploadNew(using service: any GummiService, now: Date = .now) async throws -> Int {
-        guard HKHealthStore.isHealthDataAvailable(), let type = HKQuantityType.quantityType(forIdentifier: .stepCount) else { return 0 }
+        guard HKHealthStore.isHealthDataAvailable(), !defaults.bool(forKey: "gummi.noPrompts"),
+              let type = HKQuantityType.quantityType(forIdentifier: .stepCount) else { return 0 }
         try await store.requestAuthorization(toShare: [], read: [type])
         let cursor = defaults.object(forKey: Self.cursorKey) as? Date
         guard let window = Self.window(cursor: cursor, now: now) else { return 0 }

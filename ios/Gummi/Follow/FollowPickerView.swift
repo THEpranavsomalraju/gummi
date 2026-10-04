@@ -62,7 +62,10 @@ struct FollowPickerView: View {
                 }
                 Spacer()
                 if choosing == entry.userId {
-                    ProgressView()
+                    HStack(spacing: 6) {
+                        ProgressView()
+                        Text("Switching…").font(.caption).foregroundStyle(Theme.secondaryText)
+                    }
                 } else if following {
                     Image(systemName: "checkmark").foregroundStyle(Theme.accent)
                 }

@@ -7,7 +7,7 @@ struct ChatCardView: View {
 
     var body: some View {
         switch item.card {
-        case .mealSaved(let meal): MealSavedCard(meal: meal, simulatedOn: item.simulatedOn)
+        case .mealSaved(let saved): MealSavedCard(saved: saved, simulatedOn: item.simulatedOn)
         case .simulation(let simulation): SimulationCard(simulation: simulation)
         case .gummiView(let view): GummiViewCard(view: view)
         case .walkSuggestion(let walk): WalkSuggestionCard(walk: walk)
@@ -23,8 +23,9 @@ struct ChatCardView: View {
 /// PATCH /meals; the card then shows what the backend stored.
 private struct MealSavedCard: View {
     @Environment(AppModel.self) private var model
-    let meal: Meal
+    let saved: SavedMeal
     let simulatedOn: String?
+    private var meal: Meal { saved.meal }
     @State private var quantities: [Double] = []
     @State private var failed = false
 
@@ -42,6 +43,11 @@ private struct MealSavedCard: View {
             ChatCardHeader(symbol: "fork.knife", title: "Saved to your food log")
             if let simulatedOn {
                 ChatTag(text: "Simulated on \(simulatedOn)'s day · not graded", symbol: "flask")
+                if let peak = saved.likelyPeakMgDl, !edited {
+                    Text("Likely peak near \(Int(peak.rounded())) mg/dL\(saved.peakAt.map { " around \($0.formatted(Date.FormatStyle(date: .omitted, time: .shortened, timeZone: Theme.timeZone)))" } ?? "")")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(Theme.secondaryText)
+                }
             }
             ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                 HStack(spacing: 10) {
@@ -87,8 +93,8 @@ private struct MealSavedCard: View {
             }
         }
         .chatCardStyle()
-        .onChange(of: meal, initial: true) { _, saved in
-            quantities = saved.items.map(\.quantity)
+        .onChange(of: meal, initial: true) { _, newMeal in
+            quantities = newMeal.items.map(\.quantity)
             failed = false
         }
     }
@@ -153,16 +159,25 @@ private struct SimulationCard: View {
             HStack(alignment: .top) {
                 ChatCardHeader(symbol: "wand.and.stars", title: title)
                 Spacer(minLength: 6)
-                VerdictPill(verdict: simulation.verdict)
+                if simulation.isReliable { VerdictPill(verdict: simulation.verdict) }
             }
-            chart
+            if simulation.isReliable {
+                chart
+            } else {
+                // Beyond the model's range (1.6): the curves stay dim and no peak is quoted.
+                chart.opacity(0.3)
+                Label("Beyond what I've learned: likely well above your range\(simulation.requestedCarbsG.map { " (about \(Int($0)) g of carbs)" } ?? "")",
+                      systemImage: "exclamationmark.triangle")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.primaryText)
+            }
             HStack(spacing: 14) {
                 LegendItem(title: "Without it", dash: [5, 4], color: Theme.secondaryText)
                 LegendItem(title: "With it", dash: [], color: Theme.accent)
             }
             .font(.caption2)
             .foregroundStyle(Theme.secondaryText)
-            if !simulation.alternatives.isEmpty {
+            if simulation.isReliable, !simulation.alternatives.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(simulation.alternatives, id: \.label) { alternative in
                         HStack {
@@ -229,13 +244,15 @@ private struct SimulationCard: View {
             RuleMark(y: .value("High line", highLine))
                 .foregroundStyle(Theme.rangeLine)
                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
-            PointMark(x: .value("Time", simulation.peakAt), y: .value("mg/dL", peak))
-                .foregroundStyle(Theme.accent)
-                .annotation(position: .top, spacing: 2) {
-                    Text("\(Int(peak.rounded()))")
-                        .font(.caption2.monospacedDigit().bold())
-                        .foregroundStyle(Theme.primaryText)
-                }
+            if simulation.isReliable {
+                PointMark(x: .value("Time", simulation.peakAt), y: .value("mg/dL", peak))
+                    .foregroundStyle(Theme.accent)
+                    .annotation(position: .top, spacing: 2) {
+                        Text("\(Int(peak.rounded()))")
+                            .font(.caption2.monospacedDigit().bold())
+                            .foregroundStyle(Theme.primaryText)
+                    }
+            }
         }
         .chartYScale(domain: yDomain)
         .chartXAxis {

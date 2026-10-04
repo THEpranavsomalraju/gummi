@@ -22,6 +22,32 @@ nonisolated struct PuppetCue: Equatable, Sendable {
     let reaction: PuppetReaction
 }
 
+/// What the connection capsule says when updates aren't flowing. Nil while live.
+nonisolated struct ConnectionNotice: Equatable, Sendable {
+    enum Kind: Equatable, Sendable { case reconnecting, offline, asleep }
+    let kind: Kind
+    let text: String
+
+    /// `lastUpdated` is when the last live data arrived; cached State stays on screen meanwhile.
+    static func from(_ connection: ConnectionStatus, problem: APIError?, lastUpdated: Date?, now: Date) -> ConnectionNotice? {
+        let updated = lastUpdated.map { date -> String in
+            let seconds = now.timeIntervalSince(date)
+            if seconds < 60 { return "updated just now" }
+            if seconds < 3600 { return "updated \(Int(seconds / 60)) min ago" }
+            return "updated \(date.formatted(Date.FormatStyle(date: .omitted, time: .shortened)))"
+        }
+        func with(_ head: String) -> String { [head, updated].compactMap { $0 }.joined(separator: " · ") }
+        if problem?.code == "app_unavailable", connection != .live {
+            return ConnectionNotice(kind: .asleep, text: with("Server asleep"))
+        }
+        switch connection {
+        case .live, .idle: return nil
+        case .connecting, .reconnecting: return ConnectionNotice(kind: .reconnecting, text: "Reconnecting…")
+        case .polling, .offline: return ConnectionNotice(kind: .offline, text: with("Offline"))
+        }
+    }
+}
+
 /// Opens the chat sheet, optionally with a question filled in.
 nonisolated struct ChatRequest: Identifiable, Equatable, Sendable {
     let id = UUID()
@@ -44,6 +70,11 @@ final class AppModel {
     private(set) var connection: ConnectionStatus = .idle
     private(set) var lastUpdated: Date?
     private(set) var lastError: String?
+    /// Why the backend can't be reached (for example app_unavailable when the Databricks App is stopped).
+    private(set) var serverProblem: APIError?
+    /// A demo control call in flight ("Starting…"), shown on its button.
+    private(set) var streamAction: String?
+    private(set) var streamError: String?
     /// Replay participants for the Follow picker (GET /fleet).
     private(set) var fleet: Fleet?
     private(set) var banner: Banner?
@@ -121,7 +152,10 @@ final class AppModel {
                 guard let self, !Task.isCancelled else { break }
                 switch event {
                 case .live(let live): self.apply(live)
-                case .connection(let status): self.connection = status
+                case .connection(let status):
+                    self.connection = status
+                    if status == .live { self.serverProblem = nil }
+                case .problem(let error): self.serverProblem = error
                 }
             }
         }
@@ -168,6 +202,7 @@ final class AppModel {
         chat.newChat()
         chat.service = nil
         state = nil
+        serverProblem = nil
         cards = []
         latestGrade = nil
         alert = nil
@@ -195,12 +230,28 @@ final class AppModel {
     }
 
     func setPaused(_ paused: Bool) async {
-        guard let service else { return }
+        await streamControl(paused ? "Pausing…" : "Resuming…") { try await $0.setPaused(paused) }
+    }
+
+    // MARK: Demo controls (shared stream: everyone following, and the projector, see the change)
+
+    func startStream() async { await streamControl("Starting…") { _ = try await $0.startStream() } }
+    func stopStream() async { await streamControl("Stopping…") { _ = try await $0.stopStream() } }
+    func setStreamSpeed(_ speed: Double) async {
+        await streamControl("Changing speed…") { _ = try await $0.setStreamSpeed(speed) }
+    }
+
+    /// Runs one control, shows its progress text, then refetches State so the screen matches at once.
+    private func streamControl(_ label: String, _ action: (any GummiService) async throws -> Void) async {
+        guard let service, streamAction == nil else { return }
+        streamAction = label
+        defer { streamAction = nil }
         do {
-            _ = try await paused ? service.pauseStream() : service.resumeStream()
-            lastError = nil
+            try await action(service)
+            streamError = nil
+            apply(.state(try await service.snapshot()))
         } catch {
-            lastError = "\(error)"
+            streamError = (error as? APIError).map { if case .http(_, _, let message) = $0 { message } else { "\($0)" } } ?? "\(error)"
         }
     }
 
@@ -278,6 +329,20 @@ final class AppModel {
 
     func cue(_ reaction: PuppetReaction) {
         puppetCue = PuppetCue(reaction: reaction)
+    }
+
+    /// The capsule's notice. `-gummi.forceConnection reconnecting|offline|asleep` fakes one for screenshots (debug builds).
+    func connectionNotice(now: Date = .now) -> ConnectionNotice? {
+        #if DEBUG
+        switch defaults.string(forKey: "gummi.forceConnection") {
+        case "reconnecting": return ConnectionNotice.from(.reconnecting(attempt: 2), problem: nil, lastUpdated: lastUpdated, now: now)
+        case "offline": return ConnectionNotice.from(.polling, problem: nil, lastUpdated: now.addingTimeInterval(-120), now: now)
+        case "asleep": return ConnectionNotice.from(.polling, problem: .http(status: 503, code: "app_unavailable", message: ""),
+                                                    lastUpdated: now.addingTimeInterval(-600), now: now)
+        default: break
+        }
+        #endif
+        return ConnectionNotice.from(connection, problem: serverProblem, lastUpdated: lastUpdated, now: now)
     }
 
     func startWalk(minutes: Int = 10) {
@@ -358,6 +423,7 @@ final class AppModel {
             withAnimation(.snappy) { feed.forEach(upsert) }
         } catch {
             lastError = "\(error)"
+            serverProblem = error as? APIError
         }
     }
 

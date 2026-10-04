@@ -31,7 +31,7 @@ nonisolated final class APIClient: Sendable {
         try await send("GET", "meals", query: date.map { ["date": $0] } ?? [:], as: MealsResponse.self).meals
     }
     func logMeal(_ body: NewMealBody) async throws -> Meal { try await send("POST", "meals", body: body) }
-    func updateMeal(id: String, items: [MealItem]) async throws -> Meal {
+    func updateMeal(id: String, items: [MealItem]) async throws -> SavedMeal {
         try await send("PATCH", "meals/\(id)", body: MealItemsBody(items: items))
     }
     func deleteMeal(id: String) async throws -> Bool {

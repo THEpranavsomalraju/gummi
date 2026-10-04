@@ -106,7 +106,7 @@ struct WalkTests {
         func setStreamSpeed(_ speed: Double) async throws -> StreamStatus { state.stream }
         func events() -> AsyncStream<ServiceEvent> { AsyncStream { $0.finish() } }
         func chat(_ message: String, conversationId: String?) -> AsyncThrowingStream<ChatEvent, Error> { AsyncThrowingStream { $0.finish() } }
-        func updateMeal(id: String, items: [MealItem]) async throws -> Meal { try Fixtures.decode(Meal.self, "meal") }
+        func updateMeal(id: String, items: [MealItem]) async throws -> SavedMeal { SavedMeal(try Fixtures.decode(Meal.self, "meal")) }
         func sendWalkEvent(_ body: WalkEventBody) async throws { recorder.add(body) }
         func latestWalk() async throws -> WalkSummary { try Fixtures.decode(WalkSummary.self, "walk_summary") }
         func uploadSteps(_ samples: [StepSample]) async throws -> Int { samples.count }

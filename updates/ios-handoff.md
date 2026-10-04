@@ -30,4 +30,9 @@ Updated 2026-10-04. Read root CLAUDE.md, ios/CLAUDE.md, docs/CONTRACT.md (1.5), 
   3. The Health, Motion, and notification permission prompts.
 - More debug args: `-gummi.sheet walk`, `-gummi.fakeSteps YES`, `-gummi.noPrompts YES`.
 - Known limit: notifications use the State from when the app was backgrounded, so replay changes made from another device while the app is suspended aren't reflected.
-- Next chunks: Settings (demo controls, connection status), then Pranav's food log (D-152).
+- Next chunks: Pranav's new tabs (Home, Food, Activity, Day from GET /day) together with the food log (D-152); plan with Mahil.
+
+## Chunk C3 (built; the end-to-end run waits for the App)
+- Built: Settings with Dexcom status and demo controls (Settings/), the connection capsule, app_unavailable mapping, CONTRACT 1.6 adoption (stale data, tool labels, SavedMeal, empty turns, reliable false), demo day 4 in the mock and the default start. Decisions D-165 to D-167, D-62 updated. 111 tests pass.
+- The App is down (Free Edition daily limit, Pranav's BLOCKER). The run log is in updates/e2e-20261004.md. When Pranav says "App back up", run it with the humans. If the workspace moves, the App URL and the gummi-iphone client id and secret change; Mahil pastes the new ones into ios/Config/Secrets.xcconfig.local.
+- More debug args: `-gummi.tab settings`, `-gummi.forceConnection reconnecting|offline|asleep`.
