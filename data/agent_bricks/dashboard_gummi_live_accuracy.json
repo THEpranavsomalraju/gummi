@@ -1,0 +1,734 @@
+{
+ "datasets": [
+  {
+   "name": "overall",
+   "displayName": "Overall accuracy (out-of-sample)",
+   "queryLines": [
+    "SELECT grades, gummi_mae_mg_dl, cgm_only_mae_mg_dl, last_value_mae_mg_dl, gummi_beats_cgm_only_pct, gummi_beats_last_value_pct, last_graded_at\n",
+    "FROM workspace.gummi_data.stream_gold_accuracy\n",
+    "WHERE sample = 'out-of-sample' AND user_id = 'ALL' AND window_type = 'all'"
+   ]
+  },
+  {
+   "name": "by_window",
+   "displayName": "Error by window type",
+   "queryLines": [
+    "SELECT window_type, 'Gummi' AS method, 1 AS method_order, gummi_mae_mg_dl AS mae_mg_dl, grades FROM workspace.gummi_data.stream_gold_accuracy WHERE sample = 'out-of-sample' AND user_id = 'ALL'\n",
+    "UNION ALL\n",
+    "SELECT window_type, 'CGM-only' AS method, 2 AS method_order, cgm_only_mae_mg_dl AS mae_mg_dl, grades FROM workspace.gummi_data.stream_gold_accuracy WHERE sample = 'out-of-sample' AND user_id = 'ALL'\n",
+    "UNION ALL\n",
+    "SELECT window_type, 'Last value' AS method, 3 AS method_order, last_value_mae_mg_dl AS mae_mg_dl, grades FROM workspace.gummi_data.stream_gold_accuracy WHERE sample = 'out-of-sample' AND user_id = 'ALL'"
+   ]
+  },
+  {
+   "name": "by_user",
+   "displayName": "Error by participant",
+   "queryLines": [
+    "SELECT user_id, 'Gummi' AS method, 1 AS method_order, gummi_mae_mg_dl AS mae_mg_dl, grades FROM workspace.gummi_data.stream_gold_accuracy WHERE sample = 'out-of-sample' AND user_id <> 'ALL' AND window_type = 'all'\n",
+    "UNION ALL\n",
+    "SELECT user_id, 'CGM-only' AS method, 2 AS method_order, cgm_only_mae_mg_dl AS mae_mg_dl, grades FROM workspace.gummi_data.stream_gold_accuracy WHERE sample = 'out-of-sample' AND user_id <> 'ALL' AND window_type = 'all'\n",
+    "UNION ALL\n",
+    "SELECT user_id, 'Last value' AS method, 3 AS method_order, last_value_mae_mg_dl AS mae_mg_dl, grades FROM workspace.gummi_data.stream_gold_accuracy WHERE sample = 'out-of-sample' AND user_id <> 'ALL' AND window_type = 'all'"
+   ]
+  },
+  {
+   "name": "grades_time",
+   "displayName": "Grades landing per minute",
+   "queryLines": [
+    "SELECT date_trunc('MINUTE', ingested_at) AS minute, COUNT(DISTINCT grade_id) AS grades\n",
+    "FROM workspace.gummi_data.stream_silver_grades\n",
+    "WHERE ingested_at >= current_timestamp() - INTERVAL 6 HOURS\n",
+    "GROUP BY 1"
+   ]
+  },
+  {
+   "name": "mae_time",
+   "displayName": "Error over the replay day",
+   "queryLines": [
+    "WITH g AS (\n",
+    "  SELECT * FROM workspace.gummi_data.stream_silver_grades\n",
+    "  WHERE walk_effect_graded\n",
+    "  QUALIFY ROW_NUMBER() OVER (PARTITION BY grade_id ORDER BY ingested_at DESC) = 1\n",
+    "), b AS (\n",
+    "  SELECT window(graded_at, '1 hour').start AS hour, gummi_mae_mg_dl, cgm_only_mae_mg_dl, last_value_mae_mg_dl FROM g\n",
+    ")\n",
+    "SELECT hour, 'Gummi' AS method, AVG(gummi_mae_mg_dl) AS mae_mg_dl FROM b GROUP BY hour\n",
+    "UNION ALL SELECT hour, 'CGM-only', AVG(cgm_only_mae_mg_dl) FROM b GROUP BY hour\n",
+    "UNION ALL SELECT hour, 'Last value', AVG(last_value_mae_mg_dl) FROM b GROUP BY hour"
+   ]
+  },
+  {
+   "name": "lag_time",
+   "displayName": "Pipeline lag and events per minute",
+   "queryLines": [
+    "SELECT date_trunc('MINUTE', ingested_at) AS minute,\n",
+    "       ROUND(AVG(unix_timestamp(ingested_at) - unix_timestamp(landed_at)), 1) AS lag_seconds,\n",
+    "       COUNT(*) AS events\n",
+    "FROM workspace.gummi_data.stream_bronze_events\n",
+    "WHERE ingested_at >= current_timestamp() - INTERVAL 6 HOURS\n",
+    "GROUP BY 1"
+   ]
+  },
+  {
+   "name": "events_kind",
+   "displayName": "Events per minute by kind",
+   "queryLines": [
+    "SELECT date_trunc('MINUTE', ingested_at) AS minute, kind, COUNT(*) AS events\n",
+    "FROM workspace.gummi_data.stream_bronze_events\n",
+    "WHERE ingested_at >= current_timestamp() - INTERVAL 6 HOURS\n",
+    "GROUP BY 1, 2"
+   ]
+  },
+  {
+   "name": "live_now",
+   "displayName": "Live now",
+   "queryLines": [
+    "SELECT\n",
+    "  (SELECT ROUND(AVG(unix_timestamp(ingested_at) - unix_timestamp(landed_at)), 1) FROM workspace.gummi_data.stream_bronze_events\n",
+    "    WHERE ingested_at >= current_timestamp() - INTERVAL 10 MINUTES) AS lag_seconds_10min,\n",
+    "  (SELECT COUNT(*) FROM workspace.gummi_data.stream_bronze_events WHERE ingested_at >= current_timestamp() - INTERVAL 1 MINUTE) AS events_last_minute,\n",
+    "  (SELECT COUNT(*) FROM workspace.gummi_data.stream_gold_fleet) AS users_streaming"
+   ]
+  }
+ ],
+ "pages": [
+  {
+   "name": "live",
+   "displayName": "Live accuracy",
+   "pageType": "PAGE_TYPE_CANVAS",
+   "layout": [
+    {
+     "widget": {
+      "name": "header",
+      "multilineTextboxSpec": {
+       "lines": [
+        "## Gummi live accuracy\n",
+        "Every graded prediction from the gummi_stream pipeline, next to two baselines: **CGM-only** (the published linear method on the last 24 readings) and **last value**. Lower error is better. Replayed BIG IDEAs participants are predicted by a fold model that never saw them, so their numbers are **out-of-sample**. Errors in mg/dL. Draft numbers until the team approves them. Not for treatment decisions."
+       ]
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 0,
+      "width": 6,
+      "height": 3
+     }
+    },
+    {
+     "widget": {
+      "name": "c_gummi",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "overall",
+         "fields": [
+          {
+           "name": "gummi_mae_mg_dl",
+           "expression": "`gummi_mae_mg_dl`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "gummi_mae_mg_dl",
+         "displayName": "Gummi error (mg/dL)"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Gummi error (mg/dL)"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 3,
+      "width": 1,
+      "height": 3
+     }
+    },
+    {
+     "widget": {
+      "name": "c_cgm",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "overall",
+         "fields": [
+          {
+           "name": "cgm_only_mae_mg_dl",
+           "expression": "`cgm_only_mae_mg_dl`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "cgm_only_mae_mg_dl",
+         "displayName": "CGM-only error (mg/dL)"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "CGM-only error (mg/dL)"
+       }
+      }
+     },
+     "position": {
+      "x": 1,
+      "y": 3,
+      "width": 1,
+      "height": 3
+     }
+    },
+    {
+     "widget": {
+      "name": "c_lv",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "overall",
+         "fields": [
+          {
+           "name": "last_value_mae_mg_dl",
+           "expression": "`last_value_mae_mg_dl`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "last_value_mae_mg_dl",
+         "displayName": "Last value error (mg/dL)"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Last value error (mg/dL)"
+       }
+      }
+     },
+     "position": {
+      "x": 2,
+      "y": 3,
+      "width": 1,
+      "height": 3
+     }
+    },
+    {
+     "widget": {
+      "name": "c_grades",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "overall",
+         "fields": [
+          {
+           "name": "grades",
+           "expression": "`grades`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "grades",
+         "displayName": "Grades"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Grades"
+       }
+      }
+     },
+     "position": {
+      "x": 3,
+      "y": 3,
+      "width": 1,
+      "height": 3
+     }
+    },
+    {
+     "widget": {
+      "name": "c_lag",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "live_now",
+         "fields": [
+          {
+           "name": "lag_seconds_10min",
+           "expression": "`lag_seconds_10min`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "lag_seconds_10min",
+         "displayName": "Pipeline lag, last 10 min (s)"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Pipeline lag, last 10 min (s)"
+       }
+      }
+     },
+     "position": {
+      "x": 4,
+      "y": 3,
+      "width": 1,
+      "height": 3
+     }
+    },
+    {
+     "widget": {
+      "name": "c_eps",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "live_now",
+         "fields": [
+          {
+           "name": "events_last_minute",
+           "expression": "`events_last_minute`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 2,
+       "widgetType": "counter",
+       "encodings": {
+        "value": {
+         "fieldName": "events_last_minute",
+         "displayName": "Events in the last minute"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Events in the last minute"
+       }
+      }
+     },
+     "position": {
+      "x": 5,
+      "y": 3,
+      "width": 1,
+      "height": 3
+     }
+    },
+    {
+     "widget": {
+      "name": "b_window",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "by_window",
+         "fields": [
+          {
+           "name": "window_type",
+           "expression": "`window_type`"
+          },
+          {
+           "name": "mae_mg_dl",
+           "expression": "`mae_mg_dl`"
+          },
+          {
+           "name": "method",
+           "expression": "`method`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "encodings": {
+        "x": {
+         "fieldName": "window_type",
+         "scale": {
+          "type": "categorical"
+         },
+         "displayName": "Window"
+        },
+        "y": {
+         "fieldName": "mae_mg_dl",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Mean absolute error (mg/dL)"
+        },
+        "color": {
+         "fieldName": "method",
+         "scale": {
+          "type": "categorical"
+         },
+         "displayName": "method"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Error by window: meal windows are harder"
+       },
+       "mark": {
+        "layout": "group"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 6,
+      "width": 3,
+      "height": 7
+     }
+    },
+    {
+     "widget": {
+      "name": "b_user",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "by_user",
+         "fields": [
+          {
+           "name": "user_id",
+           "expression": "`user_id`"
+          },
+          {
+           "name": "mae_mg_dl",
+           "expression": "`mae_mg_dl`"
+          },
+          {
+           "name": "method",
+           "expression": "`method`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "encodings": {
+        "x": {
+         "fieldName": "user_id",
+         "scale": {
+          "type": "categorical"
+         },
+         "displayName": "Participant"
+        },
+        "y": {
+         "fieldName": "mae_mg_dl",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Mean absolute error (mg/dL)"
+        },
+        "color": {
+         "fieldName": "method",
+         "scale": {
+          "type": "categorical"
+         },
+         "displayName": "method"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Error by participant (out-of-sample)"
+       },
+       "mark": {
+        "layout": "group"
+       }
+      }
+     },
+     "position": {
+      "x": 3,
+      "y": 6,
+      "width": 3,
+      "height": 7
+     }
+    },
+    {
+     "widget": {
+      "name": "l_mae",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "mae_time",
+         "fields": [
+          {
+           "name": "hour",
+           "expression": "`hour`"
+          },
+          {
+           "name": "mae_mg_dl",
+           "expression": "`mae_mg_dl`"
+          },
+          {
+           "name": "method",
+           "expression": "`method`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "line",
+       "encodings": {
+        "x": {
+         "fieldName": "hour",
+         "scale": {
+          "type": "temporal"
+         },
+         "displayName": "Replay clock"
+        },
+        "y": {
+         "fieldName": "mae_mg_dl",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Mean absolute error (mg/dL)"
+        },
+        "color": {
+         "fieldName": "method",
+         "scale": {
+          "type": "categorical"
+         },
+         "displayName": "method"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Error by hour of the replay day"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 13,
+      "width": 3,
+      "height": 6
+     }
+    },
+    {
+     "widget": {
+      "name": "l_grades",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "grades_time",
+         "fields": [
+          {
+           "name": "minute",
+           "expression": "`minute`"
+          },
+          {
+           "name": "grades",
+           "expression": "`grades`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "encodings": {
+        "x": {
+         "fieldName": "minute",
+         "scale": {
+          "type": "temporal"
+         },
+         "displayName": "Wall clock"
+        },
+        "y": {
+         "fieldName": "grades",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Grades"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Grades landing per minute"
+       }
+      }
+     },
+     "position": {
+      "x": 3,
+      "y": 13,
+      "width": 3,
+      "height": 6
+     }
+    },
+    {
+     "widget": {
+      "name": "l_lag",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "lag_time",
+         "fields": [
+          {
+           "name": "minute",
+           "expression": "`minute`"
+          },
+          {
+           "name": "lag_seconds",
+           "expression": "`lag_seconds`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "line",
+       "encodings": {
+        "x": {
+         "fieldName": "minute",
+         "scale": {
+          "type": "temporal"
+         },
+         "displayName": "Wall clock"
+        },
+        "y": {
+         "fieldName": "lag_seconds",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Seconds"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Pipeline lag: file landed to row ingested"
+       }
+      }
+     },
+     "position": {
+      "x": 0,
+      "y": 19,
+      "width": 3,
+      "height": 6
+     }
+    },
+    {
+     "widget": {
+      "name": "b_events",
+      "queries": [
+       {
+        "name": "main_query",
+        "query": {
+         "datasetName": "events_kind",
+         "fields": [
+          {
+           "name": "minute",
+           "expression": "`minute`"
+          },
+          {
+           "name": "events",
+           "expression": "`events`"
+          },
+          {
+           "name": "kind",
+           "expression": "`kind`"
+          }
+         ],
+         "disaggregated": true
+        }
+       }
+      ],
+      "spec": {
+       "version": 3,
+       "widgetType": "bar",
+       "encodings": {
+        "x": {
+         "fieldName": "minute",
+         "scale": {
+          "type": "temporal"
+         },
+         "displayName": "Wall clock"
+        },
+        "y": {
+         "fieldName": "events",
+         "scale": {
+          "type": "quantitative"
+         },
+         "displayName": "Events"
+        },
+        "color": {
+         "fieldName": "kind",
+         "scale": {
+          "type": "categorical"
+         },
+         "displayName": "kind"
+        }
+       },
+       "frame": {
+        "showTitle": true,
+        "title": "Events per minute by kind"
+       }
+      }
+     },
+     "position": {
+      "x": 3,
+      "y": 19,
+      "width": 3,
+      "height": 6
+     }
+    }
+   ]
+  }
+ ]
+}

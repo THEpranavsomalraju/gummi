@@ -18,8 +18,9 @@ INSIGHTS_ENDPOINT = os.environ.get("GUMMI_INSIGHTS_ENDPOINT", "mas-becc8b0e-endp
 MLFLOW_EXPERIMENT_ID = os.environ.get("GUMMI_MLFLOW_EXPERIMENT_ID", "3505481683626519")
 
 BACKEND = Path(__file__).resolve().parents[1]
-# gummi_model and gummi_activity: copied into backend/vendor by scripts/deploy.sh, read from ../data when developing
-for p in (BACKEND / "vendor", BACKEND.parent / "data"):
+# gummi_model and gummi_activity: read from ../data when developing (always the current code), from backend/vendor
+# in the App bundle, where scripts/deploy.sh copies them
+for p in (BACKEND.parent / "data", BACKEND / "vendor"):
     if (p / "gummi_model").is_dir() and str(p) not in sys.path:
         sys.path.insert(0, str(p))
         break

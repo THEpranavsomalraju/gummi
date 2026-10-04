@@ -9,7 +9,8 @@ import numpy as np
 import pandas as pd
 
 from . import kernels
-from .config import HISTORY, KERNEL_PEAK_MIN, MEAL_COLS, MORNING_END_HOUR, STEP_MIN
+from .config import (BIG_MEAL_CARBS_G, BIG_MEAL_SUGAR_G, HISTORY, KERNEL_PEAK_MIN, MEAL_COLS, MORNING_END_HOUR,
+                     STEP_MIN)
 
 BASE_NAMES = (
     ["last"]
@@ -26,6 +27,15 @@ def meal_names(cols=MEAL_COLS) -> list[str]:
 MEAL_NAMES = meal_names()
 
 
+# Derived per-meal amounts. Each gets its own absorption kernel (config.KERNEL_PEAK_MIN); the artifact's meta
+# "meal_cols" says which ones a model uses, so older artifacts keep working.
+#   carbs_morning_g  carbs of meals eaten before MORNING_END_HOUR local time
+#   carbs_big_g      carbs above BIG_MEAL_CARBS_G (a hinge: big meals rise more than linearly)
+#   sugar_big_g      sugar above BIG_MEAL_SUGAR_G
+#   carbs_fast_g     the meal's carbs on a faster kernel (lets the ridge build a sharper, earlier peak)
+#   carbs_slow_g     the meal's carbs on a slower kernel (a longer tail)
+
+
 def add_derived(meals: pd.DataFrame, local_hour: np.ndarray | None = None) -> pd.DataFrame:
     """Add derived meal columns. local_hour: hour of each meal in the person's local time
     (training data is already local; inference converts UTC with the profile timezone)."""
@@ -33,8 +43,13 @@ def add_derived(meals: pd.DataFrame, local_hour: np.ndarray | None = None) -> pd
     if local_hour is None:
         ts = pd.to_datetime(meals["eaten_at"])
         local_hour = (ts.dt.hour + ts.dt.minute / 60.0).to_numpy()
-    carbs = pd.to_numeric(meals["carbs_g"], errors="coerce").fillna(0.0).to_numpy() if "carbs_g" in meals else 0.0
+    num = lambda c: pd.to_numeric(meals[c], errors="coerce").fillna(0.0).to_numpy() if c in meals else np.zeros(len(meals))
+    carbs, sugar = num("carbs_g"), num("sugar_g")
     meals["carbs_morning_g"] = np.where(np.asarray(local_hour) < MORNING_END_HOUR, carbs, 0.0)
+    meals["carbs_big_g"] = np.clip(carbs - BIG_MEAL_CARBS_G, 0.0, None)
+    meals["sugar_big_g"] = np.clip(sugar - BIG_MEAL_SUGAR_G, 0.0, None)
+    meals["carbs_fast_g"] = carbs
+    meals["carbs_slow_g"] = carbs
     return meals
 
 

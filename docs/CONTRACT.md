@@ -1,6 +1,7 @@
 # Gummi Contract
 
-Contract version: 1.3 (draft, frozen at the end of Phase 0)
+Contract version: 1.4 (draft, frozen at the end of Phase 0)
+Changelog: 1.4 (2026-10-03, Backend Lead, answers iOS CONTRACT CHANGE REQUEST 1-6): documentation only, no shape changes. Grade.gummi_beats_cgm_only nullable; WalkSummary.intensity and effect_source values listed; DexcomStatus.environment values; date query format; MealItem.unit may be ""; SSE comment lines.
 Changelog: 1.3 (2026-10-03, Backend Lead, human-delegated, answers iOS REQUEST 20261003-1815): State gains replay_now and stream; Grade gains gummi_beats_cgm_only and gummi_beats_last_value; Meal gains is_standard_breakfast; chat card_type gains "meal_due"; meal_due cards resolve by upsert; attachments keys per card type; walk_completed body; nullable fields marked; error codes listed. All additive.
 Changelog: 1.2 (2026-10-03, Backend Lead, human-approved D-36): State gains upcoming_due for background meal_due notifications. Additive, no other shape changes.
 Section owners: API and agent (Backend Lead), model interface, pipeline, and data tables (Data Lead), puppet moods and UI copy (iOS Lead).
@@ -30,7 +31,7 @@ Defaults set while writing v1.1, ASSUMED until the owner confirms: last_value_* 
 - IDs: users "u_<name>" for teammates, "p_<participant_id>" for replay participants.
 - Errors: HTTP status plus `{"error": {"code": "...", "message": "..."}}`.
 - Every response carries `X-Gummi-Mode: mock | live`.
-- Nullable (1.3): every field marked "or null" below may be null. In particular: State.following, acting_as, replay_now, alert, top_card; Prediction.meal_id, cgm_only_peak_mg_dl; Grade.cgm_only_mae_mg_dl (null when no CGM-only curve was stored); State.today.*_mae_mg_dl (null before the first grade of the day); FleetEntry.data_through, *_mae_mg_dl and last_grade (null before data or the first grade); StreamStatus.replay_clock, replay_anchor.*, pipeline_lag_seconds (null when stopped or unknown); DexcomStatus.data_through, last_sync, last_error; StoryCard.attachments, trace_id. Before any CGM data, State.gummi_view is null and confirmed, estimate, forecast are empty.
+- Nullable (1.3): every field marked "or null" below may be null. In particular: State.following, acting_as, replay_now, alert, top_card; Prediction.meal_id, cgm_only_peak_mg_dl; Grade.cgm_only_mae_mg_dl and Grade.gummi_beats_cgm_only (both null when no CGM-only curve was stored; treat null as "not proud" and show "CGM-only n/a"); State.today.*_mae_mg_dl (null before the first grade of the day); FleetEntry.data_through, *_mae_mg_dl and last_grade (null before data or the first grade); StreamStatus.replay_clock, replay_anchor.*, pipeline_lag_seconds (null when stopped or unknown); DexcomStatus.data_through, last_sync, last_error; StoryCard.attachments, trace_id. Before any CGM data, State.gummi_view is null and confirmed, estimate, forecast are empty.
 - Error codes (1.3): bad_request (400), unauthorized (401, from the App; the Databricks proxy's own 401 has an empty body), not_found (404), method_not_allowed (405), due_already_logged (409), no_cgm_data (409: simulate or chat simulation while not following anyone), invalid (422), rate_limited (429), internal (500), warming_up (503: /stream/start before the model and replay tables finish loading; /health then reports status "warming_up"), llm_unavailable (503, chat only, sent as an SSE error event). GET /walks/latest returns 404 not_found before the first walk.
 - Comparisons: every accuracy number carries three values: gummi, cgm_only (the published CGM-only linear method, one model per horizon, fold-matched, D-33), and last_value (persistence). Numbers for replay participants are labeled "out-of-sample".
 
@@ -95,7 +96,7 @@ type: "walk_suggested", "high_forecast", "low_forecast", "dexcom_gap". action.ki
 
 ### DexcomStatus
 `{ "connected": true, "environment": "sandbox", "data_through": "...", "delay_minutes": 60, "last_sync": "...", "last_error": null, "source": "dexcom_api", "ingest_mode": "status_only" }`
-source: "dexcom_api", "replay", "none". ingest_mode: "status_only" (default: connection, data range, and last sync only, never feeds coaching or hot state) or "time_shifted" (optional, labeled "Sandbox (time-shifted)").
+environment: "sandbox" or "production". source: "dexcom_api", "replay", "none". ingest_mode: "status_only" (default: connection, data range, and last sync only, never feeds coaching or hot state) or "time_shifted" (optional, labeled "Sandbox (time-shifted)").
 
 ### State (GET /state and the "state" live event)
 ```json
@@ -126,6 +127,7 @@ upcoming_due (1.2, D-36): the acted-as participant's withheld meals coming due i
   "totals": { "carbs_g": 70.0, "sugar_g": 8.0, "fiber_g": 4.0, "protein_g": 24.0, "fat_g": 20.0, "calories": 570 },
   "is_standard_breakfast": false, "prediction_id": "pr_1" }
 ```
+MealItem.unit is always a string and may be "" when the source has no unit; quantity is always a number.
 is_standard_breakfast (1.3): true for the study's standardized breakfast (Data's silver_meals flag), false otherwise.
 source: "chat", "manual", "replay" (meals of participants nobody follows), "replay_due" (the user tapped Log it on a meal_due card), "replay_auto" (auto-logged 10 replay minutes after it came due) (D-35).
 
@@ -144,6 +146,7 @@ verdict: "go" (peak under high line), "go_with_tweak", "wait". method "breakfast
 
 ### WalkSummary
 `{ "started_at": "...", "ended_at": "...", "minutes": 11, "steps": 1180, "cadence_spm": 107, "intensity": "moderate", "forecast_peak_drop_mg_dl": 14, "effect_source": "literature" }`
+intensity: "sedentary" (0 steps/min), "light" (1 to 99), "moderate" (100 to 129), "vigorous" (130+) (D-44). effect_source: "literature" or "your data" (with a space).
 
 ### StreamEvent (one JSON line in the landing volume)
 ```json
@@ -166,7 +169,7 @@ replay_anchor pairs a replay time with a wall-clock time. With speed, the phone 
 | GET | /health | | `{"status","mode","version"}` |
 | GET | /state | | State |
 | GET | /live | | server-sent events, section 5 |
-| GET | /feed?date= | | `{"cards": [StoryCard]}` |
+| GET | /feed?date= | | `{"cards": [StoryCard]}`. date is YYYY-MM-DD in the profile timezone, compared with the local date of created_at. While acting as a replay participant, dates are on the replay clock mapped to today (D-45), so today's date shows the replayed day. Same rule for /grades and /meals |
 | GET | /predictions?status= | | `{"predictions": [Prediction]}` |
 | GET | /grades?date= | | `{"grades": [Grade]}` |
 | POST | /meals | `{"items": [...], "eaten_at": "...", "source": "manual"}` | Meal |
@@ -208,6 +211,7 @@ event: mood    data: {"mood": "proud"}
 event: ping    data: {"t": "..."}           (every 15 seconds)
 ```
 Mood ownership (1.3): State.mood and mood events are the truth, including the 20-second proud expiry, which Backend runs. The phone adds only thinking and talking locally.
+Lines starting with ":" are SSE comments (the stream opens with ": connected"); clients ignore them.
 The iPhone reconnects with backoff. Fallback: poll GET /state every 15 seconds while the channel is down. iOS suspends backgrounded apps, so the phone closes /live in the background and reconnects plus refetches /state on foreground.
 
 ## 6. Chat (POST /chat, server-sent events)
