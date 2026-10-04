@@ -1,9 +1,9 @@
 import Foundation
 @testable import Gummi
 
-private final class FixtureBundleToken {}
+nonisolated private final class FixtureBundleToken {}
 
-enum Fixtures {
+nonisolated enum Fixtures {
     static let bundle = Bundle(for: FixtureBundleToken.self)
 
     static func data(_ name: String, ext: String = "json") throws -> Data {
