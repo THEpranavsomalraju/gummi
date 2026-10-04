@@ -6,6 +6,7 @@ LLM step and per tool) in the agent-traces experiment; its id goes back to the p
 """
 import asyncio
 import json
+import re
 import logging
 import threading
 import time
@@ -20,7 +21,7 @@ from .prompts import system_prompt
 
 log = logging.getLogger("gummi.chat")
 MAX_STEPS = 6
-HISTORY_TURNS = 6
+HISTORY_TURNS = 4
 # Tool status chips (CONTRACT 1.6): a little fun, never weird. One start/end pair per tool per turn.
 LABELS = {
     "get_state": ("Peeking at your numbers…", "Got your latest ✓"),
@@ -84,7 +85,21 @@ def _text_of(content) -> str:
     return ""
 
 
-def _llm_step(messages: list[dict], emit, use_tools: bool = True) -> tuple[str, list[dict]]:
+# "add a cookie to my log", "log 2 oreos", "I just ate a banana": logging is forced in code, because a small model deep
+# in a conversation sometimes answers "logged!" without calling log_meal
+EXPLICIT_LOG = re.compile(r"\b(add|put|log|record|save)\b.{0,60}\b(log|diary|tracker)\b|^\s*(please\s+)?(just\s+)?(log|add)\b", re.I)
+ATE = re.compile(r"\b(i|i've|ive|just)\s+(just\s+)?(ate|had|eaten|finished|grabbed)\b|\bi'?m\s+(eating|having)\b", re.I)
+QUESTION = re.compile(r"\?|\b(why|how|when|what|which|did|does|do|was|is)\b", re.I)
+CONSIDER = re.compile(r"\b(can|could|should|may)\s+i\b|\bwhat if\b|\bis it ok", re.I)
+
+
+def wants_log(message: str) -> bool:
+    if CONSIDER.search(message):
+        return False
+    return bool(EXPLICIT_LOG.search(message)) or (bool(ATE.search(message)) and not QUESTION.search(message))
+
+
+def _llm_step(messages: list[dict], emit, use_tools: bool = True, force_tool: str | None = None) -> tuple[str, list[dict]]:
     last_err = None
     for model in (config.LLM_ENDPOINT, *config.LLM_FALLBACKS):
         text, calls, started = "", {}, False
@@ -93,7 +108,9 @@ def _llm_step(messages: list[dict], emit, use_tools: bool = True) -> tuple[str, 
             # fail fast on a rate limit and switch models, instead of the client's silent retry with backoff
             stream = client().with_options(max_retries=0).chat.completions.create(
                 model=model, messages=messages, stream=True, max_tokens=700, temperature=0.7,
-                **({"tools": tools.CHAT_TOOLS, "tool_choice": "auto"} if use_tools else {}), **kwargs)
+                **({"tools": tools.CHAT_TOOLS,
+                    "tool_choice": {"type": "function", "function": {"name": force_tool}} if force_tool else "auto"}
+                   if use_tools else {}), **kwargs)
             for ch in stream:
                 if not ch.choices:
                     continue
@@ -120,6 +137,20 @@ def _llm_step(messages: list[dict], emit, use_tools: bool = True) -> tuple[str, 
             if started:
                 break                      # tokens already shown: don't replay the answer from another model
     raise RuntimeError(f"llm_unavailable: {last_err}")
+
+
+_TIDY = [(re.compile(r"\*\*|__|^#+\s*", re.M), ""),
+         (re.compile(r"[≈~]\s*(?=\d)"), "about "),
+         (re.compile(r"\b(the|your|my) (model|system|prediction model) (says|predicts|estimates|thinks|expects)( that)?\b", re.I), "I think"),
+         (re.compile(r"\b(\d{2,3})\.\d\s*mg/dL"), r"\1 mg/dL"),
+         (re.compile(r"[ \t]+\n"), "\n")]
+
+
+def tidy(text: str) -> str:
+    """Phone-ready text whatever the model did: no markdown, no '~' or '≈', first person, whole mg/dL."""
+    for rx, rep in _TIDY:
+        text = rx.sub(rep, text)
+    return text.strip()
 
 
 def _fallback_text(tool_results: list) -> str:
@@ -156,6 +187,7 @@ def run_turn(uid: str, message: str, conversation_id: str, emit) -> None:
                            now.strftime("%-I:%M %p") if now else None, u.profile["high_line_mg_dl"], u.profile["low_line_mg_dl"])
     history = CONVERSATIONS.get(conversation_id, [])[-2 * HISTORY_TURNS:]
     messages = [{"role": "system", "content": sysmsg}, *history, {"role": "user", "content": message}]
+    force_log = wants_log(message)
     cards: list[dict] = []
     final = ""
     tool_results: list = []
@@ -167,7 +199,8 @@ def run_turn(uid: str, message: str, conversation_id: str, emit) -> None:
         for step in range(MAX_STEPS + 1):
             with span(f"llm_step_{step + 1}", "CHAT_MODEL") as s:
                 s.set_inputs({"messages": len(messages), "last": messages[-1].get("content") if isinstance(messages[-1].get("content"), str) else None})
-                text, calls = _llm_step(messages, quiet, use_tools=step < MAX_STEPS)
+                text, calls = _llm_step(messages, quiet, use_tools=step < MAX_STEPS,
+                                        force_tool="log_meal" if step == 0 and force_log else None)
                 s.set_outputs({"text": text, "tool_calls": [{"name": c["name"], "args": c["args"]} for c in calls]})
             final = text
             if not calls:
@@ -197,14 +230,18 @@ def run_turn(uid: str, message: str, conversation_id: str, emit) -> None:
                 messages.append({"role": "tool", "tool_call_id": c["id"], "content": tools.dumps(res)})
                 tool_results.append(res)
         issues = guard.problems(message, final, guard.numbers_in(tool_results), u.profile["high_line_mg_dl"],
-                                u.profile["low_line_mg_dl"])
+                                u.profile["low_line_mg_dl"], logged="log_meal" in chipped,
+                                verdict=next((r["verdict"] for r in reversed(tool_results)
+                                              if isinstance(r, dict) and r.get("open_with")), None))
         if issues:
             emit("tool", {"name": "self_check", "status": "start", "label": LABELS["self_check"][0]})
             with span("self_check_rewrite", "CHAIN") as fix:
                 fix.set_inputs({"draft": final, "problems": issues})
                 messages += [{"role": "assistant", "content": final},
-                             {"role": "user", "content": "Self-check before sending: your draft broke these rules: "
-                              + "; ".join(issues) + ". Rewrite it so it follows every rule, same voice. Reply with the rewrite only."}]
+                             {"role": "user", "content": f"Self-check before sending: your draft reply to \"{message}\" broke "
+                              "these rules: " + "; ".join(issues) + ". Rewrite it so it still answers that message directly "
+                              "(same verdict and numbers from the tools) and follows every rule, same voice. Reply with the "
+                              "rewrite only."}]
                 draft = final
                 rewrite, _ = _llm_step(messages, quiet, use_tools=False)
                 final = rewrite if rewrite.strip() else draft      # an empty rewrite never replaces a good draft
@@ -221,6 +258,7 @@ def run_turn(uid: str, message: str, conversation_id: str, emit) -> None:
             if not final.strip():
                 final = _fallback_text(tool_results)
             activity.hit("agent.empty_reply_recovered", detail=message[:60], log=True)
+        final = tidy(final)
         for i in range(0, len(final), 24):                 # stream the checked answer
             emit("token", {"text": final[i:i + 24]})
         root.set_outputs({"text": final, "cards": [c["card_type"] for c in cards], "self_check": issues})

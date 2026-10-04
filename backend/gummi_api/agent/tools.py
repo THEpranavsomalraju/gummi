@@ -30,10 +30,10 @@ _ITEMS = {"type": "array", "description": "Foods with portions. For foods that a
 SCHEMAS = [
     {"name": "get_state", "description": "Only for questions about right now (am I high, how am I doing, what's my glucose doing). Your estimate for now (with band and trend), the last confirmed Dexcom reading, the 2-hour forecast peak, today's numbers and the next due meal.",
      "parameters": {"type": "object", "properties": {}}},
-    {"name": "simulate_food", "description": "What eating these foods would likely do: peak with and without, verdict, and alternatives (half portion, walk after). Use for any 'can I eat/should I have' question, and for meals mentioned while acting as a study participant.",
+    {"name": "simulate_food", "description": "What eating these foods would likely do: peak with and without, verdict, and alternatives (half portion, walk after). Use only for food they're considering ('can I eat', 'should I have', 'what if'), never for food they ate or want logged.",
      "parameters": {"type": "object", "required": ["items"], "properties": {"items": _ITEMS,
                     "in_minutes": {"type": "number", "description": "Minutes from now; 0 or omitted means now."}}}},
-    {"name": "log_meal", "description": "Save a meal the person ate or is eating now.",
+    {"name": "log_meal", "description": "Add food to their food log: anything they ate, are eating, or ask you to add or log ('I just ate', 'I had', 'add a cookie to my log', 'log 2 oreos').",
      "parameters": {"type": "object", "required": ["items"], "properties": {"items": _ITEMS}}},
     {"name": "suggest_walk", "description": "Whether a walk now would help: forecast peak, modeled drop for a 10-minute walk, and the effect's source.",
      "parameters": {"type": "object", "properties": {"minutes": {"type": "number"}}}},
@@ -145,17 +145,20 @@ def simulate_food(c: Ctx, items=None, in_minutes=0, **_):
            "carbs_g": modeled, "requested_carbs_g": asked, "nutrition_source": sorted({f["nutrition_source"] for f in foods}),
            "peak_with_food": sim["peak_mg_dl"], "peak_at": _hm(sim["peak_at"]),
            "peak_without_food": max(p["glucose_mg_dl"] for p in sim["baseline_curve"]),
-           "verdict": sim["verdict"], "high_line": c.u.profile["high_line_mg_dl"],
-           "alternatives": sim["alternatives"], "method": sim["method"]}
+           "verdict": sim["verdict"], "open_with": OPENERS.get(sim["verdict"], "Yes."),
+           "high_line": c.u.profile["high_line_mg_dl"], "alternatives": sim["alternatives"], "method": sim["method"]}
     if asked > modeled + 1:
         res["portion_note"] = f"Modeled as {modeled:.0f} g carbs (portions capped at 6); they asked about {asked:.0f} g."
     if not reliable:
-        res = {k: v for k, v in res.items() if k not in ("peak_with_food", "peak_at", "alternatives")}
+        res = {k: v for k, v in res.items() if k not in ("peak_with_food", "peak_at", "alternatives", "open_with", "verdict")}
         res["reliable"] = False
         res["note"] = (f"About {asked:.0f} g of carbs is more than 95% of the meals I learned from (most were under "
                        f"140 g), so I can't give a trustworthy peak. Say that plainly and kindly: it would very likely "
                        f"push them well above {c.u.profile['high_line_mg_dl']:.0f} mg/dL. Do not quote a peak number.")
     return res, {"card_type": "simulation", "payload": sim}
+
+
+OPENERS = {"go": "Yes.", "go_with_tweak": "Yes, with a tweak:", "wait": "I'd wait:"}   # the reply opens with the model's verdict
 
 
 def log_meal(c: Ctx, items=None, **_):
@@ -165,8 +168,7 @@ def log_meal(c: Ctx, items=None, **_):
     sim = c.u.meal_sims.get(meal["meal_id"])
     if c.subject is not None and sim:
         # D-59: on a study participant's day the entry is simulated and never graded (they didn't really eat it)
-        res.update({"likely_peak_mg_dl": sim["predicted_peak_mg_dl"], "peak_at": _hm(sim["peak_at"]),
-                    "verdict": sim["verdict"], "graded": False,
+        res.update({"likely_peak_mg_dl": sim["predicted_peak_mg_dl"], "peak_at": _hm(sim["peak_at"]), "graded": False,
                     "note": f"Added to the food log as a simulated entry on {store.display_name(c.pid)}'s day; "
                             "it won't be graded. Say so in one short line."})
     else:
