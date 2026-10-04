@@ -13,6 +13,7 @@ from ..dexcom import client as dexcom
 from ..errors import ApiError
 from ..live.broadcaster import broadcaster
 from ..engine.engine import engine
+from ..state import session
 from ..state.hot_store import store
 from ..state.view import fleet, stream_status
 from ..stream.producer import clock, parse_start
@@ -24,6 +25,10 @@ WEB = Path(__file__).parents[1] / "web"
 
 def _status() -> dict:
     return stream_status()
+
+
+def _save_soon() -> None:
+    asyncio.get_running_loop().run_in_executor(None, session.save)
 
 
 def _push_states() -> None:
@@ -48,7 +53,9 @@ async def stream_start(body: dict | None = None):
     for u in store.users.values():
         u.cards, u.grades, u.alert, u.overlay_walks = [], [], None, []
     engine.start(start_r)
+    session.mark_start(start_r)
     _push_states()
+    _save_soon()
     return _status()
 
 
@@ -56,6 +63,7 @@ async def stream_start(body: dict | None = None):
 async def stream_stop():
     clock.stop()
     _push_states()
+    _save_soon()
     return _status()
 
 
@@ -63,6 +71,7 @@ async def stream_stop():
 async def stream_pause():
     clock.pause()
     _push_states()
+    _save_soon()
     return _status()
 
 
@@ -70,6 +79,7 @@ async def stream_pause():
 async def stream_resume():
     clock.resume()
     _push_states()
+    _save_soon()
     return _status()
 
 
@@ -80,6 +90,7 @@ async def stream_speed(body: dict):
         raise ApiError(422, "invalid", "speed must be a number between 0 and 600")
     clock.set_speed(speed)
     _push_states()
+    _save_soon()
     return _status()
 
 

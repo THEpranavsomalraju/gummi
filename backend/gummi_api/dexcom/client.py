@@ -47,6 +47,8 @@ def _keystream(n: int, nonce: bytes) -> bytes:
 
 
 def _persist() -> None:
+    if not config.PERSIST:
+        return
     try:
         from databricks.sdk import WorkspaceClient
         with _lock:
@@ -61,7 +63,7 @@ def _persist() -> None:
 
 def restore() -> None:
     """At startup: reload connections saved before a redeploy, then sync them."""
-    if not configured():
+    if not configured() or not config.PERSIST:
         return
     try:
         from databricks.sdk import WorkspaceClient

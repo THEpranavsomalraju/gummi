@@ -83,12 +83,14 @@ class Engine:
         self.meal_table: pd.DataFrame | None = None
         self.subjects: dict[str, Subject] = {}
         self.dues: dict[str, dict] = {}
-        self.ready = False
+        self.ready = False                        # model and replay tables loaded
+        self.started = False                      # subjects built (fresh start or restored session)
         self.load_error: str | None = None
         self.counters = {"ticks": 0, "predictions": 0, "grades": 0, "meals": 0, "walk_alerts": 0,
                          "last_tick_ms": 0.0, "max_tick_ms": 0.0}
         self._last_r: float | None = None
         self._personal_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="personal")
+        self.silent = False                       # catching up after a restart: no landing, no agents
 
     # ---------- startup ----------
     def load(self) -> None:
@@ -124,6 +126,7 @@ class Engine:
             self.subjects[pid] = s
             self._release(s, start_r, emit=False)
         self._last_r = start_r
+        self.started = True
 
     def _due_followers(self, pid: str) -> list[str]:
         return [u.user_id for u in store.users.values() if u.following == pid]
@@ -461,6 +464,22 @@ class Engine:
                 broadcaster.publish(uid, "card", card)
                 events.submit(kind, uid, card, {"local_time": local.strftime("%-I:%M %p"), "participant": s.pid})
             activity.hit(f"engine.{kind}", detail=s.pid, log=True)
+
+    # ---------- rehydration ----------
+    def catch_up(self, from_r: float, to_r: float) -> None:
+        """Rebuild state from the session start to to_r, one replay minute per step, without emitting anything."""
+        self.start(from_r)
+        was = (clock.running, clock.paused, clock.anchor_replay, landing.enabled)
+        clock.running, clock.paused, self.silent, landing.enabled = True, False, True, False
+        try:
+            r = from_r
+            while r < to_r:
+                r = min(r + 1.0, to_r)
+                clock.anchor_replay, clock.anchor_wall = r, time.time()
+                self.tick()
+        finally:
+            clock.running, clock.paused, clock.anchor_replay = was[0], was[1], was[2]
+            landing.enabled, self.silent = was[3], False
 
     # ---------- the tick ----------
     def tick(self) -> None:

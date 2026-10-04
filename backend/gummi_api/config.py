@@ -38,6 +38,9 @@ LANDING_DIR = os.environ.get("GUMMI_LANDING_DIR", f"{LANDING_ROOT}/mock_events" 
 LANDING_ENABLED = os.environ.get("GUMMI_LANDING_ENABLED", "true").lower() == "true"
 LANDING_INTERVAL_S = 5.0
 
+# Session, lessons and Dexcom tokens persist to the volume; tests turn this off so they never touch real state
+PERSIST = os.environ.get("GUMMI_PERSIST", "true").lower() == "true"
+
 PING_SECONDS = 15.0
 STATE_PUSH_SECONDS = 1.0            # state events at most once per second (CONTRACT section 5)
 MOCK_CARD_SECONDS = float(os.environ.get("GUMMI_MOCK_CARD_SECONDS", "60"))

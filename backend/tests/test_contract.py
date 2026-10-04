@@ -10,6 +10,7 @@ from pathlib import Path
 
 CACHE = Path(__file__).resolve().parents[1] / ".cache"
 os.environ.setdefault("GUMMI_LANDING_ENABLED", "false")
+os.environ.setdefault("GUMMI_PERSIST", "false")
 os.environ.setdefault("GUMMI_REPLAY_SOURCE", "cache")
 os.environ.setdefault("GUMMI_MODEL_DIR", str(CACHE / "gummi_model_v1"))
 
@@ -177,3 +178,20 @@ def test_profile_engine_errors(client):
     r = client.put("/api/v1/health")
     assert r.status_code == 405 and r.json()["error"]["code"] == "method_not_allowed"
     assert ok(client.post("/api/v1/follow", json={"user_id": None}, headers=H))["acting_as"] is None
+
+
+def test_rehydration_catch_up(client):
+    """A restart rebuilds the session silently: same predictions and grades, nothing re-sent to landing or agents."""
+    from gummi_api.agent import events
+    from gummi_api.state.hot_store import store
+    from gummi_api.stream.landing_writer import landing
+    from gummi_api.stream.producer import parse_start
+    store.get("u_rehydrate").following = "p_012"
+    start = parse_start("day6T05:00")
+    queued_before, jobs_before = len(landing.queue), events._jobs.qsize()
+    engine.catch_up(start, start + 240)
+    s = engine.subjects["p_012"]
+    assert s.grades and s.predictions and s.meals, "4 replay hours rebuilt"
+    assert len(landing.queue) == queued_before and events._jobs.qsize() == jobs_before, "silent: nothing re-sent"
+    assert any(c["type"] == "meal_due" for c in store.get("u_rehydrate").cards), "follower cards rebuilt as templates"
+    assert not engine.silent and landing.enabled == (os.environ.get("GUMMI_LANDING_ENABLED") != "false")

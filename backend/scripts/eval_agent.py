@@ -15,6 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 os.environ.setdefault("GUMMI_LANDING_ENABLED", "false")
+os.environ.setdefault("GUMMI_PERSIST", "false")
 os.environ.setdefault("GUMMI_REPLAY_SOURCE", "cache")
 os.environ.setdefault("GUMMI_MODEL_DIR", str(ROOT / ".cache" / "gummi_model_v1_next"))
 

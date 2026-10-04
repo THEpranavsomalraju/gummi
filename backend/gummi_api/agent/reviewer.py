@@ -51,6 +51,8 @@ def lessons_detail() -> list[dict]:
 
 
 def _save() -> None:
+    if not config.PERSIST:
+        return
     try:
         from databricks.sdk import WorkspaceClient
         body = json.dumps(_lessons, indent=1).encode()
@@ -60,6 +62,8 @@ def _save() -> None:
 
 
 def load() -> None:
+    if not config.PERSIST:
+        return
     try:
         from databricks.sdk import WorkspaceClient
         data = json.loads(WorkspaceClient().files.download(LESSONS_PATH).contents.read())

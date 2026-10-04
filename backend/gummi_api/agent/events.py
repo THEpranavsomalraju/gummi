@@ -58,6 +58,9 @@ counters = {"agent_runs": 0, "agent_fallbacks": 0, "agent_failures": 0}
 
 def submit(agent: str, uid: str, card: dict, context: dict) -> None:
     """Called by the engine (any thread). The template card is already on the phone; the agent upgrades it."""
+    from ..engine.engine import engine
+    if engine.silent:
+        return                                   # rehydrating after a restart: keep templates, no LLM calls
     try:
         _jobs.put_nowait({"agent": agent, "uid": uid, "card": card, "context": context})
     except queue.Full:

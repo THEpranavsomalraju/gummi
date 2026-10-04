@@ -34,11 +34,15 @@ async def engine_loop() -> None:
     from .agent import reviewer
     reviewer.start()
     asyncio.get_running_loop().run_in_executor(None, warm)     # first chat turn skips connection setup
-    if engine.ready and clock.anchor_replay is None:
+    from .state import session
+    restored = engine.ready and await asyncio.to_thread(session.restore, engine)
+    if engine.ready and not restored and clock.anchor_replay is None:
         start_r = parse_start(config.DEFAULT_START)
         clock.anchor_replay, clock.anchor_wall = start_r, time.time()
         clock.start_day = int(start_r // 1440) + 1
         engine.start(start_r)
+        session.mark_start(start_r)
+    last_save = time.monotonic()
     last_push = 0.0
     seen: dict[str, int] = {}
     while True:
@@ -60,6 +64,9 @@ async def engine_loop() -> None:
                     logging.exception("state push failed for %s", uid)
         if now - last_push >= 5:
             last_push = now
+        if now - last_save >= 60:                 # the replay clock keeps moving; checkpoint it every minute
+            last_save = now
+            await asyncio.to_thread(session.save)
 
 
 @contextlib.asynccontextmanager
