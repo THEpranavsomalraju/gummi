@@ -1,0 +1,16 @@
+// Shared build config. Values for these keys live in Secrets.xcconfig.local (git-ignored).
+// Write URLs as https:/$()/host so xcconfig doesn't read "//" as a comment.
+//
+// GUMMI_API_BASE_URL   App base URL including /api/v1 (D-06)
+// GUMMI_TOKEN_URL      Workspace /oidc/v1/token endpoint (D-06)
+// GUMMI_CLIENT_ID      gummi-iphone service principal client id
+// GUMMI_CLIENT_SECRET  gummi-iphone client secret (from Pranav, never committed)
+// GUMMI_USER_ID        X-User-Id, for example u_mahil
+
+GUMMI_API_BASE_URL =
+GUMMI_TOKEN_URL =
+GUMMI_CLIENT_ID =
+GUMMI_CLIENT_SECRET =
+GUMMI_USER_ID =
+
+#include? "Secrets.xcconfig.local"
