@@ -9,7 +9,8 @@ from ..engine.engine import engine
 from ..engine.gold import gold
 from ..stream.producer import clock
 from ..util import TZ, iso, r1
-from .hot_store import dexcom_status, store
+from ..dexcom import client as dexcom
+from .hot_store import store
 
 VIEW_KEYS = ("glucose_mg_dl", "band_low_mg_dl", "band_high_mg_dl", "trend", "as_of", "minutes_since_confirmed", "confidence")
 _cache: dict = {}
@@ -98,7 +99,7 @@ def build_state(uid: str) -> dict:
         if u.alert and u.alert["expires_at"] >= iso(v["now"]):
             alert = u.alert
     return {
-        "user_id": uid, "following": pid, "acting_as": pid if s is not None else None, "dexcom": dexcom_status(),
+        "user_id": uid, "following": pid, "acting_as": pid if s is not None else None, "dexcom": dexcom.status(uid),
         "gummi_view": v["gummi_view"] if v else None,
         "confirmed": v["confirmed"] if v else [], "estimate": v["estimate"] if v else [],
         "forecast": v["forecast"] if v else [],

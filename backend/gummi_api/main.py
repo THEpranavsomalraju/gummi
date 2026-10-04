@@ -64,7 +64,9 @@ async def engine_loop() -> None:
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
-    tasks = [asyncio.create_task(landing.run()), asyncio.create_task(engine_loop()), asyncio.create_task(gold.run())]
+    from .dexcom import client as dexcom
+    tasks = [asyncio.create_task(landing.run()), asyncio.create_task(engine_loop()), asyncio.create_task(gold.run()),
+             asyncio.create_task(dexcom.run())]
     yield
     for t in tasks:
         t.cancel()

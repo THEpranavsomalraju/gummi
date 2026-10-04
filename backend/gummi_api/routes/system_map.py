@@ -22,7 +22,7 @@ EXP = f"{W}/ml/experiments/{config.MLFLOW_EXPERIMENT_ID}"
 NODES = [
     ("src_replay", "Study replay", "15 BIG IDEAs participants, 60x", 0, 0, "source", ["source.replay"], f"{W}/explore/data/workspace/gummi_data/replay_cgm"),
     ("src_phone", "iPhone", "steps and walks, live", 0, 2, "source", ["source.iphone"], None),
-    ("src_dexcom", "Dexcom sandbox", "real OAuth, status only", 0, 4, "source", [], None),
+    ("src_dexcom", "Dexcom sandbox", "real OAuth, status only", 0, 4, "source", ["source.dexcom"], "https://developer.dexcom.com"),
     ("engine", "Replay engine", "Databricks App: hot state, 1 s tick", 1, 1, "app", ["engine.meal_due", "engine.walk_alert", "engine.morning_briefing", "engine.evening_recap"], f"{W}/apps/gummi"),
     ("model", "Gummi model", "ridge per horizon, 5 out-of-sample folds", 2, 0, "model", ["model.predict"], f"{W}/explore/data/models/workspace/gummi_ml/gummi_model"),
     ("grader", "Grader", "Gummi vs CGM-only vs last value", 2, 2, "model", ["model.grade"], None),
@@ -52,7 +52,7 @@ NODES = [
     ("out_phone", "Gummi on iPhone", "live channel, < 1 s", 6, 0, "output", [], None),
 ]
 EDGES = [
-    ("src_replay", "engine", "source.replay"), ("src_phone", "engine", "source.iphone"), ("src_dexcom", "engine", None),
+    ("src_replay", "engine", "source.replay"), ("src_phone", "engine", "source.iphone"), ("src_dexcom", "engine", "source.dexcom"),
     ("engine", "model", "model.predict"), ("engine", "grader", "model.grade"), ("model", "grader", "model.grade"),
     ("engine", "agent_meal", "agent.meal_story"), ("engine", "agent_walk", "agent.walk_coach"),
     ("engine", "agent_morning", "agent.morning_briefing"), ("engine", "agent_recap", "agent.evening_recap"),

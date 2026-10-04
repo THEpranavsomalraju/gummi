@@ -2,14 +2,18 @@
 from pathlib import Path
 
 from fastapi import APIRouter, Depends
-from fastapi.responses import HTMLResponse
+import asyncio
+import re
+
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 from .. import config
 from ..auth import user_id
+from ..dexcom import client as dexcom
 from ..errors import ApiError
 from ..live.broadcaster import broadcaster
 from ..engine.engine import engine
-from ..state.hot_store import dexcom_status, store
+from ..state.hot_store import store
 from ..state.view import fleet, stream_status
 from ..stream.producer import clock, parse_start
 from .core import current_state
@@ -95,22 +99,51 @@ async def fleet_view():
 
 
 @router.get("/dexcom/status")
-async def dexcom(uid: str = Depends(user_id)):
-    return dexcom_status()
+async def dexcom_status_route(uid: str = Depends(user_id)):
+    return dexcom.status(uid)
 
 
 @router.get("/dexcom/connect", response_class=HTMLResponse)
-async def dexcom_connect():
-    return (WEB / "dexcom_connect.html").read_text()
+async def dexcom_connect(user: str | None = None):
+    """Laptop browser page (D-17). With ?user=u_name it goes straight to Dexcom's sandbox login."""
+    if not dexcom.configured():
+        return HTMLResponse(_page("Dexcom isn't set up yet", "The App is missing its Dexcom client id or secret."), 503)
+    if user:
+        if not re.match(r"^u_[a-z0-9_]{1,32}$", user):
+            raise ApiError(400, "bad_request", "user must look like u_<name>")
+        return RedirectResponse(dexcom.login_url(user), status_code=302)
+    return HTMLResponse((WEB / "dexcom_connect.html").read_text())
 
 
 @router.get("/dexcom/callback", response_class=HTMLResponse)
-async def dexcom_callback(code: str | None = None, state: str | None = None):
-    return "<h1>Dexcom sandbox</h1><p>OAuth is not wired up yet (Phase 0 auth spike).</p>"
+async def dexcom_callback(code: str | None = None, state: str | None = None, error: str | None = None):
+    uid = dexcom.verify_state(state or "")
+    if error or not code or not uid:
+        return HTMLResponse(_page("Couldn't connect", f"Dexcom said: {error or 'missing code or state'}. Try again."), 400)
+    try:
+        await asyncio.to_thread(dexcom.exchange_code, uid, code)
+    except Exception as e:  # noqa: BLE001
+        return HTMLResponse(_page("Couldn't connect", f"The token exchange failed ({type(e).__name__}). Try again."), 502)
+    d = dexcom.details(uid)
+    egv = d.get("latest_egv") or {}
+    for u in broadcaster.users():
+        if u == uid:
+            broadcaster.publish(u, "state", current_state(u))
+    body = (f"{uid} is connected to the Dexcom sandbox. Data through {d.get('data_through') or 'n/a'}"
+            + (f", newest sandbox reading {egv.get('value')} mg/dL." if egv else ".")
+            + " Gummi shows connection status only; it never replaces your Dexcom app. You can close this tab.")
+    return HTMLResponse(_page("Connected", body))
 
 
 @router.post("/dexcom/disconnect")
 async def dexcom_disconnect(uid: str = Depends(user_id)):
+    dexcom.disconnect(uid)
+    broadcaster.publish(uid, "state", current_state(uid))
     return {"ok": True}
 
 
+def _page(title: str, body: str) -> str:
+    return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" '
+            f'content="width=device-width, initial-scale=1"><title>Gummi Dexcom</title><style>body{{font:18px/1.5 '
+            f'-apple-system,system-ui,sans-serif;max-width:560px;margin:64px auto;padding:0 16px;color:#1d2433}}'
+            f'p{{color:#4b5568}}</style></head><body><h1>{title}</h1><p>{body}</p></body></html>')
