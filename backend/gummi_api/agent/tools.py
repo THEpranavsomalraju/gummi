@@ -203,6 +203,13 @@ def today_summary(c: Ctx, **_):
 
 def get_gold_summary(c: Ctx, days=1, **_):
     who = c.pid or c.uid
+    if not gold.rows and c.subject is not None and c.subject.grades:
+        # gold not loaded yet: the App's own grades (same grade() output the pipeline aggregates), labeled as such
+        gs = list(c.subject.grades)
+        mean = lambda k: r1(sum(g[k] for g in gs if g[k] is not None) / max(1, sum(g[k] is not None for g in gs)))  # noqa: E731
+        return {"source": "live grades in the App (gold tables not loaded yet)", "grades": len(gs),
+                "gummi_mae_mg_dl": mean("gummi_mae_mg_dl"), "cgm_only_mae_mg_dl": mean("cgm_only_mae_mg_dl"),
+                "last_value_mae_mg_dl": mean("last_value_mae_mg_dl"), "sample": "out-of-sample"}, None
     rows = [{k: r.get(k) for k in ("sample", "user_id", "window_type", "grades", "gummi_mae_mg_dl", "cgm_only_mae_mg_dl",
                                    "last_value_mae_mg_dl", "gummi_beats_cgm_only_pct")} for r in gold.summary(who)]
     return {"source": "stream_gold_accuracy (Databricks)", "refreshed_at": gold.refreshed_at, "rows": rows[:12]}, None

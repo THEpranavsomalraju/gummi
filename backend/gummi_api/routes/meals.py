@@ -5,6 +5,7 @@ from datetime import timedelta
 import pandas as pd
 from fastapi import APIRouter, Depends
 
+from .. import activity
 from ..auth import user_id
 from ..engine.engine import MACROS, engine
 from ..errors import ApiError
@@ -161,6 +162,8 @@ async def simulate(body: dict, uid: str = Depends(user_id)):
 async def vitals(body: dict, uid: str = Depends(user_id)):
     samples = [s for s in body.get("samples", []) if s.get("type") == "steps" and s.get("value") is not None]
     store.get(uid).steps += int(sum(s["value"] for s in samples))
+    if samples:
+        activity.hit("source.iphone", len(samples), detail=f"{uid}: {int(sum(s['value'] for s in samples))} steps")
     for smp in samples:
         landing.enqueue({"source": "iphone", "user_id": uid, "kind": "steps", "t": smp.get("end") or iso_utc(utcnow()),
                          "released_at": iso_utc(utcnow()),
@@ -198,6 +201,7 @@ async def events(body: dict, uid: str = Depends(user_id)):
             s.version += 1
         u.walk_started_at, u.walk_started_r, u.alert = None, None, None
         u.happy_until = time.time() + 20 * 60
+        activity.hit("source.iphone", detail=f"{uid}: walk {minutes} min", log=True)
         landing.enqueue({"source": "iphone", "user_id": uid, "kind": "walk", "t": iso_utc(at),
                          "released_at": iso_utc(utcnow()), "payload": walk})
         note = "" if s is None else " Your real walk is shown over the replayed day; its effect on replayed glucose isn't graded."

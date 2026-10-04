@@ -14,7 +14,7 @@ from .errors import ApiError
 from .engine.engine import engine
 from .engine.gold import gold
 from .live.broadcaster import broadcaster
-from .routes import chat, core, meals, stream
+from .routes import chat, core, meals, stream, system_map
 from .state.hot_store import store
 from .state.view import build_state
 from .stream.landing_writer import landing
@@ -28,7 +28,9 @@ async def engine_loop() -> None:
     has a chart before anyone presses start), then tick once per second and push State to every connected phone."""
     broadcaster.bind(asyncio.get_running_loop())
     await asyncio.to_thread(engine.load)
+    from .agent import events
     from .agent.llm import warm
+    events.start_workers(2)
     asyncio.get_running_loop().run_in_executor(None, warm)     # first chat turn skips connection setup
     if engine.ready and clock.anchor_replay is None:
         start_r = parse_start(config.DEFAULT_START)
@@ -108,6 +110,6 @@ async def server_error(request: Request, exc: Exception):
 
 
 api = APIRouter(prefix="/api/v1")
-for r in (core.router, meals.router, chat.router, stream.router):
+for r in (core.router, meals.router, chat.router, stream.router, system_map.router):
     api.include_router(r)
 app.include_router(api)

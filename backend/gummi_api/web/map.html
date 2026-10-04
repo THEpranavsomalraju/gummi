@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gummi System Map</title>
+<style>
+  :root { --bg:#0e1320; --panel:#161e30; --panel2:#1b2439; --text:#eef2fa; --muted:#8e9ab3; --line:#2b3651; --edge:#33405f;
+          --active:#7cc4ff; --source:#7cc4ff; --app:#8fe0b0; --model:#ffd27a; --agent:#c9a2ff; --tool:#9fb7ff;
+          --databricks:#ff8a5c; --output:#d9dde7; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--text); font:15px/1.35 -apple-system, system-ui, "Segoe UI", sans-serif; }
+  header { display:flex; flex-wrap:wrap; align-items:baseline; gap:28px; padding:16px 24px 10px; }
+  h1 { margin:0; font-size:24px; font-weight:650; letter-spacing:.2px; }
+  h1 span { color:var(--muted); font-weight:400; font-size:15px; margin-left:8px; }
+  .stat { color:var(--muted); font-size:13px; }
+  .stat b { display:block; color:var(--text); font-size:20px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .acc b { font-size:18px; }
+  .g { color:var(--active); } .c { color:var(--agent); } .l { color:var(--model); }
+  main { display:grid; grid-template-columns: 1fr 340px; gap:14px; padding:0 24px 18px; height:calc(100% - 78px); }
+  .canvas { background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; position:relative; }
+  svg { width:100%; height:100%; display:block; }
+  .edge { fill:none; stroke:var(--edge); stroke-width:1.6; }
+  .edge.on { stroke:var(--active); stroke-width:2.4; stroke-dasharray:7 7; animation: flow .8s linear infinite; }
+  @keyframes flow { to { stroke-dashoffset:-14; } }
+  @media (prefers-reduced-motion: reduce) { .edge.on { animation:none; stroke-dasharray:none; } }
+  .node rect.box { fill:var(--panel2); stroke:var(--line); stroke-width:1.2; }
+  .node.on rect.box { stroke:var(--active); stroke-width:2.2; }
+  .node.link { cursor:pointer; }
+  .node.link:hover rect.box { stroke:var(--text); }
+  .node .label { font-size:14px; font-weight:600; fill:var(--text); }
+  .node .sub { font-size:11px; fill:var(--muted); }
+  .node .count { font-size:12px; fill:var(--text); font-variant-numeric:tabular-nums; }
+  .node .ago { font-size:11px; fill:var(--active); }
+  .colhead { font-size:12px; fill:var(--muted); letter-spacing:1.2px; text-transform:uppercase; }
+  aside { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 16px; overflow:hidden; display:flex; flex-direction:column; }
+  aside h2 { margin:0 0 10px; font-size:13px; color:var(--muted); font-weight:500; letter-spacing:1.2px; text-transform:uppercase; }
+  .feed { list-style:none; margin:0; padding:0; overflow:hidden; }
+  .feed li { padding:8px 0; border-bottom:1px solid var(--line); }
+  .feed .who { font-weight:600; font-size:13px; }
+  .feed .what { color:var(--muted); font-size:12.5px; margin-top:2px; word-break:break-word; }
+  .feed .when { float:right; color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+  .legend { margin-top:auto; padding-top:12px; display:flex; flex-wrap:wrap; gap:8px 14px; font-size:12px; color:var(--muted); }
+  .legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:-1px; }
+  .note { font-size:12px; color:var(--muted); margin-top:8px; }
+  #tip { position:fixed; pointer-events:none; background:#0b0f19; border:1px solid var(--line); border-radius:8px; padding:8px 10px;
+         font-size:12.5px; max-width:340px; display:none; z-index:5; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Gummi <span>live system map</span></h1>
+  <div class="stat">Replay clock<b id="clock">–</b></div>
+  <div class="stat">Events / s<b id="eps">–</b></div>
+  <div class="stat">Predictions<b id="preds">–</b></div>
+  <div class="stat">Grades<b id="grades">–</b></div>
+  <div class="stat">Agent runs<b id="runs">–</b></div>
+  <div class="stat acc">Error in mg/dL, out-of-sample (gold)<b id="acc">–</b></div>
+  <div class="stat">Pipeline lag<b id="lag">–</b></div>
+</header>
+<main>
+  <div class="canvas"><svg id="svg" viewBox="0 0 1660 690" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Gummi system map"></svg></div>
+  <aside>
+    <h2>What just happened</h2>
+    <ul class="feed" id="feed"></ul>
+    <div class="legend">
+      <span><i style="background:var(--source)"></i>data sources</span>
+      <span><i style="background:var(--app)"></i>Databricks App</span>
+      <span><i style="background:var(--model)"></i>Gummi's own model</span>
+      <span><i style="background:var(--agent)"></i>agents</span>
+      <span><i style="background:var(--tool)"></i>agent tools</span>
+      <span><i style="background:var(--databricks)"></i>Databricks platform</span>
+    </div>
+    <div class="note">Predictions come from Gummi's trained model, graded against two baselines. The LLM writes words and calls tools; it never makes up a number. Click any node to open it in Databricks.</div>
+  </aside>
+</main>
+<div id="tip"></div>
+<script>
+const COLW = 236, ROWH = 104, X0 = 26, Y0 = 46, NW = 208, NH = 70;
+const HEADS = ["Sources", "Databricks App", "Model and LLM", "Agents", "Agent tools", "Databricks data and AI", "Databricks AI"];
+const svg = document.getElementById("svg"), tip = document.getElementById("tip");
+const pos = n => ({ x: X0 + n.col * COLW, y: Y0 + n.row * ROWH });
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ago = s => s == null ? "" : s < 60 ? `${Math.round(s)} s ago` : s < 3600 ? `${Math.round(s/60)} min ago` : `${Math.round(s/3600)} h ago`;
+let built = false, byId = {};
+
+function edgePath(a, b) {
+  const pa = pos(a), pb = pos(b);
+  let x1, y1, x2, y2;
+  if (b.col > a.col) { x1 = pa.x + NW; y1 = pa.y + NH/2; x2 = pb.x; y2 = pb.y + NH/2; }
+  else if (b.col < a.col) { x1 = pa.x; y1 = pa.y + NH/2; x2 = pb.x + NW; y2 = pb.y + NH/2; }
+  else { x1 = pa.x + NW/2; y1 = b.row > a.row ? pa.y + NH : pa.y; x2 = pb.x + NW/2; y2 = b.row > a.row ? pb.y : pb.y + NH; }
+  if (a.col === b.col) return `M${x1},${y1} C${x1+40},${(y1+y2)/2} ${x2+40},${(y1+y2)/2} ${x2},${y2}`;
+  const dx = Math.max(40, Math.abs(x2 - x1) / 2) * (x2 > x1 ? 1 : -1);
+  return `M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`;
+}
+
+function build(state) {
+  state.nodes.forEach(n => byId[n.id] = n);
+  let h = HEADS.map((t, i) => `<text class="colhead" x="${X0 + i*COLW}" y="26">${t}</text>`).join("");
+  h += state.edges.map((e, i) => `<path id="e${i}" class="edge" d="${edgePath(byId[e.from], byId[e.to])}"/>`).join("");
+  h += state.nodes.map(n => { const p = pos(n); return `
+    <g class="node${n.link ? " link" : ""}" id="n_${n.id}" data-id="${n.id}" transform="translate(${p.x},${p.y})">
+      <rect class="box" width="${NW}" height="${NH}" rx="10"/>
+      <rect width="5" height="${NH - 16}" x="0" y="8" rx="2" fill="var(--${n.kind})"/>
+      <text class="label" x="16" y="24">${esc(n.label)}</text>
+      <text class="sub" x="16" y="42">${esc(n.sub)}</text>
+      <text class="count" x="16" y="61"></text>
+      <text class="ago" x="${NW - 12}" y="61" text-anchor="end"></text>
+    </g>`; }).join("");
+  svg.innerHTML = h;
+  svg.querySelectorAll(".node").forEach(g => {
+    g.addEventListener("click", () => { const n = byId[g.dataset.id]; if (n.link) window.open(n.link, "_blank", "noopener"); });
+    g.addEventListener("mousemove", ev => {
+      const n = byId[g.dataset.id]; const lines = [`<b>${esc(n.label)}</b>`, esc(n.sub)];
+      if (n.detail) lines.push(`Last: ${esc(n.detail)}`);
+      if (n.trace_id) lines.push(`MLflow trace ${esc(n.trace_id)}`);
+      if (n.link) lines.push("Click to open in Databricks");
+      tip.innerHTML = lines.join("<br>"); tip.style.display = "block";
+      tip.style.left = Math.min(ev.clientX + 14, innerWidth - 360) + "px"; tip.style.top = (ev.clientY + 14) + "px";
+    });
+    g.addEventListener("mouseleave", () => tip.style.display = "none");
+  });
+  built = true;
+}
+
+function update(state) {
+  if (!built) build(state);
+  state.nodes.forEach(n => {
+    byId[n.id] = n;
+    const g = document.getElementById("n_" + n.id);
+    const on = n.ago_s != null && n.ago_s < 4;
+    g.classList.toggle("on", on);
+    g.querySelector(".count").textContent = n.count ? `${n.count.toLocaleString()} ${n.kind === "agent" ? "runs" : n.kind === "tool" ? "calls" : "events"}` : "";
+    g.querySelector(".ago").textContent = n.ago_s != null ? ago(n.ago_s) : "";
+  });
+  state.edges.forEach((e, i) => document.getElementById("e" + i).classList.toggle("on", e.ago_s != null && e.ago_s < 4));
+  const s = state.stats, gd = s.gold || {};
+  document.getElementById("clock").textContent = s.replay_clock ? `${s.replay_clock}${s.running ? ` · ${s.speed}x` : " · stopped"}` : "–";
+  document.getElementById("eps").textContent = s.events_per_second.toFixed(1);
+  document.getElementById("preds").textContent = s.predictions.toLocaleString();
+  document.getElementById("grades").textContent = s.grades.toLocaleString();
+  document.getElementById("runs").textContent = s.agent_runs.toLocaleString();
+  document.getElementById("acc").innerHTML = gd.gummi != null
+    ? `<span class="g">Gummi ${gd.gummi}</span> · <span class="c">CGM-only ${gd.cgm_only}</span> · <span class="l">last value ${gd.last_value}</span>`
+    : "waiting for gold";
+  document.getElementById("lag").textContent = s.pipeline_lag_seconds == null ? "–" : `${Math.round(s.pipeline_lag_seconds)} s`;
+  const label = id => (state.nodes.find(n => [n.id].concat([]).includes(id)) || {}).label;
+  document.getElementById("feed").innerHTML = state.feed.map(f => `
+    <li><span class="when">${ago(f.ago_s)}</span><div class="who">${esc(f.node.replace(/^(agent|tool|engine|source|model|insights|databricks)\./, ""))}</div>
+    <div class="what">${esc(f.detail)}</div></li>`).join("");
+}
+
+async function tick() {
+  try { const r = await fetch("map/state", { cache: "no-store" }); if (r.ok) update(await r.json()); } catch (e) {}
+}
+tick(); setInterval(tick, 1000);
+</script>
+</body>
+</html>

@@ -10,7 +10,7 @@ import logging
 import threading
 import time
 
-from .. import config
+from .. import activity, config
 from ..live.broadcaster import sse
 from ..state.hot_store import store
 from ..util import new_id
@@ -102,6 +102,7 @@ def _llm_step(messages: list[dict], emit, use_tools: bool = True) -> tuple[str, 
         except Exception as e:  # noqa: BLE001
             last_err = e
             log.warning("LLM %s failed: %s", model, str(e)[:200])
+            activity.hit("llm.fallback", detail=f"{model}: {str(e)[:80]}", log=True)
             if started:
                 break                      # tokens already shown: don't replay the answer from another model
     raise RuntimeError(f"llm_unavailable: {last_err}")
@@ -151,6 +152,7 @@ def run_turn(uid: str, message: str, conversation_id: str, emit) -> None:
                     ts.set_inputs(args)
                     res, card = tools.run(c["name"], args, ctx)
                     ts.set_outputs(res)
+                activity.hit(f"tool.{c['name']}", detail="Coach agent", log=True)
                 emit("tool", {"name": c["name"], "status": "end"})
                 if card:
                     cards.append(card)
@@ -161,6 +163,7 @@ def run_turn(uid: str, message: str, conversation_id: str, emit) -> None:
         trace_id = getattr(root, "trace_id", None) or getattr(root, "request_id", None)
     CONVERSATIONS[conversation_id] = [*history, {"role": "user", "content": message},
                                       {"role": "assistant", "content": final}]
+    activity.hit("agent.coach", detail=message[:60], trace_id=trace_id, log=True)
     emit("mood", {"mood": _mood_after(cards)})
     emit("done", {"conversation_id": conversation_id, "trace_id": trace_id})
     from ..routes.core import counters

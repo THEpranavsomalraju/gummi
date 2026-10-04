@@ -48,6 +48,11 @@ def _ask_insights(question: str) -> str | None:
                                headers={"Content-Type": "application/json"})
         texts = [c.get("text", "") for item in resp.get("output", []) if item.get("type") == "message"
                  for c in item.get("content", []) if c.get("type") == "output_text"]
+        from .. import activity
+        for item in resp.get("output", []):
+            if item.get("type") == "function_call":       # which sub-agent the supervisor chose, for the map
+                activity.hit(f"insights.{item.get('name', 'tool')}", detail=question[:60], log=True)
+        activity.hit("agent.insights", detail=question[:60], log=True)
         return texts[-1].strip() if texts else None
     except Exception as e:  # noqa: BLE001
         log.warning("Gummi Insights failed: %s", str(e)[:200])
