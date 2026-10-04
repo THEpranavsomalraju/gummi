@@ -146,6 +146,13 @@ def run_job(job: dict) -> dict | None:
         content = msg.content if isinstance(msg.content, str) else "".join(
             p.get("text", "") for p in (msg.content or []) if isinstance(p, dict) and p.get("type") == "text")
         out = _parse(content or "")
+        if out:
+            from . import guard
+            issues = guard.problems("", out["body"], guard.numbers_in(job["context"]) | guard.numbers_in(messages[2:]),
+                                    store.get(job["uid"]).profile["high_line_mg_dl"], store.get(job["uid"]).profile["low_line_mg_dl"])
+            if issues:
+                activity.hit("agent.self_check", detail=f"{spec['name']}: {issues[0]}", log=True)
+                out = None                               # keep the template card rather than post a rule break
         root.set_outputs({"card": out, "tools_used": used})
         trace_id = getattr(root, "trace_id", None)
     if job["agent"] == "evening_recap" and "get_gold_summary" not in used:

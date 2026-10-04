@@ -31,6 +31,8 @@ async def engine_loop() -> None:
     from .agent import events
     from .agent.llm import warm
     events.start_workers(2)
+    from .agent import reviewer
+    reviewer.start()
     asyncio.get_running_loop().run_in_executor(None, warm)     # first chat turn skips connection setup
     if engine.ready and clock.anchor_replay is None:
         start_r = parse_start(config.DEFAULT_START)

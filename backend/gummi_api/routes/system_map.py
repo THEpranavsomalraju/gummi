@@ -32,6 +32,8 @@ NODES = [
     ("agent_walk", "Walk Coach agent", "forecast crosses 140", 3, 2, "agent", ["agent.walk_coach"], EXP),
     ("agent_morning", "Morning Briefing agent", "first reading after 6 AM", 3, 3, "agent", ["agent.morning_briefing"], EXP),
     ("agent_recap", "Evening Recap agent", "8 PM, reads gold tables", 3, 4, "agent", ["agent.evening_recap"], EXP),
+    ("agent_reviewer", "Reviewer agent", "scores every reply, writes lessons", 3, 5, "agent", ["agent.reviewer", "agent.self_check"], EXP),
+    ("memory", "Lessons memory", "UC volume, fed back into prompts", 4, 6, "databricks", ["memory.lessons"], f"{W}/explore/data/volumes/workspace/gummi_data/landing"),
     ("tool_simulate", "simulate_food", "can I eat this?", 4, 0, "tool", ["tool.simulate_food", "tool.log_meal"], None),
     ("tool_state", "get_state", "Gummi's estimate now", 4, 1, "tool", ["tool.get_state", "tool.today_summary", "tool.get_history"], None),
     ("tool_spike", "explain_spike", "why did I spike?", 4, 2, "tool", ["tool.explain_spike"], None),
@@ -68,6 +70,8 @@ EDGES = [
     ("insights", "ins_fn", "insights.workspace__gummi_data__get_gold_summary"), ("insights", "ins_ka", "insights.gummi-reports"),
     ("ins_genie", "gold", None), ("agent_coach", "mlflow", "agent.coach"), ("engine", "out_phone", None),
     ("agent_coach", "out_phone", "agent.coach"), ("agent_meal", "out_phone", "agent.meal_story"),
+    ("agent_coach", "agent_reviewer", "agent.reviewer"), ("agent_reviewer", "memory", "memory.lessons"),
+    ("memory", "agent_coach", "memory.lessons"), ("agent_reviewer", "mlflow", "agent.reviewer"),
 ]
 
 
@@ -97,3 +101,9 @@ async def map_state():
 @router.get("/map", response_class=HTMLResponse)
 async def map_page():
     return (Path(__file__).parents[1] / "web" / "map.html").read_text()
+
+
+@router.get("/agent/lessons")
+async def agent_lessons():
+    from ..agent import reviewer
+    return {"lessons": reviewer.lessons_detail(), "reviewer": reviewer.counters, "path": reviewer.LESSONS_PATH}

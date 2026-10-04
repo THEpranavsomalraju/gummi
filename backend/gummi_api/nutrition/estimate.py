@@ -15,9 +15,24 @@ def lookup(name: str) -> tuple[dict, str]:
     return GENERIC, "llm_estimate"
 
 
+WEIGHT_UNITS = {"g", "gram", "grams", "gr", "oz", "ounce", "ounces", "ml", "milliliter", "milliliters", "lb", "lbs"}
+MAX_PORTIONS = 6.0
+
+
+def portions(quantity, unit: str | None) -> float:
+    """Seed macros are per portion. A weight ("28 g", "4 oz") means one normal portion, never 28 portions, and no
+    food counts as more than 6 portions: a units mistake must never turn a snack into 800 g of carbs."""
+    q = float(quantity or 1)
+    if (unit or "").strip().lower().rstrip(".") in WEIGHT_UNITS:
+        return 1.0
+    return max(0.25, min(q, MAX_PORTIONS))
+
+
 def item(name: str, quantity: float = 1, unit: str | None = None, **given) -> dict:
     """One Meal item. Macros given by the caller (edits, dataset rows) win over the seed table."""
     per, source = lookup(name)
+    if not any(given.get(k) is not None for k in MACROS):
+        quantity = portions(quantity, unit)
     out = {"name": name, "quantity": float(quantity), "unit": unit or per["unit"]}
     for k in MACROS:
         out[k] = round(float(given[k]) if given.get(k) is not None else per[k] * float(quantity), 1)

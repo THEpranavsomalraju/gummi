@@ -14,7 +14,7 @@ from .. import activity, config
 from ..live.broadcaster import sse
 from ..state.hot_store import store
 from ..util import new_id
-from . import tools
+from . import guard, reviewer, tools
 from .llm import client
 from .prompts import system_prompt
 
@@ -128,15 +128,17 @@ def run_turn(uid: str, message: str, conversation_id: str, emit) -> None:
     messages = [{"role": "system", "content": sysmsg}, *history, {"role": "user", "content": message}]
     cards: list[dict] = []
     final = ""
+    tool_results: list = []
+    quiet = lambda ev, data: None  # noqa: E731  (answers are checked before the phone sees them)
     t0 = time.perf_counter()
     with span("gummi_chat_turn", "AGENT") as root:
         root.set_inputs({"user_id": uid, "acting_as": ctx.pid, "message": message})
         for step in range(MAX_STEPS + 1):
             with span(f"llm_step_{step + 1}", "CHAT_MODEL") as s:
                 s.set_inputs({"messages": len(messages), "last": messages[-1].get("content") if isinstance(messages[-1].get("content"), str) else None})
-                text, calls = _llm_step(messages, emit, use_tools=step < MAX_STEPS)
+                text, calls = _llm_step(messages, quiet, use_tools=step < MAX_STEPS)
                 s.set_outputs({"text": text, "tool_calls": [{"name": c["name"], "args": c["args"]} for c in calls]})
-            final += text
+            final = text
             if not calls:
                 break
             messages.append({"role": "assistant", "content": text or None,
@@ -158,12 +160,27 @@ def run_turn(uid: str, message: str, conversation_id: str, emit) -> None:
                     cards.append(card)
                     emit("card", card)
                 messages.append({"role": "tool", "tool_call_id": c["id"], "content": tools.dumps(res)})
-        root.set_outputs({"text": final, "cards": [c["card_type"] for c in cards]})
+                tool_results.append(res)
+        issues = guard.problems(message, final, guard.numbers_in(tool_results), u.profile["high_line_mg_dl"],
+                                u.profile["low_line_mg_dl"])
+        if issues:
+            with span("self_check_rewrite", "CHAIN") as fix:
+                fix.set_inputs({"draft": final, "problems": issues})
+                messages += [{"role": "assistant", "content": final},
+                             {"role": "user", "content": "Self-check before sending: your draft broke these rules: "
+                              + "; ".join(issues) + ". Rewrite it so it follows every rule, same voice. Reply with the rewrite only."}]
+                final, _ = _llm_step(messages, quiet, use_tools=False)
+                fix.set_outputs({"rewrite": final})
+            activity.hit("agent.self_check", detail=issues[0], log=True)
+        for i in range(0, len(final), 24):                 # stream the checked answer
+            emit("token", {"text": final[i:i + 24]})
+        root.set_outputs({"text": final, "cards": [c["card_type"] for c in cards], "self_check": issues})
         root.set_attributes({"latency_ms": round((time.perf_counter() - t0) * 1000), "model": config.LLM_ENDPOINT})
         trace_id = getattr(root, "trace_id", None) or getattr(root, "request_id", None)
     CONVERSATIONS[conversation_id] = [*history, {"role": "user", "content": message},
                                       {"role": "assistant", "content": final}]
     activity.hit("agent.coach", detail=message[:60], trace_id=trace_id, log=True)
+    reviewer.submit({"trace_id": trace_id, "message": message, "answer": final, "tool_results": tool_results})
     emit("mood", {"mood": _mood_after(cards)})
     emit("done", {"conversation_id": conversation_id, "trace_id": trace_id})
     from ..routes.core import counters

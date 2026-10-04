@@ -15,6 +15,7 @@ WAREHOUSE_ID = os.environ.get("GUMMI_WAREHOUSE_ID", "1b929fe5bf415d65")
 LLM_ENDPOINT = os.environ.get("GUMMI_LLM_ENDPOINT", "databricks-gpt-oss-120b")
 LLM_FALLBACK = os.environ.get("GUMMI_LLM_FALLBACK", "databricks-qwen3-next-80b-a3b-instruct")
 AGENT_ENDPOINT = os.environ.get("GUMMI_AGENT_ENDPOINT", "databricks-qwen3-next-80b-a3b-instruct")   # background agents (D-56)
+JUDGE_ENDPOINT = os.environ.get("GUMMI_JUDGE_ENDPOINT", "databricks-llama-4-maverick")     # Reviewer agent (D-57)
 INSIGHTS_ENDPOINT = os.environ.get("GUMMI_INSIGHTS_ENDPOINT", "mas-becc8b0e-endpoint")
 MLFLOW_EXPERIMENT_ID = os.environ.get("GUMMI_MLFLOW_EXPERIMENT_ID", "3505481683626519")
 

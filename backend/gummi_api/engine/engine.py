@@ -255,6 +255,7 @@ class Engine:
             grade = {"grade_id": p["prediction_id"].replace("pr_", "g_", 1), "graded_at": iso(clock.replay_to_wall(now_r)),
                      **{k: g.get(k) for k in GRADE_KEYS}}
             grade["prediction_id"] = p["prediction_id"]
+            grade["message"] = (grade["message"] or "").replace("Gummi was within", "I was within")
             s.grades.append(grade)
             self.counters["grades"] += 1
             activity.hit("model.grade", detail=f"{s.pid}: {grade['message'][:90]}", log=p["kind"] == "meal")
@@ -429,7 +430,8 @@ class Engine:
             broadcaster.publish(uid, "card", card)
             events.submit("walk_coach", uid, card, {"alert": alert["message"], "forecast_peak": peak["glucose_mg_dl"],
                                                     "peak_at_local": _local(peak["t"]), "now_local": _local(now),
-                                                    "walk_drop": drop, "effect_source": src})
+                                                    "walk_drop": drop, "peak_after_walk": round(peak["glucose_mg_dl"] - (drop or 0), 1),
+                                                    "effect_source": src})
 
     # ---------- morning briefing and evening recap (followed participants only, D-22) ----------
     def _daily(self, s: Subject, now_r: float) -> None:
