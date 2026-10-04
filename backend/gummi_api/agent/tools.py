@@ -93,6 +93,11 @@ def _hm(ts) -> str:
 
 def get_state(c: Ctx, **_):
     s = build_state(c.uid)
+    if s["data_status"] == "stale":
+        hrs = round((s["minutes_since_reading"] or 0) / 60, 1)
+        return {"available": False, "data_status": "stale", "hours_since_last_reading": hrs,
+                "note": f"No Dexcom readings for {hrs} hours, so there is no estimate. Do NOT guess or say they're in "
+                        "range. Say there are no recent readings and suggest checking the Dexcom app."}, None
     if not s["gummi_view"]:
         return {"available": False, "note": "No glucose data: not following a participant."}, None
     v, conf, fc = s["gummi_view"], s["confirmed"], s["forecast"]
@@ -136,13 +141,16 @@ def log_meal(c: Ctx, items=None, **_):
                             "it won't be graded. Say so in one short line."})
     else:
         res["note"] = "No glucose data connected for this person, so no prediction."
-    return res, {"card_type": "meal_saved", "payload": meal}
+    payload = {**meal, "simulated": bool(c.subject is not None and sim),
+               "likely_peak_mg_dl": sim["predicted_peak_mg_dl"] if sim else None,
+               "peak_at": iso(pd.Timestamp(sim["peak_at"])) if sim else None}
+    return res, {"card_type": "meal_saved", "payload": payload}
 
 
 def suggest_walk(c: Ctx, minutes=10, **_):
     s = c.subject
-    if s is None or _now() is None:
-        return {"available": False}, None
+    if s is None or _now() is None or engine.stale(s, clock.now()):
+        return {"available": False, "note": "No recent readings, so no forecast to walk against."}, None
     minutes = float(minutes or 10)
     fc = s.model.forecast(engine.ctx(s), _now(), 120)
     peak = max(fc, key=lambda p: p["glucose_mg_dl"]) if fc else None

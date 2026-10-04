@@ -186,7 +186,7 @@ class Engine:
                               **{k: totals[k] for k in MACROS}})
         s.version += 1
         self.counters["meals"] += emit
-        if predict and len(s.conf_t) >= 3:
+        if predict and len(s.conf_t) >= 3 and not self.stale(s, eaten_r):
             pred = self._meal_prediction(s, full, eaten_r)
             full["prediction_id"] = pred["prediction_id"]
         if emit:
@@ -411,6 +411,8 @@ class Engine:
         followers = self._due_followers(s.pid)
         if not followers or now_r - s.last_walk_alert < config.WALK_COOLDOWN_MIN or len(s.conf_t) < 3:
             return
+        if self.stale(s, now_r):
+            return
         if s.walk_checked_version == s.version:      # only re-check when a reading or meal arrived
             return
         s.walk_checked_version = s.version
@@ -495,6 +497,14 @@ class Engine:
             clock.running, clock.paused, clock.anchor_replay = was[0], was[1], was[2]
             landing.enabled, self.silent = was[3], False
 
+    @staticmethod
+    def stale(s: Subject, now_r: float) -> bool:
+        """True when the newest confirmed reading is older than STALE_MIN at the replay clock (sensor gap, or the
+        participant's study data has ended): no estimates, forecasts, nowcasts or walk alerts from stale data."""
+        if not s.conf_t:
+            return True
+        return (clock.replay_to_wall(now_r) - s.conf_t[-1].to_pydatetime()).total_seconds() / 60 > config.STALE_MIN
+
     # ---------- the tick ----------
     def tick(self) -> None:
         with self.lock:
@@ -508,7 +518,7 @@ class Engine:
         n = 0
         for s in self.subjects.values():
             n += self._release(s, now_r)
-            if now_r >= s.next_nowcast and len(s.conf_t) >= 3:
+            if now_r >= s.next_nowcast and len(s.conf_t) >= 3 and not self.stale(s, now_r):
                 s.next_nowcast = now_r + config.NOWCAST_EVERY_MIN
                 self._nowcast(s, now_r)
             self._grade_due(s, now_r)

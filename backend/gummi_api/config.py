@@ -57,6 +57,7 @@ UPCOMING_DUE_MIN = 360              # D-36: next 6 replay hours
 NOWCAST_EVERY_MIN = 60              # one nowcast prediction per participant per replay hour
 WALK_COOLDOWN_MIN = 45              # CONTRACT section 7
 PROUD_SECONDS = 20                  # CONTRACT section 9
+STALE_MIN = 180                     # no estimate when the last reading is older (Dexcom hour plus 2 h): CONTRACT 1.6
 
 # Participants replayed: 001 to 016 without 015 (D-20 exclusion, D-37 not replayed)
 PARTICIPANTS = [f"p_{i:03d}" for i in range(1, 17) if i != 15]

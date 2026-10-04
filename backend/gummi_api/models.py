@@ -155,6 +155,8 @@ class State(Strict):
     upcoming_due: list[UpcomingDue]
     replay_now: Optional[str]
     stream: "StreamStatus"
+    data_status: Literal["live", "stale", "none"]
+    minutes_since_reading: Optional[int]
     model_version: str
     server_time: str
 
@@ -211,6 +213,88 @@ class FoodLogEntry(Strict):
 class FoodLog(Strict):
     date: Optional[str]
     entries: list[FoodLogEntry]
+
+
+class Moment(Strict):
+    mg_dl: float
+    at: str
+
+
+class DayGlucose(Strict):
+    readings: int
+    time_in_range_pct: float
+    average_mg_dl: float
+    peak: Moment
+    low: Moment
+
+
+class DayHour(Strict):
+    hour: int
+    avg_mg_dl: float
+    min_mg_dl: float
+    max_mg_dl: float
+
+
+class DayMealBiggest(Strict):
+    food: str
+    carbs_g: float
+    at: str
+
+
+class DayMeals(Strict):
+    count: int
+    carbs_g: float
+    biggest: Optional[DayMealBiggest]
+
+
+class DayActivity(Strict):
+    steps: int
+    walks: int
+    walk_minutes: int
+
+
+class DayPredictions(Strict):
+    made: int
+    graded: int
+    gummi_mae_mg_dl: Optional[float]
+    cgm_only_mae_mg_dl: Optional[float]
+    last_value_mae_mg_dl: Optional[float]
+    beat_cgm_only_pct: Optional[float]
+
+
+class DayBestCall(Strict):
+    about: Optional[str]
+    message: str
+    gummi_peak_error_mg_dl: float
+
+
+class DaySpike(Strict):
+    peak_mg_dl: float
+    at: str
+    after_meal: Optional[str]
+
+
+class DaySummary(Strict):
+    date: str
+    participant: Optional[str]
+    data_status: Literal["live", "stale", "none"]
+    glucose: Optional[DayGlucose]
+    hourly: list[DayHour]
+    meals: DayMeals
+    activity: DayActivity
+    predictions: DayPredictions
+    best_call: Optional[DayBestCall]
+    biggest_spike: Optional[DaySpike]
+    highlights: list[str]
+    recap: Optional[StoryCard]
+
+
+class WalkSuggestion(Strict):
+    minutes: int
+    start: str
+    forecast_peak_mg_dl: Optional[float]
+    forecast_peak_drop_mg_dl: Optional[float]
+    effect_source: Optional[Literal["literature", "your data"]]
 
 
 class Alternative(Strict):

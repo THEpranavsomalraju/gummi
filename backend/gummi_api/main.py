@@ -14,7 +14,7 @@ from .errors import ApiError
 from .engine.engine import engine
 from .engine.gold import gold
 from .live.broadcaster import broadcaster
-from .routes import chat, core, meals, stream, system_map
+from .routes import chat, core, day, meals, stream, system_map
 from .state.hot_store import store
 from .state.view import build_state
 from .stream.landing_writer import landing
@@ -121,6 +121,6 @@ async def server_error(request: Request, exc: Exception):
 
 
 api = APIRouter(prefix="/api/v1")
-for r in (core.router, meals.router, chat.router, stream.router, system_map.router):
+for r in (core.router, meals.router, chat.router, stream.router, system_map.router, day.router):
     api.include_router(r)
 app.include_router(api)
