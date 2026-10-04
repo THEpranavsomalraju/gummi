@@ -114,8 +114,8 @@ nonisolated struct KoalaShape: Sendable {
         func leg(_ side: Float, _ bone: KoalaBone) -> KoalaPiece {
             // Stubby legs; the torso and legs trade length so his total height stays the same.
             KoalaPiece(name: side < 0 ? "leftLeg" : "rightLeg", parts: [
-                ShapePart(bone: bone, center: [side * 0.048, 0.056, 0.008], radii: [0.041, 0.052, 0.041], softness: 0.2),
-                ShapePart(bone: bone, center: [side * 0.048, 0.029, 0.03], radii: [0.04, 0.026, 0.044], blend: 0.02, softness: 0.3),
+                ShapePart(bone: bone, center: [side * 0.048, 0.056, 0.008], radii: [0.0375, 0.052, 0.0375], softness: 0.2),
+                ShapePart(bone: bone, center: [side * 0.048, 0.029, 0.028], radii: [0.0366, 0.026, 0.0403], blend: 0.02, softness: 0.3),
             ], boundsMin: [side * 0.048 - 0.06, -0.015, -0.05], boundsMax: [side * 0.048 + 0.06, 0.13, 0.09],
             cell: 0.005, center: [side * 0.048, 0.06, 0.012])
         }
