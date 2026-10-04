@@ -1,0 +1,19 @@
+meal_id,local_time,minute_of_day,logged_food,amount,unit,carbs_g,sugar_g,protein_g,fat_g,is_standard_breakfast
+012-027,05:56,356,Milk,4.0,ounce,4.5,4.0,6.0,2.5,False
+012-027,05:56,356,Frosted Flake,1.5,cup,52.0,20.0,2.0,0.0,True
+012-028,08:55,535,Egg,2.0,,0.7,0.4,13.0,9.5,False
+012-028,08:55,535,Bacon,3.0,,0.6,0.0,12.0,12.0,False
+012-029,12:18,738,Jim Bean Bourbon,1.0,ounce,0.0,0.0,0.0,0.0,False
+012-030,13:10,790,Coffee,,,0.0,0.0,0.3,0.1,False
+012-030,13:10,790,Cream Cheese,,,1.6,1.1,1.8,10.0,False
+012-030,13:10,790,Sausage,1.0,,0.6,0.6,8.1,19.0,False
+012-030,13:10,790,Stevia,,,3.3,0.0,0.0,0.0,False
+012-030,13:10,790,MCT Oil,,,0.0,0.0,0.0,13.0,False
+012-030,13:10,790,Cream,,,0.8,1.1,0.9,5.7,False
+012-031,14:23,863,Diet Coke,,,0.0,0.0,0.0,0.0,False
+012-032,15:32,932,Fried Cheddar Cheese Bite,,,0.0,0.0,0.0,1.0,False
+012-033,17:38,1058,Mint Chocolate Cookies,6.0,,48.0,27.0,3.0,21.0,False
+012-034,19:01,1141,Brownie,2.0,,50.0,0.0,6.2,29.0,False
+012-035,19:22,1162,Dark Chocolate Chip,0.5,cup,52.0,40.0,4.0,26.0,False
+012-035,19:30,1170,Corn Cheese Puffs,1.0,cup,3.6,0.5,28.5,36.4,False
+012-035,19:42,1182,Cheese and Crackers,4.0,,10.0,2.2,7.8,12.0,False
