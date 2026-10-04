@@ -86,3 +86,36 @@ struct ActivityTests {
         #expect(model.activityUnseen == 0)
     }
 }
+
+@Suite("Day")
+struct DayTests {
+    @Test func fixturesDecodeEveryVariant() throws {
+        let full = try Fixtures.decode(DaySummary.self, "day_full")
+        #expect(full.dataStatus == .live && full.glucose?.peak.mgDl == 193 && full.hourly.count == 23)
+        #expect(full.predictions.beatCgmOnlyPct == 83.3 && full.recap?.type == .eveningRecap)
+        #expect(full.bestCall?.message.contains("It was 186") == true)
+        #expect(try Fixtures.decode(DaySummary.self, "day_stale").dataStatus == .stale)
+        let empty = try Fixtures.decode(DaySummary.self, "day_empty")
+        #expect(empty.dataStatus == DataStatus.none && empty.glucose == nil && empty.hourly.isEmpty)
+    }
+
+    @Test func hourlyDomainHugsTheDayAndKeepsTheLines() throws {
+        let full = try Fixtures.decode(DaySummary.self, "day_full")
+        let domain = HourlyStrip.yDomain(full.hourly)
+        #expect(domain.lowerBound <= 60 && domain.upperBound >= 186 && domain.upperBound < 250)
+        #expect(HourlyStrip.yDomain([]) == 60...155)
+    }
+
+    @Test func mockDayAgreesWithItsGrades() async throws {
+        var session = MockSession(day: try MockDay.load())
+        _ = session.advance(to: 1349, wallNow: .now)
+        let day = session.daySummary(steps: 4000, walks: 1)
+        #expect(day.predictions.graded == session.grades.count && day.predictions.graded == 6)
+        #expect(day.predictions.beatCgmOnlyPct == (100 * 5.0 / 6).rounded(toPlaces: 1))
+        #expect(day.bestCall?.message.hasPrefix("I predicted 178") == true)
+        #expect(day.glucose?.peak.mgDl == 193)
+        #expect(day.recap != nil)
+        session.following = nil
+        #expect(session.daySummary(steps: 0, walks: 0).dataStatus == DataStatus.none)
+    }
+}
