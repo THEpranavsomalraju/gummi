@@ -1,0 +1,22 @@
+participant,replay_day,meals_graded,meals_gummi_beats_cgm_only,meal_curve_gummi,meal_curve_cgm_only,meal_curve_last_value,all_grades,all_gummi_beats_cgm_only,all_gummi,all_cgm_only,peak_error_gummi,peak_error_cgm_only,first_meal_message,meal_curve_edge
+012,4,9,8,19.9,32.3,35.3,27,21,11.3,16.9,24.0,39.0,"I predicted 135 for the standard breakfast. It was 188. CGM-only said 112, last value said 107. Walk effect not graded (replayed data).",12.4
+013,6,7,6,22.6,32.1,37.2,25,19,14.8,19.1,33.2,55.0,"I predicted 136 for the standard breakfast. It was 228. CGM-only said 114, last value said 113. Walk effect not graded (replayed data).",9.5
+014,8,4,3,21.0,29.8,26.7,22,12,14.3,16.9,34.5,57.3,"I predicted 143 for the standard breakfast. It was 220. CGM-only said 116, last value said 120. Walk effect not graded (replayed data).",8.8
+011,8,4,3,11.7,20.0,21.3,22,14,9.9,13.5,20.8,43.3,"I predicted 142 for the standard breakfast. It was 158. CGM-only said 117, last value said 120. Walk effect not graded (replayed data).",8.3
+008,8,3,3,15.4,23.1,26.7,21,16,7.8,10.7,19.4,37.6,"I predicted 134 for the standard breakfast. It was 161. CGM-only said 111, last value said 110. Walk effect not graded (replayed data).",7.7
+009,4,6,4,24.6,31.8,38.3,24,13,14.5,16.6,41.4,58.0,"I predicted 137 for baked potato salad with cheese. It was 201. CGM-only said 117, last value said 112. Walk effect not graded (replayed data).",7.2
+008,4,4,4,14.4,19.9,28.4,22,16,9.5,11.7,23.0,37.2,"I predicted 128 for the standard breakfast. It was 155. CGM-only said 112, last value said 108. Walk effect not graded (replayed data).",5.5
+011,10,4,3,22.1,27.4,35.0,22,13,12.6,14.1,35.8,49.6,"I predicted 156 for the standard breakfast. It was 206. CGM-only said 124, last value said 130. Walk effect not graded (replayed data).",5.3
+010,8,7,5,34.8,38.8,70.7,25,17,22.1,23.6,58.8,58.7,"I predicted 129 for the standard breakfast. It was 219. CGM-only said 119, last value said 101. Walk effect not graded (replayed data).",4.0
+013,4,4,2,30.3,33.8,42.9,22,15,14.4,15.8,36.8,57.0,"I predicted 143 for the standard breakfast. It was 235. CGM-only said 118, last value said 120. Walk effect not graded (replayed data).",3.5
+010,4,7,6,24.8,28.2,32.1,25,16,17.2,17.9,39.5,39.8,"I predicted 126 for the standard breakfast. It was 204. CGM-only said 112, last value said 104. Walk effect not graded (replayed data).",3.4
+011,6,6,3,17.8,19.3,24.5,24,16,9.9,11.3,18.6,34.1,"I predicted 144 for the standard breakfast. It was 166. CGM-only said 113, last value said 112. Walk effect not graded (replayed data).",1.5
+006,8,3,1,40.0,40.8,55.5,21,10,17.7,17.8,44.8,56.1,"I predicted 132 for the standard breakfast. It was 150. CGM-only said 113, last value said 107. Walk effect not graded (replayed data).",0.8
+002,4,5,2,16.5,17.2,25.2,20,9,10.2,11.5,17.4,27.5,"I predicted 147 for the standard breakfast. It was 183. CGM-only said 124, last value said 126. Walk effect not graded (replayed data).",0.7
+011,2,6,3,20.7,21.0,25.5,24,14,11.6,11.3,24.4,38.6,"I predicted 146 for the standard breakfast. It was 209. CGM-only said 114, last value said 108. Walk effect not graded (replayed data).",0.3
+014,6,5,2,24.4,22.9,24.8,23,9,11.0,10.5,27.8,29.6,"I predicted 143 for the standard breakfast. It was 180. CGM-only said 114, last value said 113. Walk effect not graded (replayed data).",-1.5
+006,6,3,2,33.6,30.5,28.6,21,11,13.7,13.6,40.3,42.1,"I predicted 143 for the standard breakfast. It was 218. CGM-only said 120, last value said 125. Walk effect not graded (replayed data).",-3.1
+012,6,9,4,16.7,12.7,19.6,27,12,10.9,9.2,12.8,18.5,"I predicted 153 for the standard breakfast. It was 174. CGM-only said 120, last value said 121. Walk effect not graded (replayed data).",-4.0
+002,2,6,2,26.8,22.0,29.9,24,13,14.0,13.6,27.8,47.9,"I predicted 160 for the standard breakfast. It was 197. CGM-only said 141, last value said 151. Walk effect not graded (replayed data).",-4.8
+002,6,5,1,28.7,18.3,23.7,23,8,15.2,11.6,23.4,20.5,"I predicted 148 for the standard breakfast. It was 184. CGM-only said 128, last value said 138. Walk effect not graded (replayed data).",-10.4
+016,3,4,0,31.8,21.1,27.4,22,8,16.8,14.4,24.6,15.2,"I predicted 145 for the standard breakfast. It was 144. CGM-only said 126, last value said 118. Walk effect not graded (replayed data).",-10.7

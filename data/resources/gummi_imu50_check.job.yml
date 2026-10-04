@@ -1,0 +1,20 @@
+# IMU50 cadence-band check (decision D-19): a few subjects read from Zenodo with HTTP range requests.
+#   databricks bundle run gummi_imu50_check --var="catalog=<CATALOG>" --profile gummi
+# Needs outbound internet to zenodo.org (works after LinkedIn verification). Zenodo streams slowly, so the five
+# subjects are read in parallel, 24 hours each (about 150 MB per subject, never the 46.7 GB archive).
+resources:
+  jobs:
+    gummi_imu50_check:
+      name: gummi_imu50_check
+      max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: subjects
+          default: "00,05,13,20,44"
+        - name: hours
+          default: "24"
+      tasks:
+        - task_key: cadence_check
+          notebook_task:
+            notebook_path: ../notebooks/04_imu50_cadence_check.py

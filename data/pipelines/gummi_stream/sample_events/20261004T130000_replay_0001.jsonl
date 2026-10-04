@@ -1,0 +1,2 @@
+{"event_id": "ev_000163", "source": "replay", "user_id": "p_009", "kind": "cgm", "t": "2026-10-04T07:56:45+00:00", "released_at": "2026-10-04T08:56:45+00:00", "payload": {"glucose_mg_dl": 136.0}}
+{"event_id": "ev_000001", "source": "replay", "user_id": "p_012", "kind": "cgm", "t": "2026-10-04T07:57:04+00:00", "released_at": "2026-10-04T08:57:04+00:00", "payload": {"glucose_mg_dl": 123.0}}

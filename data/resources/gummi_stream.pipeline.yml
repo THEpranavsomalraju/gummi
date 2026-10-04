@@ -1,0 +1,20 @@
+# gummi_stream: Lakeflow Declarative Pipeline over the App's landing volume (CONTRACT.md sections 3 and 10).
+resources:
+  pipelines:
+    gummi_stream:
+      name: gummi_stream
+      catalog: ${var.catalog}
+      schema: gummi_data
+      serverless: true
+      continuous: ${var.continuous}
+      channel: CURRENT
+      configuration:
+        # The App's real replay (Backend REQUEST 2125). landing/events/ keeps the test fixtures, read by no pipeline.
+        landing_path: /Volumes/${var.catalog}/gummi_data/landing/events_live/
+      libraries:
+        - file:
+            path: ../pipelines/gummi_stream/01_bronze.sql
+        - file:
+            path: ../pipelines/gummi_stream/02_silver.sql
+        - file:
+            path: ../pipelines/gummi_stream/03_gold.sql

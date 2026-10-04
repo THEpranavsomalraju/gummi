@@ -1,0 +1,8 @@
+command: ["python", "-m", "gummi_api"]
+env:
+  - name: GUMMI_CATALOG
+    value: workspace
+  - name: GUMMI_MODE
+    value: live
+  - name: GUMMI_LANDING_DIR
+    value: /Volumes/workspace/gummi_data/landing/events_live
