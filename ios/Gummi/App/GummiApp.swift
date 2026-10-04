@@ -2,7 +2,8 @@ import SwiftUI
 
 @main
 struct GummiApp: App {
-    @State private var model = AppModel()
+    @State private var model = AppModel(systemServices: ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil)
+    @State private var notificationTaps = NotificationTaps()
     @Environment(\.scenePhase) private var scenePhase
 
     /// Unit tests host the app; it must not open the live channel or follow anyone then.
@@ -22,6 +23,35 @@ struct GummiApp: App {
                 #endif
             }
             .environment(model)
+            .onAppear { notificationTaps.onTap = { model.selectedTab = .activity } }
+            #if DEBUG
+            // Screenshot helpers: -gummi.tab food|activity|day|settings, -gummi.sheet follow|chat|walk, and -gummi.chat "first|second"
+            // to ask questions in turn (an empty -gummi.chat opens the empty chat).
+            .task {
+                let defaults = UserDefaults.standard
+                switch defaults.string(forKey: "gummi.tab") {
+                case "activity", "today": model.selectedTab = .activity
+                case "food": model.selectedTab = .food
+                case "day": model.selectedTab = .day
+                case "settings": model.showsSettings = true
+                default: break
+                }
+                try? await Task.sleep(for: .seconds(2))
+                switch defaults.string(forKey: "gummi.sheet") {
+                case "follow": model.showsFollowPicker = true
+                case "walk": model.startWalk(minutes: 10)
+                case "chat":
+                    let prompts = (defaults.string(forKey: "gummi.chat") ?? "").split(separator: "|").map(String.init)
+                    model.askGummi(prompts.first)
+                    for prompt in prompts.dropFirst() {
+                        try? await Task.sleep(for: .seconds(1))
+                        while model.chat.isBusy || model.chat.isTalking { try? await Task.sleep(for: .milliseconds(200)) }
+                        model.chat.send(prompt)
+                    }
+                default: break
+                }
+            }
+            #endif
         }
         .onChange(of: scenePhase) { _, phase in
             guard !isHostingTests else { return }

@@ -11,6 +11,9 @@ nonisolated struct PuppetInput: Equatable, Sendable {
     var look: SIMD2<Float>? = nil
     /// True while a finger presses and holds Gummi: he squishes, and bounces back on release.
     var pressing = false
+    /// True during a walk: Gummi walks in place at `walkCadence` steps per minute.
+    var walking = false
+    var walkCadence: Double = 105
 }
 
 nonisolated enum TapRegion: Sendable {
@@ -22,6 +25,10 @@ nonisolated enum PuppetReaction: Sendable, Equatable {
     case wave
     /// A specific dance, or nil for a random one (never the same twice in a row).
     case dance(Dance?)
+    /// A proud spin with sparkly eyes (a grade where Gummi beat CGM-only).
+    case cheer
+    /// A small nod (a grade where he didn't).
+    case nod
 }
 
 /// The contract between the app and a puppet renderer (ios/CLAUDE.md, D-25).

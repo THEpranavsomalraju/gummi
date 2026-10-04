@@ -1,0 +1,214 @@
+{
+  "date": "2026-10-04",
+  "entries": [
+    {
+      "meal": {
+        "meal_id": "m_7",
+        "eaten_at": "2026-10-04T10:40:00-04:00",
+        "source": "manual",
+        "items": [
+          {
+            "name": "apple",
+            "quantity": 1,
+            "unit": "medium",
+            "carbs_g": 25,
+            "sugar_g": 19,
+            "fiber_g": 4.4,
+            "protein_g": 0.5,
+            "fat_g": 0.3,
+            "calories": 95,
+            "nutrition_source": "seed",
+            "editable": true
+          }
+        ],
+        "totals": {
+          "carbs_g": 25,
+          "sugar_g": 19,
+          "fiber_g": 4.4,
+          "protein_g": 0.5,
+          "fat_g": 0.3,
+          "calories": 95
+        },
+        "is_standard_breakfast": false,
+        "prediction_id": null
+      },
+      "origin": "you",
+      "graded": false,
+      "prediction": {
+        "predicted_peak_mg_dl": 131.0,
+        "cgm_only_peak_mg_dl": null,
+        "last_value_peak_mg_dl": null,
+        "status": "pending"
+      },
+      "grade": null,
+      "note": "Simulated on the participant's day; not graded"
+    },
+    {
+      "meal": {
+        "meal_id": "m_chat_3",
+        "eaten_at": "2026-10-04T10:12:00-04:00",
+        "source": "chat",
+        "items": [
+          {
+            "name": "cookie",
+            "quantity": 2,
+            "unit": "",
+            "carbs_g": 44,
+            "sugar_g": 24,
+            "fiber_g": 1,
+            "protein_g": 3,
+            "fat_g": 14,
+            "calories": 320,
+            "nutrition_source": "seed",
+            "editable": true
+          }
+        ],
+        "totals": {
+          "carbs_g": 44,
+          "sugar_g": 24,
+          "fiber_g": 1,
+          "protein_g": 3,
+          "fat_g": 14,
+          "calories": 320
+        },
+        "is_standard_breakfast": false,
+        "prediction_id": null
+      },
+      "origin": "gummi",
+      "graded": false,
+      "prediction": {
+        "predicted_peak_mg_dl": 149.0,
+        "cgm_only_peak_mg_dl": null,
+        "last_value_peak_mg_dl": null,
+        "status": "pending"
+      },
+      "grade": null,
+      "note": "Simulated on the participant's day; not graded"
+    },
+    {
+      "meal": {
+        "meal_id": "m_2",
+        "eaten_at": "2026-10-04T08:55:00-04:00",
+        "source": "replay_auto",
+        "items": [
+          {
+            "name": "Egg",
+            "quantity": 2,
+            "unit": "",
+            "carbs_g": 1.3,
+            "sugar_g": 0.4,
+            "fiber_g": 0,
+            "protein_g": 12,
+            "fat_g": 10,
+            "calories": 140,
+            "nutrition_source": "dataset",
+            "editable": true
+          },
+          {
+            "name": "Bacon",
+            "quantity": 3,
+            "unit": "slice",
+            "carbs_g": 0,
+            "sugar_g": 0,
+            "fiber_g": 0,
+            "protein_g": 13,
+            "fat_g": 11.5,
+            "calories": 164,
+            "nutrition_source": "dataset",
+            "editable": true
+          }
+        ],
+        "totals": {
+          "carbs_g": 1.3,
+          "sugar_g": 0.4,
+          "fiber_g": 0,
+          "protein_g": 25,
+          "fat_g": 21.5,
+          "calories": 304
+        },
+        "is_standard_breakfast": false,
+        "prediction_id": "pr_2"
+      },
+      "origin": "study_log",
+      "graded": false,
+      "prediction": {
+        "predicted_peak_mg_dl": 141.0,
+        "cgm_only_peak_mg_dl": 161.0,
+        "last_value_peak_mg_dl": 188.0,
+        "status": "pending"
+      },
+      "grade": null,
+      "note": null
+    },
+    {
+      "meal": {
+        "meal_id": "m_1",
+        "eaten_at": "2026-10-04T05:56:00-04:00",
+        "source": "replay_due",
+        "items": [
+          {
+            "name": "Milk",
+            "quantity": 4,
+            "unit": "ounce",
+            "carbs_g": 4.5,
+            "sugar_g": 4,
+            "fiber_g": 0,
+            "protein_g": 6,
+            "fat_g": 2.5,
+            "calories": 60,
+            "nutrition_source": "dataset",
+            "editable": true
+          },
+          {
+            "name": "Frosted Flake",
+            "quantity": 1.5,
+            "unit": "cup",
+            "carbs_g": 52,
+            "sugar_g": 20,
+            "fiber_g": 1,
+            "protein_g": 2,
+            "fat_g": 0,
+            "calories": 220,
+            "nutrition_source": "dataset",
+            "editable": true
+          }
+        ],
+        "totals": {
+          "carbs_g": 56.5,
+          "sugar_g": 24,
+          "fiber_g": 1,
+          "protein_g": 8,
+          "fat_g": 2.5,
+          "calories": 280
+        },
+        "is_standard_breakfast": true,
+        "prediction_id": "pr_1"
+      },
+      "origin": "study_log",
+      "graded": true,
+      "prediction": {
+        "predicted_peak_mg_dl": 135.0,
+        "cgm_only_peak_mg_dl": 112.0,
+        "last_value_peak_mg_dl": 104.0,
+        "status": "graded"
+      },
+      "grade": {
+        "grade_id": "g_1",
+        "prediction_id": "pr_1",
+        "kind": "meal",
+        "graded_at": "2026-10-03T07:55:00-04:00",
+        "points": 24,
+        "gummi_mae_mg_dl": 21.4,
+        "cgm_only_mae_mg_dl": 33.1,
+        "last_value_mae_mg_dl": 38.0,
+        "gummi_peak_error_mg_dl": 9.0,
+        "within_band_pct": 79.2,
+        "walk_effect_graded": true,
+        "gummi_beats_cgm_only": true,
+        "gummi_beats_last_value": true,
+        "message": "I predicted 135 for breakfast. It was 188. CGM-only said 112, last value said 104."
+      },
+      "note": null
+    }
+  ]
+}

@@ -36,6 +36,11 @@ nonisolated enum APIError: Error, Equatable, Sendable, CustomStringConvertible {
             return .http(status: status, code: parsed.error.code, message: parsed.error.message)
         }
         let text = String(decoding: body.prefix(200), as: UTF8.self)
+        // Databricks answers for a stopped App with its own HTML page; never show HTML to a person.
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("<") {
+            if status == 503 { return .http(status: 503, code: "app_unavailable", message: "Gummi's server is asleep") }
+            return .http(status: status, code: "http_\(status)", message: HTTPURLResponse.localizedString(forStatusCode: status))
+        }
         return .http(status: status, code: "http_\(status)",
                      message: text.isEmpty ? HTTPURLResponse.localizedString(forStatusCode: status) : text)
     }

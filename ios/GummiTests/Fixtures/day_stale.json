@@ -1,0 +1,186 @@
+{
+  "date": "2026-10-04",
+  "participant": "p_012",
+  "data_status": "stale",
+  "glucose": {
+    "readings": 276,
+    "time_in_range_pct": 78.3,
+    "average_mg_dl": 122.4,
+    "peak": {
+      "mg_dl": 193.0,
+      "at": "2026-10-04T19:47:00-04:00"
+    },
+    "low": {
+      "mg_dl": 77.0,
+      "at": "2026-10-04T03:12:00-04:00"
+    }
+  },
+  "hourly": [
+    {
+      "hour": 0,
+      "avg_mg_dl": 108,
+      "min_mg_dl": 102,
+      "max_mg_dl": 116
+    },
+    {
+      "hour": 1,
+      "avg_mg_dl": 105,
+      "min_mg_dl": 99,
+      "max_mg_dl": 113
+    },
+    {
+      "hour": 2,
+      "avg_mg_dl": 103,
+      "min_mg_dl": 97,
+      "max_mg_dl": 111
+    },
+    {
+      "hour": 3,
+      "avg_mg_dl": 101,
+      "min_mg_dl": 95,
+      "max_mg_dl": 109
+    },
+    {
+      "hour": 4,
+      "avg_mg_dl": 100,
+      "min_mg_dl": 94,
+      "max_mg_dl": 108
+    },
+    {
+      "hour": 5,
+      "avg_mg_dl": 102,
+      "min_mg_dl": 96,
+      "max_mg_dl": 110
+    },
+    {
+      "hour": 6,
+      "avg_mg_dl": 135,
+      "min_mg_dl": 129,
+      "max_mg_dl": 143
+    },
+    {
+      "hour": 7,
+      "avg_mg_dl": 176,
+      "min_mg_dl": 170,
+      "max_mg_dl": 184
+    },
+    {
+      "hour": 8,
+      "avg_mg_dl": 150,
+      "min_mg_dl": 144,
+      "max_mg_dl": 158
+    },
+    {
+      "hour": 9,
+      "avg_mg_dl": 128,
+      "min_mg_dl": 122,
+      "max_mg_dl": 136
+    },
+    {
+      "hour": 10,
+      "avg_mg_dl": 118,
+      "min_mg_dl": 112,
+      "max_mg_dl": 126
+    },
+    {
+      "hour": 11,
+      "avg_mg_dl": 112,
+      "min_mg_dl": 106,
+      "max_mg_dl": 120
+    },
+    {
+      "hour": 12,
+      "avg_mg_dl": 104,
+      "min_mg_dl": 98,
+      "max_mg_dl": 112
+    },
+    {
+      "hour": 13,
+      "avg_mg_dl": 101,
+      "min_mg_dl": 95,
+      "max_mg_dl": 109
+    },
+    {
+      "hour": 14,
+      "avg_mg_dl": 104,
+      "min_mg_dl": 98,
+      "max_mg_dl": 112
+    },
+    {
+      "hour": 15,
+      "avg_mg_dl": 110,
+      "min_mg_dl": 104,
+      "max_mg_dl": 118
+    },
+    {
+      "hour": 16,
+      "avg_mg_dl": 106,
+      "min_mg_dl": 100,
+      "max_mg_dl": 114
+    },
+    {
+      "hour": 17,
+      "avg_mg_dl": 128,
+      "min_mg_dl": 122,
+      "max_mg_dl": 136
+    },
+    {
+      "hour": 18,
+      "avg_mg_dl": 160,
+      "min_mg_dl": 154,
+      "max_mg_dl": 168
+    },
+    {
+      "hour": 19,
+      "avg_mg_dl": 178,
+      "min_mg_dl": 172,
+      "max_mg_dl": 186
+    },
+    {
+      "hour": 20,
+      "avg_mg_dl": 170,
+      "min_mg_dl": 164,
+      "max_mg_dl": 178
+    },
+    {
+      "hour": 21,
+      "avg_mg_dl": 150,
+      "min_mg_dl": 144,
+      "max_mg_dl": 158
+    },
+    {
+      "hour": 22,
+      "avg_mg_dl": 124,
+      "min_mg_dl": 118,
+      "max_mg_dl": 132
+    }
+  ],
+  "meals": {
+    "count": 9,
+    "carbs_g": 227.4,
+    "biggest": {
+      "food": "Dark Chocolate Chip, Corn Cheese Puffs, Cheese and Crackers",
+      "carbs_g": 65.6,
+      "at": "2026-10-04T19:22:00-04:00"
+    }
+  },
+  "activity": {
+    "steps": 5240,
+    "walks": 1,
+    "walk_minutes": 12
+  },
+  "predictions": {
+    "made": 9,
+    "graded": 6,
+    "gummi_mae_mg_dl": 13.2,
+    "cgm_only_mae_mg_dl": 22.1,
+    "last_value_mae_mg_dl": 27.3,
+    "beat_cgm_only_pct": 83.3
+  },
+  "best_call": null,
+  "biggest_spike": null,
+  "highlights": [
+    "No new readings in over 3 hours, so I am not estimating."
+  ],
+  "recap": null
+}

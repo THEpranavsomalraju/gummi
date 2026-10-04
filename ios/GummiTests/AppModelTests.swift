@@ -23,16 +23,27 @@ struct AppModelTests {
         func health() async throws -> Health { Health(status: "ok", mode: .mock, version: "fake") }
         func snapshot() async throws -> GummiState { initial }
         func feed() async throws -> [StoryCard] { [try Fixtures.decode(StoryCard.self, "card_morning_briefing")] }
+        func fleet() async throws -> Fleet { try Fixtures.decode(Fleet.self, "live_fleet") }
         func follow(_ userId: String?) async throws -> GummiState {
             lock.withLock { _followed.append(userId) }
             return try Fixtures.decode(GummiState.self, "state_full")
         }
         func logDueMeal(dueId: String) async throws -> Meal { try Fixtures.decode(Meal.self, "meal") }
-        func startStream() async throws -> StreamStatus { initial.stream }
+        func startStream(startAt: String, speed: Double) async throws -> StreamStatus { initial.stream }
         func stopStream() async throws -> StreamStatus { initial.stream }
         func pauseStream() async throws -> StreamStatus { initial.stream }
         func resumeStream() async throws -> StreamStatus { initial.stream }
         func setStreamSpeed(_ speed: Double) async throws -> StreamStatus { initial.stream }
+        func chat(_ message: String, conversationId: String?) -> AsyncThrowingStream<ChatEvent, Error> {
+            AsyncThrowingStream { $0.finish() }
+        }
+        func updateMeal(id: String, items: [MealItem]) async throws -> SavedMeal { SavedMeal(try Fixtures.decode(Meal.self, "meal")) }
+        func sendWalkEvent(_ body: WalkEventBody) async throws {}
+        func latestWalk() async throws -> WalkSummary { try Fixtures.decode(WalkSummary.self, "walk_summary") }
+        func uploadSteps(_ samples: [StepSample]) async throws -> Int { samples.count }
+        func foodLog(date: String?) async throws -> FoodLog { try Fixtures.decode(FoodLog.self, "foodlog") }
+        func day(date: String?) async throws -> DaySummary { try Fixtures.decode(DaySummary.self, "day_full") }
+        func logFood(_ body: LogFoodBody) async throws -> Meal { try Fixtures.decode(Meal.self, "meal") }
         func events() -> AsyncStream<ServiceEvent> {
             AsyncStream { continuation in lock.withLock { self.continuation = continuation } }
         }
@@ -79,6 +90,50 @@ struct AppModelTests {
         model.apply(.grade(grade))
         #expect(model.latestGrade?.threeNumberBadge == "Gummi 9 · CGM-only n/a · last value 31")
         #expect(model.lastUpdated != nil)
+    }
+
+    @Test func bannersShowForNewCardsAndQueue() throws {
+        let model = AppModel(defaults: defaults(), makeService: { _ in throw APIError.notConfigured("unused") })
+        model.apply(.card(try card("card_morning_briefing")))
+        #expect(model.banner == nil)
+        model.apply(.card(try card("card_meal_due")))
+        #expect(model.banner?.cardId == "c_due_1")
+        // The resolved meal_due is an update of the same card: no second banner.
+        model.apply(.card(try card("card_meal_due_resolved")))
+        model.apply(.card(try card("card_walk_suggested")))
+        #expect(model.banner?.cardId == "c_due_1")
+        model.dismissBanner()
+        #expect(model.banner?.cardId == "c_ws_1")
+        model.openBanner()
+        #expect(model.selectedTab == .activity)
+        #expect(model.focusedCardId == "c_ws_1")
+        #expect(model.banner == nil)
+    }
+
+    @Test func participantNames() {
+        let model = AppModel(defaults: defaults(), makeService: { _ in throw APIError.notConfigured("unused") })
+        #expect(model.displayName(for: "p_012") == "Participant 12")
+        #expect(model.displayName(for: nil) == nil)
+        model.cue(.cheer)
+        #expect(model.puppetCue?.reaction == .cheer)
+        model.askGummi("Why did I peak?")
+        #expect(model.chatRequest?.prompt == "Why did I peak?")
+    }
+
+    @Test func followingSwitchesParticipantsAndReloadsCards() async throws {
+        let store = defaults()
+        store.set("live", forKey: AppModel.modeKey)
+        store.set(true, forKey: AppModel.didAutoFollowKey)
+        let fake = FakeService(mode: .live, initial: try Fixtures.decode(GummiState.self, "state_null"))
+        let model = AppModel(defaults: store, makeService: { _ in fake })
+        model.start()
+        try await waitUntil { model.state != nil }
+        await model.follow("p_012")
+        #expect(model.state?.actingAs == "p_012")
+        #expect(Set(model.cards.map(\.cardId)) == ["c_brief_1", "c_ws_1"])
+        await model.loadFleet()
+        #expect(model.fleet?.entries.count == 15)
+        model.stop()
     }
 
     @Test func liveModeAutoFollowsTheDemoParticipantOnce() async throws {

@@ -69,7 +69,7 @@ nonisolated struct JellySim: Sendable {
     private(set) var targets: [SIMD3<Float>]
     private(set) var normals: [SIMD3<Float>]
 
-    static let maxStretch: Float = 0.035
+    static let maxStretch: Float = 0.03
 
     init(mesh: SurfaceMesh, piece: KoalaPiece) {
         restPositions = mesh.positions
@@ -114,8 +114,10 @@ nonisolated struct JellySim: Sendable {
     }
 
     /// Skins every vertex to the bones, then lets it spring toward that target.
+    /// Damping works on velocity relative to the target, so steady motion never smears: only starts, stops,
+    /// and bounces make the jelly wobble. A soft limit (tanh) caps the stretch without any snapping.
     mutating func step(bones: [simd_float4x4], dt: Float) {
-        let substeps = max(1, Int((dt * 120).rounded(.up)))
+        let substeps = max(1, Int((dt * 240).rounded(.up)))
         let h = dt / Float(substeps)
         for v in restPositions.indices {
             let rest = SIMD4(restPositions[v], 1)
@@ -129,22 +131,30 @@ nonisolated struct JellySim: Sendable {
                 normal += weight[lane] * (m * restNormal)
             }
             let goal = SIMD3(target.x, target.y, target.z)
+            let previous = targets[v]
+            targets[v] = goal
+            normals[v] = simd_normalize(SIMD3(normal.x, normal.y, normal.z))
+            guard dt > 0 else {
+                positions[v] = goal
+                continue
+            }
+            let targetVelocity = (goal - previous) / dt
             var x = positions[v], velocity = velocities[v]
             let k = stiffness[v], c = damping[v]
-            for _ in 0..<substeps {
-                velocity += (k * (goal - x) - c * velocity) * h
+            for i in 0..<substeps {
+                // The target moves smoothly across the substeps; forces use where it is at the start of each one.
+                let along = previous + (goal - previous) * (Float(i) / Float(substeps))
+                velocity += (k * (along - x) + c * (targetVelocity - velocity)) * h
                 x += velocity * h
             }
-            let stretch = x - goal
-            let length = simd_length(stretch)
-            if length > Self.maxStretch {
-                x = goal + stretch / length * Self.maxStretch
-                velocity *= 0.5
+            let offset = x - goal
+            let length = simd_length(offset)
+            if length > 0.0001 {
+                let limited = Self.maxStretch * tanh(length / Self.maxStretch)
+                x = goal + offset * (limited / length)
             }
             positions[v] = x
             velocities[v] = velocity
-            targets[v] = goal
-            normals[v] = simd_normalize(SIMD3(normal.x, normal.y, normal.z))
         }
     }
 
@@ -212,7 +222,8 @@ final class JellyBody {
     }
 
     private func upload() {
-        mesh.withUnsafeMutableBytes(bufferIndex: 0) { raw in
+        // A fresh buffer every frame: the GPU never reads a half-written mesh.
+        mesh.replaceUnsafeMutableBytes(bufferIndex: 0) { raw in
             let vertices = raw.bindMemory(to: Vertex.self)
             for v in sim.positions.indices {
                 vertices[v] = Vertex(position: sim.positions[v], normal: sim.normals[v])

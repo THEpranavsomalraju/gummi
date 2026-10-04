@@ -30,12 +30,11 @@ struct MockSessionTests {
         #expect(day.readings.count == 288)
         #expect(day.meals.count == 9)
         #expect(day.meals[0].isStandardBreakfast)
-        #expect(day.meals[0].minute == 354)
+        #expect(day.meals[0].minute == 356)
         #expect(day.meals[0].text == "Milk and Frosted Flake")
-        #expect(day.meals[4].items.first?.name == "Salad - (chicken, tomato, ranch)")
-        #expect(day.peak(from: 354, to: 474)?.glucose == 174)
-        // The source's 255 g of fat on the almonds is dropped as a logging error.
-        #expect(day.meals[3].items.allSatisfy { $0.fatG < 100 })
+        #expect(day.meals[4].items.first?.name == "Diet Coke")
+        #expect(day.peak(from: 356, to: 476)?.glucose == 188)
+        #expect(day.meals.allSatisfy { $0.items.allSatisfy { $0.fatG < 100 } })
     }
 
     @Test func scriptedBeatsHappenInOrder() {
@@ -46,12 +45,12 @@ struct MockSessionTests {
         }
         let due = first(.mealDue, id: "c_due_1"), briefing = first(.morningBriefing), walkSuggested = first(.walkSuggested)
         let walkSummary = first(.walkSummary), story = first(.mealStory, id: "c_story_1"), recap = first(.eveningRecap)
-        #expect(due == 354)
+        #expect(due == 356)
         #expect(briefing == 360)
-        #expect(walkSuggested.map { $0 > 354 && $0 < 420 } == true)
+        #expect(walkSuggested.map { $0 > 356 && $0 < 480 } == true)
         #expect(walkSummary.map { $0 > walkSuggested! } == true)
-        // Breakfast is graded once confirmed data covers 05:54 to 07:54, an hour later on the replay clock.
-        #expect(story == Double(354 + 120 + 60))
+        // Breakfast is graded once confirmed data covers 05:56 to 07:56, an hour later on the replay clock.
+        #expect(story == Double(356 + 120 + 60))
         #expect(recap == 1200)
         #expect(timeline.contains { if case .pause = $0.output { $0.minute == 600 } else { false } })
     }
@@ -61,7 +60,7 @@ struct MockSessionTests {
         let breakfastCards = cards(timeline).filter { $0.1.cardId == "c_due_1" }
         #expect(breakfastCards.count == 2)
         #expect(breakfastCards.first?.1.pendingDueId == "d_1")
-        #expect(breakfastCards.last?.0 == 364)
+        #expect(breakfastCards.last?.0 == 366)
         #expect(breakfastCards.last?.1.pendingDueId == nil)
         #expect(breakfastCards.last?.1.body.hasSuffix("Logged.") == true)
         #expect(session.logged[0]?.meal.source == .replayAuto)
@@ -70,7 +69,7 @@ struct MockSessionTests {
 
     @Test func tappingLogItUsesReplayDueAndRejectsASecondTap() throws {
         var session = MockSession(day: day)
-        _ = session.advance(to: 356, wallNow: .now)
+        _ = session.advance(to: 358, wallNow: .now)
         let (meal, events) = try session.logDue(dueId: "d_1")
         #expect(meal.source == .replayDue)
         #expect(meal.isStandardBreakfast)
@@ -83,17 +82,20 @@ struct MockSessionTests {
 
     @Test func gradesCarryHonestyAndProudRules() {
         let (session, timeline) = runDay()
-        #expect(session.grades.count == 2)
-        let breakfast = session.grades[0], lunch = session.grades[1]
-        // The scripted walk overlapped breakfast, and CGM-only edged Gummi: no proud.
+        #expect(session.grades.count == 6)
+        let breakfast = session.grades[0]
+        // The scripted walk overlapped breakfast, so its walk effect isn't graded.
         #expect(!breakfast.walkEffectGraded)
         #expect(breakfast.message.hasSuffix("Walk effect not graded (replayed data)."))
-        #expect(!breakfast.earnsProud)
-        #expect(lunch.walkEffectGraded)
-        #expect(lunch.earnsProud)
+        #expect(breakfast.message.hasPrefix("I predicted 135 for breakfast. It was 188. CGM-only said 112"))
+        // Day 4: Gummi beats CGM-only on every scripted meal but the cheese bite, which nods.
+        let cheese = session.grades.first { $0.predictionId == "pr_6" }
+        #expect(cheese?.earnsProud == false)
+        #expect(session.grades.filter(\.earnsProud).count == 5)
+        let snack = session.grades.last
+        #expect(snack?.message.hasPrefix("I predicted 178") == true)
         let proudMoods = timeline.filter { if case .event(.mood(.proud)) = $0.output { true } else { false } }
-        #expect(proudMoods.count == 1)
-        #expect(proudMoods.first?.minute == lunch.gradedAt.timeIntervalSince(session.dayStart) / 60)
+        #expect(proudMoods.count == 5)
     }
 
     @Test func snapshotFollowsTheContract() {
@@ -110,7 +112,7 @@ struct MockSessionTests {
         #expect(state.forecast.last.map { $0.t == now.addingTimeInterval(7200) } == true)
         #expect(state.gummiView != nil)
         #expect(state.topCard?.cardId == state.topCard.map { _ in session.cards[0].cardId })
-        #expect(state.stream.replayClock == "day6T06:10")
+        #expect(state.stream.replayClock == "day4T06:10")
         #expect(state.stream.speed == 360)
         // Breakfast is logged and in its window: the forecast crosses the high line.
         #expect(state.mood == .high)
@@ -118,7 +120,7 @@ struct MockSessionTests {
         // Upcoming due meals are converted to wall-clock time.
         let next = state.upcomingDue.first
         #expect(next?.dueId == "d_2")
-        #expect(next.map { abs($0.dueAt.timeIntervalSince(wall) - (460 - 370) / 6) < 0.01 } == true)
+        #expect(next.map { abs($0.dueAt.timeIntervalSince(wall) - (535 - 370) / 6) < 0.01 } == true)
         #expect(session.snapshot(wallNow: wall, paused: true, minutesPerSecond: 6).upcomingDue.isEmpty)
     }
 
@@ -134,9 +136,9 @@ struct MockSessionTests {
     @Test func todayAccuracyExcludesWalkWindows() {
         let (session, _) = runDay()
         let state = session.snapshot(wallNow: .now, paused: false, minutesPerSecond: 6)
-        // Only lunch counts: breakfast overlapped the phone walk.
-        #expect(state.today.gummiMaeMgDl == 6.8)
-        #expect(state.today.cgmOnlyMaeMgDl == 9.9)
+        // Breakfast overlapped the phone walk, so the other five graded meals count.
+        #expect(state.today.gummiMaeMgDl == 13.2)
+        #expect(state.today.cgmOnlyMaeMgDl == 22.1)
         #expect(state.today.walks == 1)
     }
 }

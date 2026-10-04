@@ -121,7 +121,8 @@ struct PuppetAnimatorTests {
         animator.input.pressing = true
         run(&animator, seconds: 1)
         #expect(animator.pose.squash < -0.15)
-        #expect(animator.pose.mouth == .flat)
+        #expect(animator.pose.mouth == .wavy)
+        #expect(animator.pose.eyes == .squeeze)
         animator.input.pressing = false
         var peak: Float = -1
         for _ in 0..<30 {
@@ -139,7 +140,7 @@ struct PuppetAnimatorTests {
         animator.react(.tap(.head))
         animator.step(dt: Self.dt)
         #expect(animator.reaction?.kind == .headTap)
-        #expect(animator.pose.eyeOpen < 0.2)
+        #expect(animator.pose.eyes == .squeeze)
         run(&animator, seconds: 1)
         #expect(animator.reaction == nil)
         animator.react(.tap(.belly))
@@ -198,6 +199,39 @@ struct PuppetAnimatorTests {
             pitches.append(animator.pose.headPitch)
         }
         #expect((pitches.max() ?? 0) - (pitches.min() ?? 0) > 0.08)
+    }
+
+    /// Anime / Mii-style faces: each mood reads through its eyes, brows, mouth, and blush.
+    @Test func moodsShowTheirFaces() {
+        func face(_ mood: Mood) -> PuppetPose {
+            var animator = PuppetAnimator(seed: 2)
+            animator.input = PuppetInput(mood: mood, look: .zero)
+            run(&animator, seconds: 1.5)
+            return animator.pose
+        }
+        let calm = face(.calm)
+        #expect(calm.eyes == .open && calm.mouth == .smile && calm.blush < 0.05)
+        let happy = face(.happy)
+        #expect(happy.eyes == .happy && happy.mouth == .grin && happy.blush > 0.7)
+        let proud = face(.proud)
+        #expect(proud.eyes == .sparkle && proud.mouth == .grin && proud.blush > 0.9)
+        let low = face(.low)
+        #expect(low.eyes == .small && low.mouth == .frown && low.browTilt > 0.9)
+        let high = face(.high)
+        #expect(high.mouth == .wavy && high.browTilt > 0.7)
+        let sleepy = face(.sleepy)
+        #expect(sleepy.eyes == .sleepy && sleepy.browRaise < -0.5)
+        let rising = face(.rising)
+        #expect(rising.browRaise > 0.6)
+    }
+
+    @Test func browsAndBlushEaseInsteadOfJumping() {
+        var animator = PuppetAnimator(seed: 2)
+        animator.input = PuppetInput(mood: .low, look: .zero)
+        animator.step(dt: Self.dt)
+        #expect(animator.pose.browTilt > 0 && animator.pose.browTilt < 0.5)
+        run(&animator, seconds: 1)
+        #expect(animator.pose.browTilt > 0.95)
     }
 
     @Test func everyMoodHasItsOwnLook() {

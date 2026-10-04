@@ -47,6 +47,9 @@ nonisolated struct GummiState: Codable, Hashable, Sendable {
     /// The chart's "now" while acting as a replay participant; null otherwise (1.3).
     let replayNow: Date?
     let stream: StreamStatus
+    /// 1.6: "stale" means the newest reading is over 3 hours old, so there's no estimate or forecast.
+    var dataStatus: DataStatus? = nil
+    var minutesSinceReading: Int? = nil
     let modelVersion: String
     /// Wall clock.
     let serverTime: Date

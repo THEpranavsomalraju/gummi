@@ -16,6 +16,18 @@ nonisolated struct NewMealBody: Encodable, Sendable {
     var source: MealSource = .manual
 }
 
+/// POST /meals from the Log food sheet: names and portions only, so the backend looks up the macros itself
+/// (one of its seed foods, or its own estimate). Sending zero macros would be saved as zero.
+nonisolated struct LogFoodBody: Encodable, Sendable {
+    nonisolated struct Food: Encodable, Sendable {
+        let name: String
+        let quantity: Double
+        let unit: String?
+    }
+    let items: [Food]
+    var source = "manual"
+}
+
 nonisolated struct MealItemsBody: Encodable, Sendable { let items: [MealItem] }
 
 /// `eat_at` is sent as null for "now", matching the contract example.
@@ -71,8 +83,22 @@ nonisolated struct FollowBody: Encodable, Sendable {
 nonisolated struct StreamStartBody: Encodable, Sendable {
     var speed: Double = 60
     var delayMinutes: Int = 60
-    /// D-62: start before the 05:54 standardized breakfast.
-    var startAt: String = "day6T05:00"
+    /// D-62: start before the 05:56 standardized breakfast (demo day 4, D-15).
+    var startAt: String = "day4T05:00"
+}
+
+/// "day4T05:00" for /stream/start (the backend's start_at format).
+nonisolated enum StreamStart {
+    static func at(day: Int, hour: Int, minute: Int) -> String {
+        String(format: "day%dT%02d:%02d", max(1, day), min(max(hour, 0), 23), min(max(minute, 0), 59))
+    }
+
+    /// Minutes into the day for a start_at string, or 300 (05:00) if it doesn't parse.
+    static func minuteOfDay(_ startAt: String) -> Double {
+        let parts = startAt.split(separator: "T").last?.split(separator: ":").compactMap { Double($0) } ?? []
+        guard parts.count == 2 else { return 300 }
+        return parts[0] * 60 + parts[1]
+    }
 }
 
 nonisolated struct StreamSpeedBody: Encodable, Sendable { let speed: Double }

@@ -73,6 +73,25 @@ nonisolated enum CardType: String, ContractEnum {
     static let unknownValue = CardType.unknown
 }
 
+nonisolated extension CardType {
+    /// SF Symbol for each card type.
+    var symbol: String {
+        switch self {
+        case .morningBriefing: "sun.horizon"
+        case .mealDue: "fork.knife"
+        case .mealLogged: "checkmark.circle"
+        case .prediction: "chart.line.uptrend.xyaxis"
+        case .mealStory: "book"
+        case .grade: "rosette"
+        case .walkSuggested: "figure.walk"
+        case .walkSummary: "figure.walk.motion"
+        case .eveningRecap: "moon.stars"
+        case .dexcomStatus: "antenna.radiowaves.left.and.right"
+        case .unknown: "sparkles"
+        }
+    }
+}
+
 nonisolated enum CardActionKind: String, ContractEnum {
     case openChat = "open_chat"
     case logDueMeal = "log_due_meal"
@@ -172,4 +191,11 @@ nonisolated enum GummiMode: String, ContractEnum {
     case mock, live
     case unknown = "_unknown"
     static let unknownValue = GummiMode.unknown
+}
+
+/// CONTRACT 1.6 State.data_status.
+nonisolated enum DataStatus: String, ContractEnum {
+    case live, stale, none
+    case unknown = "_unknown"
+    static let unknownValue = DataStatus.unknown
 }

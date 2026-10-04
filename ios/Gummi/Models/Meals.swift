@@ -54,4 +54,9 @@ nonisolated struct Simulation: Codable, Hashable, Sendable {
     let alternatives: [Alternative]
     let method: SimulationMethod
     let predictionId: String
+    /// False (1.6) when the food is beyond what the model has learned (over about 140 g carbs): no peak is quoted.
+    var reliable: Bool? = nil
+    var requestedCarbsG: Double? = nil
+
+    var isReliable: Bool { reliable != false }
 }

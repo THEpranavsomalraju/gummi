@@ -1,13 +1,13 @@
 import Foundation
 
 /// The scripted demo day as a pure value: advance the replay clock, get the live events the backend would send.
-/// Acting as p_012 (D-61), replay day 6 from 05:00 (D-62) to 21:00, with the contract's rules:
+/// Acting as p_012 (D-61), replay day 4 (D-15) from 05:00 (D-62) to 22:30, with the contract's rules:
 /// meals come due and auto-log after 10 replay minutes, data runs 60 minutes behind, grades land when
 /// confirmed data covers the 2-hour window, proud only when Gummi beats CGM-only, walk overlap means
 /// walk_effect_graded false. Every number here is scripted for the mock and shown under a "Mock" badge.
 nonisolated struct MockSession: Sendable {
     static let startMinute = 300.0
-    static let endMinute = 1260.0
+    static let endMinute = 1350.0
     static let participant = "p_012"
     static let displayName = "Participant 12"
     static let delayMinutes = 60.0
@@ -24,11 +24,16 @@ nonisolated struct MockSession: Sendable {
         let withinBand: Double
     }
 
-    /// Breakfast: CGM-only edges Gummi, so no proud (and the walk overlap marks it not graded).
-    /// Lunch: Gummi beats both baselines, so proud.
+    /// Day 4 (D-15), peaks from Data's demo_day README (DRAFT): Gummi's curve beats CGM-only on every scripted meal
+    /// but the cheese bite, which nods. Breakfast overlaps the scripted walk, so it's marked not graded.
+    /// The mock MAEs are placeholders shown only under the Mock badge (D-69).
     static let gradeScripts: [Int: GradeScript] = [
-        0: GradeScript(peakOffset: -9, cgmOnlyPeak: 139, gummiMae: 12.3, cgmOnlyMae: 11.0, lastValueMae: 31.2, withinBand: 79.2),
-        4: GradeScript(peakOffset: 3, cgmOnlyPeak: 118, gummiMae: 6.8, cgmOnlyMae: 9.9, lastValueMae: 14.2, withinBand: 91.7),
+        0: GradeScript(peakOffset: -53, cgmOnlyPeak: 112, gummiMae: 21.4, cgmOnlyMae: 33.1, lastValueMae: 38.0, withinBand: 62.5),
+        1: GradeScript(peakOffset: 39, cgmOnlyPeak: 161, gummiMae: 14.2, cgmOnlyMae: 27.5, lastValueMae: 41.0, withinBand: 70.8),
+        5: GradeScript(peakOffset: -14, cgmOnlyPeak: 109, gummiMae: 9.8, cgmOnlyMae: 7.6, lastValueMae: 14.1, withinBand: 83.3),
+        6: GradeScript(peakOffset: -47, cgmOnlyPeak: 112, gummiMae: 18.9, cgmOnlyMae: 29.6, lastValueMae: 31.8, withinBand: 66.7),
+        7: GradeScript(peakOffset: -35, cgmOnlyPeak: 129, gummiMae: 15.7, cgmOnlyMae: 24.4, lastValueMae: 30.2, withinBand: 75.0),
+        8: GradeScript(peakOffset: -8, cgmOnlyPeak: 135, gummiMae: 7.4, cgmOnlyMae: 21.3, lastValueMae: 18.9, withinBand: 91.7),
     ]
 
     enum Output: Sendable {
@@ -55,6 +60,9 @@ nonisolated struct MockSession: Sendable {
     private(set) var walk: ClosedRange<Double>?
     private var walkPosted = false
     private var proudUntil: Date?
+    /// Happy after a real phone walk (wall clock; the mock day runs fast).
+    private var happyUntil: Date?
+    private var phoneWalks = 0
     private(set) var eventsReleased = 0
 
     init(day: MockDay, today: Date = .now, timeZone: TimeZone = TimeZone(identifier: "America/New_York")!) {
@@ -69,6 +77,15 @@ nonisolated struct MockSession: Sendable {
 
     mutating func reset() {
         self = MockSession(day: day, today: dayStart.addingTimeInterval(12 * 3600))
+    }
+
+    /// Starts over and plays the day silently up to `minute`, so an evening start already has the day's history.
+    mutating func reset(toMinute minute: Double) {
+        let following = following
+        reset()
+        self.following = following
+        let target = min(max(minute, Self.startMinute), Self.endMinute - 1)
+        if target > self.minute { _ = advance(to: target, wallNow: .now) }
     }
 
     // MARK: Script
@@ -102,7 +119,7 @@ nonisolated struct MockSession: Sendable {
         }
         if m == 360 {
             out.append(.event(.card(card("c_brief", .morningBriefing, at: mm, title: "Good morning",
-                                         body: "Participant 12's day starts now. Breakfast came due at 5:54. I'll watch what it does.",
+                                         body: "Participant 12's day starts now. Breakfast came due at 5:56. I'll watch what it does.",
                                          mood: .calm, by: .agent))))
         }
         if let current = alert, mm >= current.expiresAt.timeIntervalSince(dayStart) / 60 {
@@ -133,7 +150,7 @@ nonisolated struct MockSession: Sendable {
             let graded = grades.filter(\.walkEffectGraded)
             let line = graded.isEmpty ? "" : " Graded meals today: Gummi off by \(Int(graded.map(\.gummiMaeMgDl).average.rounded())), CGM-only \(Int(graded.compactMap(\.cgmOnlyMaeMgDl).average.rounded()))."
             out.append(.event(.card(card("c_recap", .eveningRecap, at: mm, title: "Today with Participant 12",
-                                         body: "Breakfast was the big one.\(line) Tomorrow: try a 10-minute walk right after breakfast.",
+                                         body: "The evening sweets were the big ones.\(line) Tomorrow: try a 10-minute walk right after dessert.",
                                          mood: .calm, by: .agent))))
         }
         return out
@@ -241,6 +258,25 @@ nonisolated struct MockSession: Sendable {
                                   body: raised.message, mood: .high, attachments: CardAttachments(alert: raised))))]
     }
 
+    /// A real walk from the phone, overlaid on the replayed day (D-28).
+    mutating func addPhoneWalk(_ walk: WalkSummary, wallNow: Date) -> StoryCard {
+        phoneWalks += 1
+        happyUntil = wallNow.addingTimeInterval(60)
+        return card("c_phone_walk_\(phoneWalks)", .walkSummary, at: minute, title: "Nice walk",
+                    body: "\(walk.minutes) minutes, \(walk.steps.formatted()) steps, \(walk.intensity.rawValue) pace. Modeled effect: about \(Int(walk.forecastPeakDropMgDl)) mg/dL lower peak (literature). Your real walk is shown over the replayed day; its effect on replayed glucose isn't graded.",
+                    mood: .happy, attachments: CardAttachments(walk: walk))
+    }
+
+    /// A meal Gummi saved from chat. Like the backend (D-59) it sits on the participant's day and is never graded.
+    mutating func addChatMeal(_ meal: Meal, likelyPeak: Double?) -> StoryCard {
+        let body = likelyPeak.map {
+            "Added to your food log. I think this likely peaks near \(Int($0.rounded())) mg/dL. It's simulated on \(Self.displayName)'s day, so I won't grade it."
+        } ?? "Saved to your food log."
+        let name = meal.items.first?.name ?? "Meal"
+        return card("c_\(meal.mealId)", .mealLogged, at: minute, title: "\(name.prefix(1).uppercased() + name.dropFirst()) logged",
+                    body: body, mood: .calm, attachments: CardAttachments(meal: meal))
+    }
+
     private func dueCard(for meal: MockDay.DayMeal) -> StoryCard {
         makeCard("c_due_\(meal.index + 1)", .mealDue, at: Double(meal.minute), title: "\(meal.label) time for \(Self.displayName)",
              body: meal.text, mood: .calm,
@@ -319,7 +355,7 @@ nonisolated struct MockSession: Sendable {
     func snapshot(wallNow: Date, paused: Bool, minutesPerSecond: Double) -> GummiState {
         let speed = minutesPerSecond * 60
         let stream = StreamStatus(running: true, paused: paused, speed: speed, delayMinutes: Int(Self.delayMinutes), participants: 15,
-                                  replayClock: String(format: "day6T%02d:%02d", Int(minute) / 60, Int(minute) % 60),
+                                  replayClock: String(format: "day4T%02d:%02d", Int(minute) / 60, Int(minute) % 60),
                                   replayAnchor: ReplayAnchor(replayTime: date(minute), wallTime: wallNow),
                                   eventsReleased: eventsReleased, eventsPerSecond: paused ? 0 : 0.05 * speed,
                                   pipelineLagSeconds: nil)
@@ -385,6 +421,7 @@ nonisolated struct MockSession: Sendable {
         if lowest <= Self.lowLine { return .low }
         if peak >= Self.highLine { return .high }
         if let proudUntil, wallNow < proudUntil { return .proud }
+        if let happyUntil, wallNow < happyUntil { return .happy }
         if view?.trend == .fallingFast { return .dipping }
         if view?.trend == .rising || view?.trend == .risingFast { return .rising }
         if let walk, minute >= walk.upperBound, minute < walk.upperBound + 30 { return .happy }
