@@ -10,6 +10,7 @@ One tick per second releases what the replay clock has reached:
 Everything lands in the landing volume through the writer, off the request path.
 """
 import logging
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -91,6 +92,7 @@ class Engine:
         self._last_r: float | None = None
         self._personal_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="personal")
         self.silent = False                       # catching up after a restart: no landing, no agents
+        self.lock = threading.RLock()             # one writer at a time: the tick thread and phone requests
 
     # ---------- startup ----------
     def load(self) -> None:
@@ -115,6 +117,10 @@ class Engine:
     # ---------- replay control ----------
     def start(self, start_r: float) -> None:
         """Build every participant's hot state as of start_r: history already released, no events for it."""
+        with self.lock:
+            self._start(start_r)
+
+    def _start(self, start_r: float) -> None:
         self.subjects, self.dues = {}, {}
         self.counters.update({"predictions": 0, "grades": 0, "meals": 0, "walk_alerts": 0, "max_tick_ms": 0.0})
         for i, pid in enumerate(config.PARTICIPANTS):
@@ -351,6 +357,10 @@ class Engine:
         activity.hit("engine.meal_due", detail=f"{s.pid}: {meal['items'][0]['name']}", log=True)
 
     def log_due(self, due_id: str, source: str) -> dict | None:
+        with self.lock:
+            return self._log_due(due_id, source)
+
+    def _log_due(self, due_id: str, source: str) -> dict | None:
         d = self.dues.get(due_id)
         if d is None:
             return None
@@ -468,7 +478,11 @@ class Engine:
     # ---------- rehydration ----------
     def catch_up(self, from_r: float, to_r: float) -> None:
         """Rebuild state from the session start to to_r, one replay minute per step, without emitting anything."""
-        self.start(from_r)
+        with self.lock:
+            self._catch_up(from_r, to_r)
+
+    def _catch_up(self, from_r: float, to_r: float) -> None:
+        self._start(from_r)
         was = (clock.running, clock.paused, clock.anchor_replay, landing.enabled)
         clock.running, clock.paused, self.silent, landing.enabled = True, False, True, False
         try:
@@ -476,13 +490,17 @@ class Engine:
             while r < to_r:
                 r = min(r + 1.0, to_r)
                 clock.anchor_replay, clock.anchor_wall = r, time.time()
-                self.tick()
+                self._tick()
         finally:
             clock.running, clock.paused, clock.anchor_replay = was[0], was[1], was[2]
             landing.enabled, self.silent = was[3], False
 
     # ---------- the tick ----------
     def tick(self) -> None:
+        with self.lock:
+            self._tick()
+
+    def _tick(self) -> None:
         if not self.ready or not clock.running or clock.paused or not self.subjects:
             return
         t0 = time.perf_counter()
@@ -498,7 +516,7 @@ class Engine:
             self._daily(s, now_r)
         for due in self.dues.values():
             if not due["logged"] and now_r >= due["due_r"] + config.DUE_AUTOLOG_MIN:
-                self.log_due(due["due_id"], "replay_auto")
+                self._log_due(due["due_id"], "replay_auto")
         clock.count(n)
         self._last_r = now_r
         ms = (time.perf_counter() - t0) * 1000

@@ -124,16 +124,19 @@ def simulate_food(c: Ctx, items=None, in_minutes=0, **_):
 
 
 def log_meal(c: Ctx, items=None, **_):
-    if c.subject is not None:
-        # CONTRACT section 7 simulation rule: a study participant's real meals come from the study log
-        res, card = simulate_food(c, items=items)
-        res["note"] = (f"Not logged: {store.display_name(c.pid)}'s real meals come from the study log, so this was "
-                       f"simulated instead. Say so in one short line.")
-        return res, card
     from ..routes.meals import create_meal
     meal = create_meal(c.uid, _foods(items), "chat")
-    return {"saved": True, "meal_id": meal["meal_id"], "carbs_g": meal["totals"]["carbs_g"],
-            "note": "No glucose data for this person, so no prediction."}, {"card_type": "meal_saved", "payload": meal}
+    res = {"added_to_food_log": True, "meal_id": meal["meal_id"], "carbs_g": meal["totals"]["carbs_g"]}
+    sim = c.u.meal_sims.get(meal["meal_id"])
+    if c.subject is not None and sim:
+        # D-59: on a study participant's day the entry is simulated and never graded (they didn't really eat it)
+        res.update({"likely_peak_mg_dl": sim["predicted_peak_mg_dl"], "peak_at": _hm(sim["peak_at"]),
+                    "verdict": sim["verdict"], "graded": False,
+                    "note": f"Added to the food log as a simulated entry on {store.display_name(c.pid)}'s day; "
+                            "it won't be graded. Say so in one short line."})
+    else:
+        res["note"] = "No glucose data connected for this person, so no prediction."
+    return res, {"card_type": "meal_saved", "payload": meal}
 
 
 def suggest_walk(c: Ctx, minutes=10, **_):

@@ -22,8 +22,8 @@ RULES = """Rules that never bend:
 
 def system_prompt(name: str, acting_as: str | None, local_time: str | None, high: float, low: float) -> str:
     who = (f"You're coaching {name}, who is following study participant {acting_as}: that participant's glucose and "
-           f"meals are what you see, replayed from a real study. Their real meals come from the study log, so anything "
-           f"{name} says they ate is simulated, not logged: open with one short line saying so." if acting_as else
+           f"meals are what you see, replayed from a real study. Their real meals come from the study log; anything "
+           f"{name} says they ate goes into their food log as a simulated entry that isn't graded: say that in one short line." if acting_as else
            f"You're coaching {name}, who has no glucose data connected right now.")
     when = f" It's {local_time} for them." if local_time else ""
     from .reviewer import lessons

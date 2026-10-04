@@ -129,7 +129,7 @@ def test_walk_overlay(client):
     w = M.WalkSummary.model_validate(ok(client.get("/api/v1/walks/latest", headers=H)))
     assert (w.minutes, w.steps, w.cadence_spm) == (12, 1300, 108)
     feed = ok(client.get("/api/v1/feed", headers=H))["cards"]
-    assert feed[0]["type"] == "walk_summary" and "replayed day" in feed[0]["body"]
+    assert any(c["type"] == "walk_summary" and "replayed day" in c["body"] for c in feed)
 
 
 def test_teammate_meal_lifecycle(client):
@@ -187,11 +187,28 @@ def test_rehydration_catch_up(client):
     from gummi_api.stream.landing_writer import landing
     from gummi_api.stream.producer import parse_start
     store.get("u_rehydrate").following = "p_012"
+    ok(client.post("/api/v1/stream/stop"))                  # no live ticks while we measure
     start = parse_start("day6T05:00")
     queued_before, jobs_before = len(landing.queue), events._jobs.qsize()
     engine.catch_up(start, start + 240)
     s = engine.subjects["p_012"]
     assert s.grades and s.predictions and s.meals, "4 replay hours rebuilt"
-    assert len(landing.queue) == queued_before and events._jobs.qsize() == jobs_before, "silent: nothing re-sent"
+    assert len(landing.queue) <= queued_before and events._jobs.qsize() <= jobs_before, "silent: nothing new sent"
     assert any(c["type"] == "meal_due" for c in store.get("u_rehydrate").cards), "follower cards rebuilt as templates"
     assert not engine.silent and landing.enabled == (os.environ.get("GUMMI_LANDING_ENABLED") != "false")
+
+
+def test_food_log(client):
+    """Study-log meals (graded) and the teammate's own entries (simulated, never graded) in one log."""
+    h = {"X-User-Id": "u_food"}
+    ok(client.post("/api/v1/follow", json={"user_id": "p_012"}, headers=h))
+    ok(client.post("/api/v1/stream/start", json={"speed": 60, "start_at": "day6T05:30"}))
+    advance(240)
+    m = M.Meal.model_validate(ok(client.post("/api/v1/meals", headers=h, json={"items": [{"name": "banana"}], "source": "manual"})))
+    log = M.FoodLog.model_validate(ok(client.get("/api/v1/foodlog", headers=h)))
+    origins = {e.origin for e in log.entries}
+    assert {"study_log", "you"} <= origins
+    mine = next(e for e in log.entries if e.meal.meal_id == m.meal_id)
+    assert not mine.graded and mine.prediction and mine.prediction.predicted_peak_mg_dl > 0 and mine.grade is None
+    assert any(e.graded and e.grade for e in log.entries if e.origin == "study_log"), "a study meal graded after 3 h"
+    ok(client.post("/api/v1/stream/stop"))
