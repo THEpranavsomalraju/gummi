@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Debug-only playground for Gummi: try every mood, tap, talk, and think on the phone (D-92).
+/// Debug-only playground for Gummi: try every mood, tap, wave, dance, talk, and think on the phone (D-92).
 struct PuppetPlaygroundView: View {
     @State private var mood: Mood = .calm
     @State private var talking = false
@@ -8,7 +8,7 @@ struct PuppetPlaygroundView: View {
     /// `-gummi.playgroundTour YES` starts the tour, for screenshots.
     @State private var touring = UserDefaults.standard.bool(forKey: "gummi.playgroundTour")
     @State private var translucent = false
-    @State private var tapTrigger = 0
+    @State private var controller = KoalaController()
 
     private static let moods: [Mood] = [.calm, .rising, .high, .dipping, .low, .proud, .happy, .sleepy, .thinking]
 
@@ -16,7 +16,7 @@ struct PuppetPlaygroundView: View {
         VStack(spacing: 0) {
             PuppetView(input: PuppetInput(mood: mood == .thinking ? .calm : mood, talking: talking,
                                           thinking: thinking || mood == .thinking),
-                       showsFPS: true, translucentShell: translucent, tapTrigger: tapTrigger)
+                       controller: controller, showsFPS: true, translucentShell: translucent)
             controls
         }
         .background(Theme.background)
@@ -31,10 +31,17 @@ struct PuppetPlaygroundView: View {
                 mood = Self.moods[(index + 1) % Self.moods.count]
             }
         }
+        .task {
+            // `-gummi.playgroundDance YES` dances on open, for screenshots.
+            if UserDefaults.standard.bool(forKey: "gummi.playgroundDance") {
+                try? await Task.sleep(for: .seconds(1))
+                controller.react(.dance)
+            }
+        }
     }
 
     private var controls: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(Self.moods, id: \.self) { option in
@@ -46,15 +53,24 @@ struct PuppetPlaygroundView: View {
                 .padding(.horizontal)
             }
             HStack(spacing: 8) {
-                Button("Tap", systemImage: "hand.tap") { tapTrigger += 1 }
+                Button("Head", systemImage: "hand.tap") { controller.react(.tap(.head)) }
+                Button("Belly", systemImage: "hand.point.up.left") { controller.react(.tap(.belly)) }
+                Button("Wave", systemImage: "hand.wave") { controller.react(.wave) }
+                Button("Dance", systemImage: "figure.dance") { controller.react(.dance) }
+            }
+            .buttonStyle(.bordered)
+            .labelStyle(.titleAndIcon)
+            HStack(spacing: 8) {
                 Toggle("Talk", systemImage: "waveform", isOn: $talking)
                 Toggle("Think", systemImage: "ellipsis.bubble", isOn: $thinking)
                 Toggle("Tour", systemImage: "play", isOn: $touring)
+                Toggle("Shell", systemImage: "circle.dotted", isOn: $translucent)
             }
             .toggleStyle(.button)
             .buttonStyle(.bordered)
-            Toggle("Translucent jelly shell", isOn: $translucent)
-                .padding(.horizontal)
+            Text("Press and hold Gummi to squish him. Double-tap to dance.")
+                .font(.caption)
+                .foregroundStyle(Theme.secondaryText)
         }
         .padding(.vertical, 12)
         .glassSurface(in: RoundedRectangle(cornerRadius: 24))

@@ -9,10 +9,18 @@ nonisolated struct PuppetInput: Equatable, Sendable {
     var thinking = false
     /// Where the finger is, -1...1 on each axis (x right, y up), or nil when nobody is touching.
     var look: SIMD2<Float>? = nil
+    /// True while a finger presses and holds Gummi: he squishes, and bounces back on release.
+    var pressing = false
 }
 
-nonisolated enum PuppetReaction: Sendable {
-    case tap
+nonisolated enum TapRegion: Sendable {
+    case head, belly
+}
+
+nonisolated enum PuppetReaction: Sendable, Equatable {
+    case tap(TapRegion)
+    case wave
+    case dance
 }
 
 /// The contract between the app and a puppet renderer (ios/CLAUDE.md, D-25).

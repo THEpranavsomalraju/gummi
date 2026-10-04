@@ -32,6 +32,10 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
+      configs:
+        Debug:
+          # The jelly body simulates thousands of vertices per frame: test on the phone at release speed (D-99).
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
     info:
       path: Gummi/Info.plist
       properties:

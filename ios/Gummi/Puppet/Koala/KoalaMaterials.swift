@@ -8,23 +8,28 @@ enum KoalaMaterials {
         var material = PhysicallyBasedMaterial()
         material.baseColor = .init(tint: Theme.jelly)
         material.metallic = .init(floatLiteral: 0)
-        material.roughness = .init(floatLiteral: 0.32)
-        material.clearcoat = .init(floatLiteral: 1)
-        material.clearcoatRoughness = .init(floatLiteral: 0.06)
+        // Broad, soft highlights instead of mirror dots: rougher base, softer clear coat.
+        material.roughness = .init(floatLiteral: 0.42)
+        material.specular = .init(floatLiteral: 0.6)
+        material.clearcoat = .init(floatLiteral: 0.8)
+        material.clearcoatRoughness = .init(floatLiteral: 0.26)
+        // A gentle glow from inside, like light caught in candy.
         material.emissiveColor = .init(color: Theme.jelly)
-        material.emissiveIntensity = 0.12
+        material.emissiveIntensity = 0.22
         if translucent {
-            material.blending = .transparent(opacity: .init(floatLiteral: 0.82))
+            material.blending = .transparent(opacity: .init(floatLiteral: 0.74))
         }
         return material
     }
 
-    /// The darker core shown through the translucent shell experiment.
+    /// The glowing core seen through the translucent shell experiment.
     static func core() -> PhysicallyBasedMaterial {
         var material = PhysicallyBasedMaterial()
-        material.baseColor = .init(tint: UIColor(red: 0.20, green: 0.42, blue: 0.30, alpha: 1))
-        material.roughness = .init(floatLiteral: 0.5)
+        material.baseColor = .init(tint: Theme.jelly)
+        material.roughness = .init(floatLiteral: 0.6)
         material.metallic = .init(floatLiteral: 0)
+        material.emissiveColor = .init(color: Theme.jelly)
+        material.emissiveIntensity = 0.6
         return material
     }
 
