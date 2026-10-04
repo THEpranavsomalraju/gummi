@@ -31,7 +31,12 @@ class Broadcaster:
         """Safe from any thread: the engine tick runs in a worker thread, queues belong to the event loop."""
         msg = sse(event, data)
         if self.loop is not None and threading.get_ident() != self._loop_thread:
-            self.loop.call_soon_threadsafe(self._put, user_id, msg)
+            if self.loop.is_closed():
+                return                      # shutting down: nobody is listening
+            try:
+                self.loop.call_soon_threadsafe(self._put, user_id, msg)
+            except RuntimeError:
+                pass
         else:
             self._put(user_id, msg)
 

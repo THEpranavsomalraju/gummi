@@ -417,7 +417,7 @@ class Engine:
                             f"A 10 minute walk now could lower the peak by about {drop:.0f} mg/dL ({src}).",
                  "created_at": iso(now), "expires_at": iso(now + pd.Timedelta(minutes=30)),
                  "action": {"label": "Start walk", "kind": "start_walk", "minutes": 10}}
-        card = cards.card("walk_suggested", now, "A short walk could help", alert["message"], "high",
+        card = cards.card("walk_suggested", now, "Walk break?", alert["message"], "high",
                           attachments={"alert": alert})
         activity.hit("engine.walk_alert", detail=f"{s.pid}: forecast {peak['glucose_mg_dl']:.0f}", log=True)
         from ..agent import events
@@ -448,11 +448,11 @@ class Engine:
             done.add(day)
             last = s.conf_v[-1]
             if kind == "morning_briefing":
-                card = cards.card(kind, now, "Good morning", f"Your last Dexcom reading was {last:.0f} mg/dL. "
-                                  "I'll keep an eye on breakfast with you.", "calm", card_id=f"c_{s.pid}_{day}_morning")
+                card = cards.card(kind, now, "Good morning!", f"Your last Dexcom reading was {last:.0f} mg/dL. "
+                                  "I'm up and watching breakfast with you.", "calm", card_id=f"c_{s.pid}_{day}_morning")
             else:
                 g = [x for x in s.grades if x["graded_at"][:10] == day]
-                card = cards.card(kind, now, "Your day", f"I graded {len(g)} of my predictions today. Writing up the rest now.", "calm",
+                card = cards.card(kind, now, "That's a wrap", f"I graded {len(g)} of my predictions today. Writing up your recap now.", "calm",
                                   card_id=f"c_{s.pid}_{day}_recap")
             for uid in followers:
                 store.get(uid).add_card(card)

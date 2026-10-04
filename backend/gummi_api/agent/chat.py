@@ -78,7 +78,7 @@ def _llm_step(messages: list[dict], emit, use_tools: bool = True) -> tuple[str, 
         try:
             kwargs = {"reasoning_effort": "low"} if "gpt-oss" in model else {}
             stream = client().chat.completions.create(
-                model=model, messages=messages, stream=True, max_tokens=700, temperature=0.3,
+                model=model, messages=messages, stream=True, max_tokens=700, temperature=0.7,
                 **({"tools": tools.CHAT_TOOLS, "tool_choice": "auto"} if use_tools else {}), **kwargs)
             for ch in stream:
                 if not ch.choices:

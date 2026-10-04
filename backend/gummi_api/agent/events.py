@@ -100,7 +100,7 @@ def _complete(messages: list[dict], tool_list):
     for attempt, model in enumerate((config.AGENT_ENDPOINT, config.AGENT_ENDPOINT, config.AGENT_ENDPOINT, config.LLM_ENDPOINT)):
         try:
             extra = {"reasoning_effort": "low"} if "gpt-oss" in model else {}
-            return client().chat.completions.create(model=model, messages=messages, max_tokens=500, temperature=0.4,
+            return client().chat.completions.create(model=model, messages=messages, max_tokens=500, temperature=0.7,
                                                     **({"tools": tool_list, "tool_choice": "auto"} if tool_list else {}), **extra)
         except Exception as e:  # noqa: BLE001
             last = e
