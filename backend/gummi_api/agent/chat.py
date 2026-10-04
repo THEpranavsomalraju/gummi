@@ -73,11 +73,12 @@ def _text_of(content) -> str:
 
 def _llm_step(messages: list[dict], emit, use_tools: bool = True) -> tuple[str, list[dict]]:
     last_err = None
-    for model in (config.LLM_ENDPOINT, config.LLM_FALLBACK):
+    for model in (config.LLM_ENDPOINT, *config.LLM_FALLBACKS):
         text, calls, started = "", {}, False
         try:
             kwargs = {"reasoning_effort": "low"} if "gpt-oss" in model else {}
-            stream = client().chat.completions.create(
+            # fail fast on a rate limit and switch models, instead of the client's silent retry with backoff
+            stream = client().with_options(max_retries=0).chat.completions.create(
                 model=model, messages=messages, stream=True, max_tokens=700, temperature=0.7,
                 **({"tools": tools.CHAT_TOOLS, "tool_choice": "auto"} if use_tools else {}), **kwargs)
             for ch in stream:

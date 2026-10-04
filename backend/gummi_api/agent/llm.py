@@ -60,12 +60,21 @@ def _ask_insights(question: str) -> str | None:
 
 
 def warm() -> None:
-    """One tiny call at startup so the first real chat turn doesn't pay for connection setup."""
+    """At startup: one tiny call per chat model and one throwaway MLflow span, so the first real chat turn pays for
+    neither connection setup nor tracing setup (the first span costs about 2 s, later ones about 0)."""
+    for model in (config.LLM_ENDPOINT, *config.LLM_FALLBACKS):
+        try:
+            client().with_options(max_retries=0).chat.completions.create(
+                model=model, max_tokens=1, messages=[{"role": "user", "content": "hi"}],
+                **({"reasoning_effort": "low"} if "gpt-oss" in model else {}))
+        except Exception as e:  # noqa: BLE001
+            log.warning("LLM warmup failed for %s: %s", model, str(e)[:120])
     try:
-        client().chat.completions.create(model=config.LLM_ENDPOINT, max_tokens=1, reasoning_effort="low",
-                                         messages=[{"role": "user", "content": "hi"}])
-    except Exception as e:  # noqa: BLE001
-        log.warning("LLM warmup failed: %s", str(e)[:200])
+        from .chat import span
+        with span("warmup", "UNKNOWN") as s:
+            s.set_inputs({"warmup": True})
+    except Exception:  # noqa: BLE001
+        pass
 
 
 __all__ = ["client", "ask_insights", "warm"]

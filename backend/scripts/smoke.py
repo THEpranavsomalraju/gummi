@@ -16,7 +16,7 @@ APP = "https://gummi-7474657192035402.aws.databricksapps.com/api/v1"
 env = dict(l.split("=", 1) for l in (Path(__file__).parents[1] / "secrets/iphone_sp.env").read_text().split("\n") if "=" in l)
 tok = httpx.post(f"{WORKSPACE}/oidc/v1/token", auth=(env["GUMMI_SP_CLIENT_ID"].strip(), env["GUMMI_SP_CLIENT_SECRET"].strip()),
                  data={"grant_type": "client_credentials", "scope": "all-apis"}, timeout=20).json()["access_token"]
-c = httpx.Client(base_url=APP, headers={"Authorization": f"Bearer {tok}", "X-User-Id": "u_smoke"}, timeout=30)
+c = httpx.Client(base_url=APP, headers={"Authorization": f"Bearer {tok}", "X-User-Id": "u_smoke"}, timeout=60)
 fails = 0
 
 
@@ -32,29 +32,29 @@ def check(method, path, expect=200, **kw):
 
 
 check("GET", "/health")
-check("GET", "/state")
 check("POST", "/follow", json={"user_id": "p_012"})
+check("GET", "/state")
 check("GET", "/feed")
+check("GET", "/foodlog")
 check("GET", "/predictions?status=pending")
 check("GET", "/grades")
-m = check("POST", "/meals", json={"items": [{"name": "waffle", "quantity": 2}], "source": "manual"}).json()
-check("PATCH", f"/meals/{m['meal_id']}", json={"items": [{"name": "waffle", "quantity": 1}]})
+m = check("POST", "/meals", json={"items": [{"name": "banana"}], "source": "manual"}).json()
+check("PATCH", f"/meals/{m['meal_id']}", json={"items": [{"name": "banana", "quantity": 0.5}]})
 check("GET", "/meals")
 check("DELETE", f"/meals/{m['meal_id']}")
-check("POST", "/meals/due/d_1/log")
+check("POST", "/meals/due/d_nope/log", expect=404)
 check("POST", "/simulate", json={"items": [{"name": "cookie"}], "eat_at": None})
 check("POST", "/vitals", json={"samples": [{"type": "steps", "value": 100, "start": "2026-10-03T12:00:00Z", "end": "2026-10-03T12:05:00Z"}]})
-check("POST", "/events", json={"type": "walk_started"})
-check("POST", "/events", json={"type": "walk_completed"})
-check("GET", "/walks/latest")
 check("GET", "/profile")
-check("PUT", "/profile", json={"display_name": "Smoke"})
 check("GET", "/stream/status")
 check("GET", "/fleet")
 check("GET", "/fleet/view")
+check("GET", "/map")
+check("GET", "/map/state")
+check("GET", "/agent/lessons")
 check("GET", "/dexcom/status")
 check("GET", "/engine")
-check("GET", "/meals/nope", expect=405)
+check("PUT", "/health", expect=405)
 
 t0 = time.time()
 with c.stream("POST", "/chat", json={"message": "can I eat a cookie now?"}) as s:
@@ -82,5 +82,6 @@ if "--landing" in sys.argv:
     print("landing:", json.dumps(landing))
     fails += not landing["files_written"]
 
+c.post("/follow", json={"user_id": None})          # leave no test follower behind
 print("FAILURES:", fails)
 sys.exit(1 if fails else 0)

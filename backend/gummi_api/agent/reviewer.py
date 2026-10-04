@@ -93,7 +93,7 @@ def _add_lesson(text: str, trace_id: str | None, problem: str) -> bool:
     return True
 
 
-PROMPT_NAME = f"{config.CATALOG}.gummi_ml.gummi_coach_prompt"
+PROMPT_NAME = f"{config.CATALOG}.gummi_agent.gummi_coach_prompt"
 
 
 def _register_prompt_version(lesson: str, trace_id: str | None) -> None:
@@ -134,7 +134,7 @@ def _log_feedback(trace_id: str, review: dict) -> None:
 
 
 def review(job: dict) -> dict | None:
-    resp = client().chat.completions.create(
+    resp = client().with_options(max_retries=1).chat.completions.create(
         model=config.JUDGE_ENDPOINT, max_tokens=400, temperature=0,
         messages=[{"role": "system", "content": REVIEW_PROMPT.format(rules=RULES)},
                   {"role": "user", "content": json.dumps({"user_message": job["message"], "gummi_reply": job["answer"],

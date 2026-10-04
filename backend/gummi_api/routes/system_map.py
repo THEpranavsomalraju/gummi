@@ -33,7 +33,7 @@ NODES = [
     ("agent_morning", "Morning Briefing agent", "first reading after 6 AM", 3, 3, "agent", ["agent.morning_briefing"], EXP),
     ("agent_recap", "Evening Recap agent", "8 PM, reads gold tables", 3, 4, "agent", ["agent.evening_recap"], EXP),
     ("agent_reviewer", "Reviewer agent", "scores every reply, writes lessons", 3, 5, "agent", ["agent.reviewer", "agent.self_check"], EXP),
-    ("memory", "Lessons memory", "UC volume + prompt registry versions", 4, 6, "databricks", ["memory.lessons", "memory.prompt_registry"], f"{W}/explore/data/workspace/gummi_ml"),
+    ("memory", "Lessons memory", "UC volume + prompt registry versions", 4, 6, "databricks", ["memory.lessons", "memory.prompt_registry"], f"{W}/explore/data/workspace/gummi_agent"),
     ("tool_simulate", "simulate_food", "can I eat this?", 4, 0, "tool", ["tool.simulate_food", "tool.log_meal"], None),
     ("tool_state", "get_state", "Gummi's estimate now", 4, 1, "tool", ["tool.get_state", "tool.today_summary", "tool.get_history"], None),
     ("tool_spike", "explain_spike", "why did I spike?", 4, 2, "tool", ["tool.explain_spike"], None),

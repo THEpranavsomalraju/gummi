@@ -56,14 +56,27 @@ _lock = threading.Lock()
 counters = {"agent_runs": 0, "agent_fallbacks": 0, "agent_failures": 0}
 
 
+_pending: dict[str, dict] = {}                 # card_id -> queued job, so one run serves every follower
+
+
 def submit(agent: str, uid: str, card: dict, context: dict) -> None:
-    """Called by the engine (any thread). The template card is already on the phone; the agent upgrades it."""
+    """Called by the engine (any thread). The template card is already on the phone; the agent upgrades it.
+    Followers of the same participant share one run: the LLM is called once per card, not once per phone."""
     from ..engine.engine import engine
     if engine.silent:
         return                                   # rehydrating after a restart: keep templates, no LLM calls
+    with _lock:
+        job = _pending.get(card["card_id"])
+        if job is not None:
+            job["uids"].add(uid)
+            return
+        job = {"agent": agent, "uid": uid, "uids": {uid}, "card": card, "context": context}
+        _pending[card["card_id"]] = job
     try:
-        _jobs.put_nowait({"agent": agent, "uid": uid, "card": card, "context": context})
+        _jobs.put_nowait(job)
     except queue.Full:
+        with _lock:
+            _pending.pop(card["card_id"], None)
         counters["agent_fallbacks"] += 1
 
 
@@ -100,11 +113,11 @@ def _complete(messages: list[dict], tool_list):
     """Background agents use their own endpoint so they never eat the phone chat's rate limit (Free Edition has a
     per-workspace QPS cap per endpoint). On 429: back off, then try the chat endpoint once."""
     last = None
-    for attempt, model in enumerate((config.AGENT_ENDPOINT, config.AGENT_ENDPOINT, config.AGENT_ENDPOINT, config.LLM_ENDPOINT)):
+    for attempt in range(3):                     # never falls back to the chat model: the phone's chat has priority
         try:
-            extra = {"reasoning_effort": "low"} if "gpt-oss" in model else {}
-            return client().chat.completions.create(model=model, messages=messages, max_tokens=500, temperature=0.7,
-                                                    **({"tools": tool_list, "tool_choice": "auto"} if tool_list else {}), **extra)
+            return client().with_options(max_retries=0).chat.completions.create(
+                model=config.AGENT_ENDPOINT, messages=messages, max_tokens=500, temperature=0.7,
+                **({"tools": tool_list, "tool_choice": "auto"} if tool_list else {}))
         except Exception as e:  # noqa: BLE001
             last = e
             if "429" not in str(e) and "REQUEST_LIMIT" not in str(e):
@@ -170,9 +183,10 @@ def run_job(job: dict) -> dict | None:
 def _publish(job: dict, upgraded: dict) -> None:
     card = {**job["card"], "title": upgraded["title"] or job["card"]["title"], "body": upgraded["body"],
             "generated_by": "agent", "trace_id": upgraded["trace_id"]}
+    for uid in list(job["uids"]):
+        store.get(uid).add_card(card)
+        broadcaster.publish(uid, "card", card)
     u = store.get(job["uid"])
-    u.add_card(card)
-    broadcaster.publish(job["uid"], "card", card)
     landing.enqueue({"source": "app", "user_id": u.following or job["uid"], "kind": "card",
                      "t": iso_utc(utcnow()), "released_at": iso_utc(utcnow()),
                      "payload": {k: v for k, v in card.items() if k != "attachments"}})
@@ -181,6 +195,8 @@ def _publish(job: dict, upgraded: dict) -> None:
 def _worker() -> None:
     while True:
         job = _jobs.get()
+        with _lock:
+            _pending.pop(job["card"]["card_id"], None)
         try:
             if not _budget_ok():
                 counters["agent_fallbacks"] += 1
