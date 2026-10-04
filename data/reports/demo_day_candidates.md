@@ -1,6 +1,9 @@
 # Demo day candidates (decision D-15)
 
-DECIDED: pick A, p_012 replay day 6 (Nikhil, 2026-10-03). The day's real data is in reports/demo_day/.
+DECIDED (changed 2026-10-04): p_012 replay day 4, the same person on her best day. Nikhil asked for a day that shows
+Gummi better; all 21 qualifying days were scored with gummi_model_v1_2 in reports/demo_day_scores.md. Gummi's meal
+curves beat CGM-only's on 8 of 9 meals that day (19.9 against 32.3 mg/dL). The earlier pick, day 6 (Nikhil,
+2026-10-03), is kept below for the record. The day's real data is in reports/demo_day/.
 
 DRAFT numbers, Data Lead. Criteria from data/CLAUDE.md plus the demo script in PROJECT_OVERVIEW
 section 9: full CGM coverage from 06:00 to 22:00, a clear standardized-breakfast spike, at least one later meal, and
@@ -26,9 +29,9 @@ without participant 012, so "Gummi has never seen this person" is true on stage,
 fleet participant. Teammates and the sandbox get the full model. The earlier `gummi_model_v1_holdout_*` exports and
 `scripts/export_holdout_models.py` are retired.
 
-## What the demo day looks like with the three-way grades (DRAFT, model with the big-meal term, D-70)
+## The earlier pick, day 6, with the three-way grades (DRAFT, model with the big-meal term, D-70)
 
-p_012 day 6 replayed through `model.for_user("p_012")` (fold 2, never trained on 012), meals graded 2 hours after
+Superseded by day 4; see reports/demo_day_scores.md. p_012 day 6 replayed through `model.for_user("p_012")` (fold 2, never trained on 012), meals graded 2 hours after
 eating with readings that arrived an hour later (`scripts/make_test_events.py --participants 012 --hours 19`):
 
 - Gummi beats CGM-only on 4 of 9 meals: the standardized breakfast at 05:54 ("I predicted 153. It was 174."
