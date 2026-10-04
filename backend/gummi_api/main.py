@@ -131,3 +131,10 @@ api = APIRouter(prefix="/api/v1")
 for r in (core.router, meals.router, chat.router, stream.router, system_map.router, day.router):
     api.include_router(r)
 app.include_router(api)
+
+
+@app.get("/", include_in_schema=False)
+async def home():
+    """The App's home page is where the Databricks Apps proxy signs a browser in; land on the system map after that."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse("/api/v1/map")
