@@ -52,4 +52,3 @@ targets:
       path: Gummi/Gummi.entitlements
       properties:
         com.apple.developer.healthkit: true
-        com.apple.developer.healthkit.access: []
