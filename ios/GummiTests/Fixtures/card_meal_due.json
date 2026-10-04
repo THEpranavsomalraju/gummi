@@ -1,0 +1,18 @@
+{
+  "card_id": "c_due_1",
+  "type": "meal_due",
+  "created_at": "2026-10-03T05:54:00-04:00",
+  "title": "Breakfast time for Participant 12",
+  "body": "Milk and Frosted Flake",
+  "mood": "calm",
+  "attachments": null,
+  "actions": [
+    {
+      "label": "Log it",
+      "kind": "log_due_meal",
+      "due_id": "d_1"
+    }
+  ],
+  "trace_id": null,
+  "generated_by": "template"
+}

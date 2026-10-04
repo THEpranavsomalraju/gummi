@@ -1,0 +1,92 @@
+{
+  "card_id": "c_logged_1",
+  "type": "meal_logged",
+  "created_at": "2026-10-03T05:58:00-04:00",
+  "title": "Breakfast logged",
+  "body": "I expect a peak near 165 around 6:30.",
+  "mood": "rising",
+  "attachments": {
+    "meal": {
+      "meal_id": "m_1",
+      "eaten_at": "2026-10-03T05:54:00-04:00",
+      "source": "replay_due",
+      "items": [
+        {
+          "name": "Milk",
+          "quantity": 4.0,
+          "unit": "ounce",
+          "carbs_g": 4.5,
+          "sugar_g": 4.0,
+          "fiber_g": 0.0,
+          "protein_g": 6.0,
+          "fat_g": 2.5,
+          "calories": 60.0,
+          "nutrition_source": "dataset",
+          "editable": true
+        },
+        {
+          "name": "Frosted Flake",
+          "quantity": 1.5,
+          "unit": "cup",
+          "carbs_g": 52.0,
+          "sugar_g": 20.0,
+          "fiber_g": 1.0,
+          "protein_g": 2.0,
+          "fat_g": 0.0,
+          "calories": 220.0,
+          "nutrition_source": "dataset",
+          "editable": true
+        }
+      ],
+      "totals": {
+        "carbs_g": 56.5,
+        "sugar_g": 24.0,
+        "fiber_g": 1.0,
+        "protein_g": 8.0,
+        "fat_g": 2.5,
+        "calories": 280.0
+      },
+      "is_standard_breakfast": true,
+      "prediction_id": "pr_1"
+    },
+    "prediction": {
+      "prediction_id": "pr_1",
+      "kind": "meal",
+      "made_at": "2026-10-03T05:58:00-04:00",
+      "about": "Milk and Frosted Flake",
+      "meal_id": "m_1",
+      "window_start": "2026-10-03T05:54:00-04:00",
+      "window_end": "2026-10-03T07:54:00-04:00",
+      "predicted_peak_mg_dl": 165.0,
+      "predicted_curve": [
+        {
+          "t": "2026-10-03T06:00:00-04:00",
+          "glucose_mg_dl": 128.0,
+          "band_low_mg_dl": 105.0,
+          "band_high_mg_dl": 151.0,
+          "kind": "forecast"
+        },
+        {
+          "t": "2026-10-03T06:30:00-04:00",
+          "glucose_mg_dl": 165.0,
+          "band_low_mg_dl": 137.0,
+          "band_high_mg_dl": 192.0,
+          "kind": "forecast"
+        },
+        {
+          "t": "2026-10-03T07:00:00-04:00",
+          "glucose_mg_dl": 160.0,
+          "band_low_mg_dl": 132.0,
+          "band_high_mg_dl": 189.0,
+          "kind": "forecast"
+        }
+      ],
+      "cgm_only_peak_mg_dl": 139.0,
+      "last_value_peak_mg_dl": 121.0,
+      "status": "pending"
+    }
+  },
+  "actions": [],
+  "trace_id": "tr_1",
+  "generated_by": "agent"
+}
