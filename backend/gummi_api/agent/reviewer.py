@@ -148,6 +148,19 @@ def _register_prompt_version(lesson: str, trace_id: str | None) -> None:
 
 
 def _log_feedback(trace_id: str, review: dict) -> None:
+    """Traces upload asynchronously, so the Reviewer can finish before its trace exists: retry until it lands."""
+    for attempt in range(6):
+        err = _try_log_feedback(trace_id, review)
+        if err is None:
+            activity.hit("mlflow.feedback", detail=f"reviewer scores on {trace_id}")
+            return
+        if "NOT_FOUND" not in err:
+            break
+        time.sleep(3 * (attempt + 1))
+    log.warning("feedback not logged: %s", err)
+
+
+def _try_log_feedback(trace_id: str, review: dict) -> str | None:
     try:
         import mlflow
         from mlflow.entities import AssessmentSource
@@ -161,7 +174,8 @@ def _log_feedback(trace_id: str, review: dict) -> None:
                 mlflow.log_feedback(trace_id=trace_id, name=f"reviewer_{name}", value=float(review[name]),
                                     rationale=why, source=src)
     except Exception as e:  # noqa: BLE001
-        log.warning("feedback not logged: %s", str(e)[:200])
+        return str(e)[:200]
+    return None
 
 
 def review(job: dict) -> dict | None:

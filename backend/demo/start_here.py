@@ -38,7 +38,7 @@
 # MAGIC 1. **Before sending**, every answer passes code checks (no dosing, estimates hedged, every number from a tool, no walk advice after symptoms). A failing draft is rewritten once.
 # MAGIC 2. **After sending**, a separate **Reviewer agent** (Llama 4 Maverick, a different model family) scores the reply and attaches the scores to its **MLflow trace** as feedback.
 # MAGIC 3. **When the Reviewer finds a mistake**, it writes one general lesson. Lessons go into Gummi's prompt for future conversations, and a Databricks Job (file-arrival trigger) registers each one as a new version of `workspace.gummi_agent.gummi_coach_prompt` in the **Unity Catalog prompt registry**. A filter blocks any lesson that touches medication or loosens a rule.
-# MAGIC 4. **MLflow production monitoring** runs safety, treatment-advice, symptom-handling and estimate-wording judges on live traces automatically (experiment *gummi-agent* → Monitoring).
+# MAGIC 4. **Live monitoring on every chat**: the Reviewer's scores (safe, followed rules, voice, helpful) are attached to each trace as MLflow feedback (experiment *gummi-agent* → Traces). Four MLflow production monitors (safety, treatment advice, symptom handling, estimate wording) are registered too; on Free Edition they run in demo windows because they share the serverless job slot.
 # MAGIC 5. **The model learns too**: every graded meal updates that person's personal carb factor and offset.
 
 # COMMAND ----------
