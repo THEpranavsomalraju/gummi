@@ -51,7 +51,7 @@ RIDGE_ALPHA = 10.0            # TUNE
 BAND_Q = (0.10, 0.90)         # 80% bands from held-out residual quantiles
 MEAL_WINDOW_MIN = 180         # a target time within 0-180 min after a logged meal is a "meal window"
 
-# Personal layer (no Kalman filter, per DECISIONS / PROJECT_OVERVIEW scope)
+# Personal layer (a simple offset, no Kalman filter)
 OFFSET_ALPHA = 0.3            # exponential weight of the newest grade's signed error
 OFFSET_SHRINK_N = 9.0         # pseudo-count toward 0 offset (D-71: was 3; with the big-meal term a lighter shrink hurt curve error)
 OFFSET_CAP = 25.0             # mg/dL

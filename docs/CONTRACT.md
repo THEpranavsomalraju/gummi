@@ -6,8 +6,6 @@ Changelog: 1.5 (2026-10-04, Backend Lead, Pranav's request): GET /foodlog, one l
 Changelog: 1.4 (2026-10-03, Backend Lead, answers iOS CONTRACT CHANGE REQUEST 1-6): documentation only, no shape changes. Grade.gummi_beats_cgm_only nullable; WalkSummary.intensity and effect_source values listed; DexcomStatus.environment values; date query format; MealItem.unit may be ""; SSE comment lines.
 Changelog: 1.3 (2026-10-03, Backend Lead, human-delegated, answers iOS REQUEST 20261003-1815): State gains replay_now and stream; Grade gains gummi_beats_cgm_only and gummi_beats_last_value; Meal gains is_standard_breakfast; chat card_type gains "meal_due"; meal_due cards resolve by upsert; attachments keys per card type; walk_completed body; nullable fields marked; error codes listed. All additive.
 Changelog: 1.2 (2026-10-03, Backend Lead, human-approved D-36): State gains upcoming_due for background meal_due notifications. Additive, no other shape changes.
-Section owners: API and agent (Backend Lead), model interface, pipeline, and data tables (Data Lead), puppet moods and UI copy (iOS Lead).
-Changes: CONTRACT CHANGE REQUEST to the owner (docs/PROJECT_OVERVIEW.md section 8).
 Placeholders resolved in docs/DECISIONS.md: <WORKSPACE_URL>, <APP_URL>, <CATALOG>, <LLM_ENDPOINT>.
 
 ## v1.1 changes

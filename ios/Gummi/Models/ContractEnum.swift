@@ -153,7 +153,7 @@ nonisolated enum SimulationMethod: String, ContractEnum {
     static let unknownValue = SimulationMethod.unknown
 }
 
-/// Walk effects always carry their source (CLAUDE.md honesty rules).
+/// Walk effects always carry their source.
 nonisolated enum EffectSource: String, ContractEnum {
     case literature
     case yourData = "your data"

@@ -58,7 +58,7 @@ nonisolated enum MockChat {
         Seed(keyword: "yogurt", name: "greek yogurt", unit: "cup", carbs: 9, sugar: 7, fiber: 0, protein: 20, fat: 5, calories: 150),
     ]
 
-    /// Modeled post-meal walking effect for 10 minutes, labeled literature (DATA_NOTES section 6).
+    /// Modeled post-meal walking effect for 10 minutes, labeled literature (Buffey et al. 2022).
     static let walkDrop = 14.0
 
     static func route(_ message: String) -> Route {

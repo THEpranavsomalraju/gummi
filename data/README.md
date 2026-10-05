@@ -1,8 +1,7 @@
-# data/ (Data Lead)
+# data/
 
 BIG IDEAs ingestion, the reproduced published baseline, gummi_model, gummi_activity, the gummi_stream streaming
-pipeline, replay tables and evaluation. Rules: root `CLAUDE.md` and `data/CLAUDE.md`. Numbers in `reports/` are
-DRAFT until the human approves them.
+pipeline, replay tables and evaluation.
 
 ## Layout
 
@@ -11,15 +10,15 @@ DRAFT until the human approves them.
 | `scripts/download_bigideas.py` | Download the needed BIG IDEAs v1.1.3 files with checksum checks (route B) into `raw/` (git-ignored) |
 | `scripts/run_local_pipeline.py` | Whole data path on a laptop: silver tables, baseline, evaluation, ablations, training, replay tables, into `local_out/` (git-ignored) |
 | `scripts/make_test_events.py` | Sample StreamEvent files for the pipeline from real replay data and real model calls |
-| `scripts/setup_databricks.ps1` | Windows, HUMAN: CLI login, schemas and volumes, upload, bundle deploy, training job, streaming spike |
+| `scripts/setup_databricks.ps1` | Windows: CLI login, schemas and volumes, upload, bundle deploy, training job |
 | `bigideas/` | Loaders for the raw files (three food-log layouts), bronze, silver, baseline, exploration, replay tables |
 | `gummi_model/` | The glucose model (CONTRACT.md section 8): features, training, evaluation, grading, personal layer, walk effect, MLflow wrapper |
 | `gummi_activity/` | Walk intensity from step cadence (Tudor-Locke 2019 bands) and WalkSummary |
 | `gummi_pipeline.py` | The steps shared by the local script and the Databricks job |
 | `pipelines/gummi_stream/` | Lakeflow Declarative Pipeline SQL (bronze, silver, gold) plus `sample_events/` and `EXPECTED.json` |
 | `notebooks/` | 00 setup (schemas, volumes, library check), 02 load and train (tables, MLflow, UC registration), 03 streaming spike |
-| `resources/`, `databricks.yml` | Asset Bundle: job `gummi_data_load_train`, pipeline `gummi_stream`, job `gummi_stream_spike` |
-| `reports/` | Findings, evaluation, walk effect, drafts for decisions and the CONTRACT section 10 columns |
+| `resources/`, `databricks.yml` | Asset Bundle: job `gummi_data_load_train`, pipeline `gummi_stream` |
+| `reports/` | Findings: evaluation, big-spike fix, walk effect, IMU50 check, dataset notes |
 | `tests/` | pytest: loaders, no-leakage baseline, model contract and latency, activity, evaluation |
 
 ## Run it (Windows, from the repo root)
@@ -47,7 +46,6 @@ deployed by this folder's Asset Bundle (`databricks.yml`, target dev, no name pr
 | MLflow | experiment `/Shared/gummi_model` |
 | Job `gummi_data_load_train` | bronze, silver, replay and evaluation tables, training, registration (about 4 minutes) |
 | Pipeline `gummi_stream` | landing to stream_bronze, silver and gold tables; triggered by default |
-| Job `gummi_stream_spike` | sample events through the pipeline, checked against EXPECTED.json (D-21) |
 | Job `gummi_imu50_check` | IMU50 cadence-band check (D-19) |
 
 Redeploy and run from `data\` (Windows, CLI profile gummi):

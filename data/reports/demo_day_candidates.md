@@ -5,8 +5,7 @@ Gummi better; all 21 qualifying days were scored with gummi_model_v1_2 in report
 curves beat CGM-only's on 8 of 9 meals that day (19.9 against 32.3 mg/dL). The earlier pick, day 6 (Nikhil,
 2026-10-03), is kept below for the record. The day's real data is in reports/demo_day/.
 
-DRAFT numbers, Data Lead. Criteria from data/CLAUDE.md plus the demo script in PROJECT_OVERVIEW
-section 9: full CGM coverage from 06:00 to 22:00, a clear standardized-breakfast spike, at least one later meal, and
+Criteria: full CGM coverage from 06:00 to 22:00, a clear standardized-breakfast spike, at least one later meal, and
 at least one meal where Gummi's forecast reaches the 140 mg/dL high line (the walk nudge in step 5). 015 is excluded
 (D-20). 21 of 140 participant-days qualify; all of them are in `reports/demo_day_candidates.csv`, made by
 `python data\scripts\demo_day_candidates.py`. Grades below come from participant-grouped predictions made at

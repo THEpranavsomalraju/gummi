@@ -112,7 +112,7 @@ final class AppModel {
     @ObservationIgnored private let stepsUploader: StepsUploader?
     @ObservationIgnored private let usesSystemServices: Bool
     @ObservationIgnored private var stepsTask: Task<Void, Never>?
-    /// Card types and alerts that get an in-app banner (ios/CLAUDE.md Phase 3).
+    /// Card types and alerts that get an in-app banner.
     nonisolated static let bannerCardTypes: Set<CardType> = [.walkSuggested, .mealDue, .mealStory, .eveningRecap]
 
     @ObservationIgnored private var service: (any GummiService)?

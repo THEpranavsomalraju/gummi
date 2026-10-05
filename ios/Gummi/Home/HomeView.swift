@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Home, coaching first: who you're acting as, the newest coach card, Gummi with his chat bubble,
-/// the glucose chart, and the safety line (PROJECT_OVERVIEW section 4).
+/// the glucose chart, and the safety line.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     @State private var puppet = KoalaController()

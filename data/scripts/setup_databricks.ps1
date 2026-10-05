@@ -7,7 +7,6 @@ Before the first run, install the Databricks CLI and open a NEW PowerShell windo
 Run from the repo root (the folder that holds data\ and docs\):
     powershell -ExecutionPolicy Bypass -File data\scripts\setup_databricks.ps1 -WorkspaceUrl https://<your-workspace-url>
     powershell -ExecutionPolicy Bypass -File data\scripts\setup_databricks.ps1 -WorkspaceUrl https://<your-workspace-url> -Catalog <catalog>
-    ... -Catalog <catalog> -Spike        (also runs the streaming spike job, decision D-21)
 
 Every step is safe to re-run:
   1. Checks the CLI, logs in to CLI profile "gummi" if needed (browser), prints who you are       (D-02)
@@ -15,7 +14,6 @@ Every step is safe to re-run:
   3. Creates schemas gummi_data and gummi_ml, volumes raw_bigideas, landing, artifacts             (CONTRACT.md section 10)
   4. Uploads data\raw\bigideas_1.1.3 (about 240 MB) to /Volumes/<catalog>/gummi_data/raw_bigideas/bigideas_1.1.3
   5. Deploys the gummi-data bundle and runs the job gummi_data_load_train (expected 5 to 10 minutes on serverless)
-  6. With -Spike: runs the job gummi_stream_spike (sample events -> landing -> gummi_stream pipeline -> checks)
 Paste the whole window output back to the Data agent when it finishes or stops.
 #>
 [CmdletBinding()]
@@ -24,8 +22,7 @@ param(
     [string]$Catalog = "workspace",
     [string]$CliProfile = "gummi",
     [switch]$SkipUpload,
-    [switch]$SkipJob,
-    [switch]$Spike
+    [switch]$SkipJob
 )
 
 $DataDir = Split-Path -Parent $PSScriptRoot
@@ -116,11 +113,6 @@ if (-not $SkipJob) {
         if (-not (Invoke-Db bundle deploy $var)) { Stop-Here "bundle deploy failed." }
         if (-not (Invoke-DbLive bundle run gummi_data_load_train $var)) { Stop-Here "the job gummi_data_load_train failed." }
         Write-Host "gummi_data_load_train finished" -ForegroundColor Green
-        if ($Spike) {
-            Step "6. Streaming spike: sample events -> landing -> gummi_stream (triggered) -> checks"
-            if (-not (Invoke-DbLive bundle run gummi_stream_spike $var)) { Stop-Here "the job gummi_stream_spike failed." }
-            Write-Host "gummi_stream_spike finished. Open the run's 'check' task output for counts and lag." -ForegroundColor Green
-        }
     }
     finally { Pop-Location }
 }
