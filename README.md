@@ -4,7 +4,7 @@
 
 # Gummi
 
-**A glucose coach that predicts, acts, and checks its own work.**
+A glucose coach that predicts, acts, and checks its own work.
 
 Overall winner, WolfHacks 2026
 
@@ -16,102 +16,69 @@ Overall winner, WolfHacks 2026
 
 </div>
 
-<img src="docs/assets/system-map.png" alt="Gummi's live system map: every part of the system lighting up as events flow through Databricks" />
+## Hi, I'm Gummi
 
-<sub>The live system map. Every box is a real component, and it lights up when that component does work.</sub>
+I'm a little jelly koala who lives on your phone and helps you keep your glucose in a good place.
 
-## What it is
+If you have prediabetes and wear a glucose monitor, you can see where your glucose has been. What you usually want to know is where it's going. Can I have this cookie? Should I take a walk first? Why did lunch hit me so hard? On top of that, apps get Dexcom readings about an hour late, so there's a gap right where it matters most.
 
-If you have prediabetes and wear a glucose monitor, it only shows you what already happened. Apps even get the data an hour late, on purpose. So the questions you actually have, like "can I eat this cookie?" or "should I go for a walk?", don't get a real answer.
+So I fill in that hour with my own model and look about two hours ahead. Ask me about a snack and I'll show you what it would probably do before you eat it. If I see a spike coming, I'll suggest a short walk. After a meal I'll tell you how it went, and at night I'll recap your day.
 
-Gummi answers them. It's an iPhone app with a jelly koala you chat with, and it does three things:
+And I keep myself honest. Two hours after every prediction, I check it against what really happened and show you how I did next to two simpler methods. Some days a breakfast outsmarts me, and you'll see that too.
 
-- **Predicts.** It fills in the missing hour, forecasts the next two, and shows what a food would do before you eat it.
-- **Acts.** It nudges you to walk before a spike, writes up how each meal went, and recaps your day without being asked.
-- **Checks itself.** Two hours after every prediction, it grades itself against what actually happened, next to two baselines. When it's wrong, you see that too.
+I'm here for adults with prediabetes or type 2 diabetes who don't take insulin. I'm a coach, so please don't use me for treatment decisions. Your Dexcom app has your real readings.
 
-Gummi is for adults with prediabetes or type 2 diabetes who don't take insulin. It isn't for treatment decisions.
+## How it all works
 
-## How it fits together
+None of my team wears a Dexcom, so I learned from 15 real people in the [BIG IDEAs study](https://physionet.org/content/big-ideas-glycemic-wearable/1.1.3/). Their days stream through me as a live replay, with the same one-hour delay a real Dexcom has. You pick someone to follow and go through their day with them. Steps come from your actual phone, and a real Dexcom account connects through Dexcom's sandbox.
 
-None of us wear a Dexcom, so 15 real people from the [BIG IDEAs study](https://physionet.org/content/big-ideas-glycemic-wearable/1.1.3/) stream through the system as a live replay, with the same one-hour delay a real Dexcom has. You follow one of them and live through their day. Real steps come from the phone, and a real Dexcom account connects through Dexcom's sandbox.
+Here's everything behind me, live:
 
-```mermaid
-flowchart LR
-    subgraph IN[" Inputs "]
-        R[Study replay<br/>15 people, live]
-        P[iPhone<br/>steps + walks]
-        D[Dexcom<br/>OAuth sandbox]
-    end
-    subgraph APP[" Databricks App "]
-        E[Replay engine<br/>+ Gummi model]
-        G[Grader<br/>vs 2 baselines]
-        A[6 agents<br/>Coach, Meal Story, Walk,<br/>Morning, Recap, Reviewer]
-    end
-    subgraph LAKE[" Lakehouse "]
-        V[(Unity Catalog<br/>volume)]
-        L[Lakeflow pipeline<br/>bronze → silver → gold]
-        M[MLflow<br/>traces + reviews]
-        I[Agent Bricks<br/>Genie + UC functions]
-        B[AI/BI dashboard]
-    end
-    R --> E
-    P --> E
-    D --> E
-    E --> G --> A
-    A -- "live push, under 1 s" --> PH[Gummi on iPhone]
-    E & G & A --> V --> L --> B
-    L --> I
-    A --> M
-    L -- gold accuracy --> A
-```
+<img src="docs/assets/system-map.png" alt="Gummi's live system map, with each part lighting up as events flow through Databricks" />
 
-## The Databricks side
+<sub>Each box is a real part of the system and lights up when it does something. On the left are the inputs. In the middle are my model, the grader and my agents. On the right is Databricks, where everything ends up.</sub>
 
-Databricks isn't just where the data sits. It runs the whole product.
+## Running on Databricks
 
-| Piece | What it does for Gummi |
+My whole backend runs on Databricks. Here's what each piece does:
+
+| Piece | What it does |
 |---|---|
-| **Databricks Apps** | Hosts the backend (FastAPI): the replay engine, the model, the agents, and a live push channel to the phone. |
-| **Lakeflow Declarative Pipelines** | `gummi_stream` runs continuously. Auto Loader picks up each event about 6 seconds after it lands and builds bronze, silver and gold Delta tables. |
-| **Unity Catalog** | Tables, volumes, the registered model, SQL functions and the agent's prompt, all governed in one place. |
-| **Foundation Model APIs** | gpt-oss-20b runs chat because it's the fastest, with gpt-oss-120b and Qwen3 as fallbacks. Llama 4 Maverick reviews every answer, so a different model family checks the Coach. |
-| **MLflow** | Traces every conversation, tool call by tool call. The Reviewer's scores are attached to each trace as feedback. |
-| **Prompt Registry + Jobs** | The Reviewer writes lessons, and a file-arrival Job turns them into a new version of the Coach's prompt. Gummi gets better on its own. |
-| **Agent Bricks** | Gummi Insights, a supervisor agent that sends deeper questions to a Genie space or to Unity Catalog functions over the gold tables. |
-| **AI/BI and Genie** | A live accuracy dashboard, plus plain-English questions over the streaming data. |
+| **Databricks Apps** | Hosts the backend (FastAPI). The replay, my model, my agents and the live connection to your phone all run here. |
+| **Lakeflow Declarative Pipelines** | Every reading, meal, prediction and grade gets written to a volume. The `gummi_stream` pipeline picks each one up about 6 seconds later and turns it into bronze, silver and gold Delta tables. |
+| **Unity Catalog** | Keeps the tables, volumes, my registered model, a couple of SQL functions and even my prompt in one governed place. |
+| **Foundation Model APIs** | I chat on gpt-oss-20b because it's quick, with gpt-oss-120b and Qwen3 as backups. Llama 4 Maverick reviews my answers, so a different model family keeps an eye on me. |
+| **MLflow** | Records every conversation step by step, which tools I used and what they returned, plus the reviewer's scores. |
+| **Prompt Registry and Jobs** | When the reviewer spots something I could do better, it writes a lesson. A Job turns those lessons into a new version of my prompt. |
+| **Agent Bricks** | Gummi Insights is a supervisor agent for the deeper questions. It decides whether to ask a Genie space or a Unity Catalog function over the gold tables. |
+| **AI/BI and Genie** | A live dashboard of how accurate I am, and a place to ask the data questions in plain English. |
 
-Measured on the live system:
+Some numbers from the live system: screens on the phone load in 25 to 250 ms, my first words in chat show up in about 1.5 to 2 seconds, my model makes a prediction in under 50 ms, and events reach the bronze table 4 to 8 seconds after they land.
 
-- Phone screens load in **25 to 250 ms**, served from memory.
-- Chat's first words arrive in about **1.5 to 2 s**, tool calls included.
-- The model predicts in **under 50 ms** on CPU.
-- Events reach the bronze table **4 to 8 s** after they land.
+## How accurate I am
 
-## How accurate it is
+This is my average error in mg/dL, so lower is better. Everyone in these numbers was predicted by a version of me that never saw their data during training.
 
-Average error in mg/dL, lower is better. Every number is out-of-sample: each person is predicted by a model that was trained without them.
-
-| Looking ahead | Gummi | CGM-only (published method) | Last reading |
+| Looking ahead | Me | CGM-only (published method) | Last reading |
 |---|:-:|:-:|:-:|
 | 30 min | **8.9** | 9.5 | 10.7 |
 | 1 hour | **12.1** | 13.4 | 14.9 |
 | 2 hours | **14.2** | 15.7 | 18.4 |
 | 1 hour after a meal | **15.7** | 17.3 | 20.4 |
 
-We reproduced the published CGM-only baseline first (13.90 RMSE at 30 min), then added meals. That's the core idea: meals are what move glucose, and the published model leaves them out.
+My team first rebuilt the published CGM-only model (13.90 RMSE at 30 minutes) and then taught me about meals. Food is what moves glucose the most, so knowing what you ate helps a lot.
 
-## Repo
+## What's in here
 
 ```
 gummi/
-├── ios/        SwiftUI app, RealityKit jelly koala, live channel, chat
-├── backend/    Databricks App: replay, grading, agents, food log, system map, fleet view
-├── data/       data load, gummi_model, Lakeflow pipeline, gold tables, Genie, dashboard
-└── docs/       API contract (v1.6) and design decisions
+├── ios/        the iPhone app, my 3D jelly body, live updates and chat
+├── backend/    the Databricks App: replay, grading, agents, food log, system map, fleet view
+├── data/       data loading, my model, the Lakeflow pipeline, gold tables, Genie, dashboard
+└── docs/       the API contract and the design decisions
 ```
 
-## Running it
+## Running me yourself
 
 <details>
 <summary><b>Data and pipeline</b></summary>
@@ -122,7 +89,7 @@ python scripts/download_bigideas.py          # the BIG IDEAs files we use, check
 databricks bundle deploy                     # jobs, the gummi_stream pipeline, tables
 databricks bundle run gummi_data_load_train  # load, evaluate, train, save the model to a UC volume
 ```
-Then start `gummi_stream` (continuous for demos, triggered otherwise).
+Then start `gummi_stream` (continuous for demos, triggered the rest of the time).
 </details>
 
 <details>
@@ -134,7 +101,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 scripts/deploy.sh                       # syncs and deploys the App (CLI profile "gummi")
 .venv/bin/python scripts/smoke.py       # hits every route through the Apps proxy
 ```
-For local tests, run `scripts/fetch_cache.py` once, then `pytest tests/`.
+For local tests, run `scripts/fetch_cache.py` once and then `pytest tests/`.
 </details>
 
 <details>
@@ -144,7 +111,7 @@ For local tests, run `scripts/fetch_cache.py` once, then `pytest tests/`.
 cd ios
 xcodegen generate && open Gummi.xcodeproj
 ```
-Put the App URL and credentials in `Config/Secrets.xcconfig.local` (git-ignored). Without them the app runs on built-in demo data.
+Put the App URL and credentials in `Config/Secrets.xcconfig.local` (it's git-ignored). Without them I'll run on built-in demo data.
 </details>
 
 <details>
@@ -152,18 +119,18 @@ Put the App URL and credentials in `Config/Secrets.xcconfig.local` (git-ignored)
 
 ```bash
 backend/.venv/bin/python backend/scripts/demo_stage.py stage   # sets up the evening of Participant 12's day
-backend/.venv/bin/python backend/scripts/demo_stage.py go      # on stage: a meal gets graded about 10 s later
+backend/.venv/bin/python backend/scripts/demo_stage.py go      # a meal gets graded about 10 seconds later
 ```
 </details>
 
-## Team
+## The people who made me
 
 | | |
 |---|---|
-| **Pranav Somalraju** | Backend and Databricks platform: the Databricks App, replay engine and grading, all six agents, MLflow tracing and reviews, prompt registry and Jobs, Agent Bricks supervisor, Dexcom integration, deployment |
-| **Nikhil Ambavaram** | Data and model: BIG IDEAs ingestion, gummi_model and its evaluation, the Lakeflow pipeline and gold tables, Genie space, dashboard |
-| **Mahil Manoharan** | iOS: the SwiftUI app, the RealityKit koala, live updates and chat |
+| **Pranav Somalraju** | Backend and Databricks platform: the Databricks App, replay and grading, all six agents, MLflow tracing and reviews, the prompt registry and Jobs, the Agent Bricks supervisor, the Dexcom connection and deployment |
+| **Nikhil Ambavaram** | Data and model: loading BIG IDEAs, training and evaluating my model, the Lakeflow pipeline and gold tables, the Genie space and dashboard |
+| **Mahil Manoharan** | iOS: the app, my 3D koala body, live updates and chat |
 
-## Credits
+## Thanks
 
-Data from the BIG IDEAs Lab Glycemic Variability and Wearable Device Data v1.1.3 on PhysioNet (Bent et al. 2021, npj Digital Medicine). Walking effect from Buffey et al. 2022, Sports Medicine. Dexcom API sandbox.
+Data comes from the BIG IDEAs Lab Glycemic Variability and Wearable Device Data v1.1.3 on PhysioNet (Bent et al. 2021, npj Digital Medicine). The walking effect comes from Buffey et al. 2022 in Sports Medicine. Dexcom connection through the Dexcom API sandbox.
