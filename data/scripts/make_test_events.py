@@ -1,6 +1,6 @@
 """Write sample StreamEvent JSON-lines files (CONTRACT.md section 3) from real replay data and real model calls.
 
-Used by the streaming spike (notebooks/03_streaming_spike.py), as test input for the gummi_stream pipeline, and as a
+Used as test input for the gummi_stream pipeline, and as a
 reference for the Backend's landing writer. CGM readings, meals, predictions, grades and cards come from the
 BIG IDEAs replay tables and gummi_model calls. Only the u_demo walk, step and chat lines are made up.
 

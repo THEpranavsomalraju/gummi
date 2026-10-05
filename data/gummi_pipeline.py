@@ -1,7 +1,7 @@
 """The whole data path as one function, shared by the laptop script and the Databricks notebook.
 
 run(raw_dir, out_dir, exclude) -> dict of DataFrames + paths. Nothing here is judge-facing until the human
-approves the numbers (hard stop in data/CLAUDE.md).
+approves the numbers.
 """
 from __future__ import annotations
 

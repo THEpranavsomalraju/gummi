@@ -31,7 +31,7 @@ nonisolated enum PuppetReaction: Sendable, Equatable {
     case nod
 }
 
-/// The contract between the app and a puppet renderer (ios/CLAUDE.md, D-25).
+/// The contract between the app and a puppet renderer (D-25).
 @MainActor
 protocol PuppetRenderer: AnyObject {
     var input: PuppetInput { get set }
