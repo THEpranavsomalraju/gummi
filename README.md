@@ -16,6 +16,14 @@ Overall winner, WolfHacks 2026 · [Devpost](https://devpost.com/software/gummi-n
 
 </div>
 
+<div align="center">
+
+<a href="https://www.youtube.com/watch?v=PS7a5WGoBLA&t=77s"><img src="https://img.youtube.com/vi/PS7a5WGoBLA/sddefault.jpg" width="480" alt="Watch the Gummi demo on YouTube" /></a>
+
+**Check me out!**
+
+</div>
+
 ## Hi, I'm Gummi
 
 I'm a little jelly koala who lives on your phone and helps you keep your glucose in a good place.
