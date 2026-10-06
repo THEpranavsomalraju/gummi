@@ -20,7 +20,7 @@ Overall winner, WolfHacks 2026 · [Devpost](https://devpost.com/software/gummi-n
 
 <a href="https://www.youtube.com/watch?v=PS7a5WGoBLA&t=77s"><img src="https://img.youtube.com/vi/PS7a5WGoBLA/sddefault.jpg" width="480" alt="Watch the Gummi demo on YouTube" /></a>
 
-**Check me out!**
+[**Check me out!**](https://www.youtube.com/watch?v=PS7a5WGoBLA&t=77s)
 
 </div>
 
