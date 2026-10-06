@@ -6,7 +6,7 @@
 
 A glucose coach that predicts, acts, and checks its own work.
 
-Overall winner, WolfHacks 2026
+Overall winner, WolfHacks 2026 · [Devpost](https://devpost.com/software/gummi-nrwoqt)
 
 ![Databricks](https://img.shields.io/badge/Databricks-FF3621?style=flat-square&logo=databricks&logoColor=white)
 ![MLflow](https://img.shields.io/badge/MLflow-0194E2?style=flat-square&logo=mlflow&logoColor=white)
